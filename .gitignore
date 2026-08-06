@@ -1,0 +1,17 @@
+
+# Local Python environments and tooling caches.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Build and packaging artefacts.
+*.egg-info/
+build/
+dist/
+
+# Research artefacts generated locally.
+datasets/
+checkpoints/
+results/
