@@ -1,0 +1,5 @@
+# Phase 2 development and SAT-feasibility dependencies.
+# The supported interpreter is Python 3.11; see pyproject.toml and docs/SETUP.md.
+pytest==8.4.2
+ruff==0.16.2
+pycryptosat==5.14.7

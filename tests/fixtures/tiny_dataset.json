@@ -1,0 +1,39 @@
+{
+  "ciphertext_pairs": [
+    [["48f0", "0c91"], ["ab74", "7317"]],
+    [["db89", "7af0"], ["b855", "fe17"]],
+    [["6e71", "3865"], ["7d6b", "6e60"]],
+    [["c2f6", "4d0c"], ["cdf3", "06b1"]]
+  ],
+  "features": [
+    "0100100011110000000011001001000110101011011101000111001100010111",
+    "1101101110001001011110101111000010111000010101011111111000010111",
+    "0110111001110001001110000110010101111101011010110110111001100000",
+    "1100001011110110010011010000110011001101111100110000011010110001"
+  ],
+  "labels": [1, 0, 0, 1],
+  "metadata": {
+    "bit_order": "first_ciphertext_x_msb_to_lsb, first_ciphertext_y_msb_to_lsb, second_ciphertext_x_msb_to_lsb, second_ciphertext_y_msb_to_lsb",
+    "class_balance": {"0": 2, "1": 2},
+    "feature_dtype": "uint8",
+    "feature_representation": "four 16-bit ciphertext words encoded as 64 binary uint8 values",
+    "feature_shape": [4, 64],
+    "data_checksum": "fa391c386a5e58fd669fd5b8a17588891649a61d3cbc8fa5f25cb1f847759568",
+    "generated_at": "2026-08-09T00:00:00+00:00",
+    "generator_version": "0.1.0",
+    "input_difference": [64, 0],
+    "key_generation_policy": "independent_random_key_per_sample",
+    "repository_commit": null,
+    "rounds": 7,
+    "sample_count": 4,
+    "seed": 1001,
+    "split_role": "train",
+    "word_order": "block=(x,y); master_key=(l[2],l[1],l[0],k[0])"
+  },
+  "plaintext_pairs": [
+    [["0faf", "fc78"], ["0fef", "fc78"]],
+    [["d032", "4258"], ["3306", "81f1"]],
+    [["9cfc", "b279"], ["5510", "ccae"]],
+    [["5208", "d038"], ["5248", "d038"]]
+  ]
+}
