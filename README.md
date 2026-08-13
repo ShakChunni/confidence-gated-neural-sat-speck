@@ -20,9 +20,9 @@ deferred.
 - A bounded exact CryptoMiniSat model for reduced-round feasibility tests.
 - Unit tests for primitives, key expansion, cipher, partial decryption, and data.
 
-The current API is word-level: a block is represented as (x, y) and a master key
-uses the word order recorded in docs/RESEARCH_NOTES.md. Byte serialization is not
-fixed until the team reviews the documented source ambiguity.
+The current API is word-level: a block is represented as (x, y), and a master key
+uses the explicit word order (l[2], l[1], l[0], k[0]). Byte serialization is not
+fixed until the team reviews the source ambiguity.
 
 ## Development setup
 
@@ -57,5 +57,5 @@ PYTHONPATH=.:src python scripts/phase2_sat_pilot.py --rounds 2 4 7 --pair-count 
 ~~~
 
 The repository does not commit virtual environments, generated datasets, model
-checkpoints, or experiment output. See the project instructions and
-docs/RESEARCH_NOTES.md before selecting cipher or dataset parameters.
+checkpoints, or experiment output. See the project instructions before selecting
+cipher or dataset parameters.
