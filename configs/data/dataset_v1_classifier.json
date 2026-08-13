@@ -1,0 +1,30 @@
+{
+  "bit_order": "first_ciphertext_x_msb_to_lsb, first_ciphertext_y_msb_to_lsb, second_ciphertext_x_msb_to_lsb, second_ciphertext_y_msb_to_lsb",
+  "cipher": "SPECK32/64",
+  "dataset_format_version": "1.0.0",
+  "dataset_id": "speck32_64_classifier_v1",
+  "status": "frozen",
+  "feature_dtype": "uint8",
+  "feature_representation": "four 16-bit ciphertext words encoded as 64 binary uint8 values",
+  "generated_at": "2026-08-13T00:00:00+00:00",
+  "input_difference": [64, 0],
+  "key_generation_policy": "independent_random_key_per_sample",
+  "license": "MIT",
+  "rounds": 7,
+  "splits": {
+    "test": {
+      "sample_count": 4,
+      "seed": 3001
+    },
+    "train": {
+      "sample_count": 4,
+      "seed": 1001
+    },
+    "validation": {
+      "sample_count": 4,
+      "seed": 2001
+    }
+  },
+  "task": "related_vs_random",
+  "word_order": "block=(x,y); master_key=(l[2],l[1],l[0],k[0])"
+}

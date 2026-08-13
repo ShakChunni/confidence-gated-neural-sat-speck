@@ -87,6 +87,9 @@ class DatasetConfig:
         )
 
 
+MasterKey: TypeAlias = tuple[int, int, int, int]
+
+
 @dataclass(frozen=True)
 class GeneratedDataset:
     """Generated features, labels, optional debug pairs, and metadata."""
@@ -96,6 +99,7 @@ class GeneratedDataset:
     metadata: DatasetMetadata
     plaintext_pairs: tuple[PlaintextPair, ...] | None = None
     ciphertext_pairs: tuple[CiphertextPair, ...] | None = None
+    master_keys: tuple[MasterKey, ...] | None = None
 
 
 def _normalise_word_pair(block: Sequence[int]) -> WordPair:
@@ -148,7 +152,7 @@ def _random_master_key(rng: random.Random) -> tuple[int, int, int, int]:
     )
 
 
-def _data_checksum(
+def dataset_content_checksum(
     features: Sequence[FeatureVector],
     labels: Sequence[int],
 ) -> str:
@@ -194,6 +198,7 @@ def generate_dataset(
     config: DatasetConfig,
     *,
     include_debug_pairs: bool = False,
+    include_master_keys: bool = False,
     generated_at: str | None = None,
     repository_commit: str | None = None,
 ) -> GeneratedDataset:
@@ -207,7 +212,7 @@ def generate_dataset(
     rng = random.Random(config.seed)
     half_count = config.sample_count // 2
     examples: list[
-        tuple[int, FeatureVector, PlaintextPair, CiphertextPair]
+        tuple[int, FeatureVector, PlaintextPair, CiphertextPair, MasterKey]
     ] = []
 
     for label in (1, 0):
@@ -239,6 +244,7 @@ def generate_dataset(
                     encode_ciphertext_pair(*ciphertext_pair),
                     (first_plaintext, second_plaintext),
                     ciphertext_pair,
+                    master_key,
                 )
             )
 
@@ -265,7 +271,7 @@ def generate_dataset(
         feature_representation=FEATURE_REPRESENTATION,
         feature_dtype=FEATURE_DTYPE,
         feature_shape=(config.sample_count, FEATURE_WIDTH),
-        data_checksum=_data_checksum(ordered_features, ordered_labels),
+        data_checksum=dataset_content_checksum(ordered_features, ordered_labels),
     )
 
     return GeneratedDataset(
@@ -282,4 +288,24 @@ def generate_dataset(
             if include_debug_pairs
             else None
         ),
+        master_keys=(
+            tuple(example[4] for example in ordered_examples)
+            if include_master_keys
+            else None
+        ),
     )
+
+
+def assert_disjoint_master_keys(datasets: Sequence[GeneratedDataset]) -> None:
+    """Require collected master keys from separate splits to be disjoint."""
+
+    seen: set[MasterKey] = set()
+    for dataset in datasets:
+        if dataset.master_keys is None:
+            raise ValueError("master keys were not collected")
+        for master_key in dataset.master_keys:
+            if master_key in seen:
+                raise ValueError(
+                    "train, validation, and test master keys must be disjoint"
+                )
+            seen.add(master_key)

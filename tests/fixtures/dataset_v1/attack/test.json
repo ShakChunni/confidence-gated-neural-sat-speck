@@ -1,0 +1,125 @@
+{
+  "cipher": "SPECK32/64",
+  "dataset_format_version": "1.0.0",
+  "dataset_id": "speck32_64_attack_v1",
+  "instances": [
+    {
+      "final_round_subkey": "eec5",
+      "instance_id": "test-0000",
+      "master_key": [
+        "96de",
+        "d800",
+        "3d2c",
+        "1a29"
+      ],
+      "pairs": [
+        {
+          "ciphertext0": [
+            "d75e",
+            "bb1e"
+          ],
+          "ciphertext1": [
+            "7825",
+            "5846"
+          ],
+          "plaintext0": [
+            "4142",
+            "6df7"
+          ],
+          "plaintext1": [
+            "4102",
+            "6df7"
+          ]
+        },
+        {
+          "ciphertext0": [
+            "5ef8",
+            "0f49"
+          ],
+          "ciphertext1": [
+            "e629",
+            "15f6"
+          ],
+          "plaintext0": [
+            "c346",
+            "ed94"
+          ],
+          "plaintext1": [
+            "c306",
+            "ed94"
+          ]
+        }
+      ]
+    },
+    {
+      "final_round_subkey": "0c31",
+      "instance_id": "test-0001",
+      "master_key": [
+        "ee35",
+        "62d5",
+        "c4b5",
+        "ca28"
+      ],
+      "pairs": [
+        {
+          "ciphertext0": [
+            "ccce",
+            "6f71"
+          ],
+          "ciphertext1": [
+            "c8cf",
+            "9e39"
+          ],
+          "plaintext0": [
+            "1911",
+            "c8f2"
+          ],
+          "plaintext1": [
+            "1951",
+            "c8f2"
+          ]
+        },
+        {
+          "ciphertext0": [
+            "d7e6",
+            "1433"
+          ],
+          "ciphertext1": [
+            "b7e6",
+            "bd77"
+          ],
+          "plaintext0": [
+            "d2dc",
+            "72bf"
+          ],
+          "plaintext1": [
+            "d29c",
+            "72bf"
+          ]
+        }
+      ]
+    }
+  ],
+  "license": "MIT",
+  "metadata": {
+    "bit_order": "first_ciphertext_x_msb_to_lsb, first_ciphertext_y_msb_to_lsb, second_ciphertext_x_msb_to_lsb, second_ciphertext_y_msb_to_lsb",
+    "data_checksum": "4c0ed740129588844c678d1c6ed08d0f7ac7a6f1d043b1b86591c46e642d2f25",
+    "generated_at": "2026-08-13T00:00:00+00:00",
+    "generator_version": "0.1.0",
+    "input_difference": [
+      64,
+      0
+    ],
+    "instance_count": 2,
+    "key_generation_policy": "one_random_master_key_per_instance",
+    "pair_construction": "plaintext_difference",
+    "pair_count": 2,
+    "repository_commit": null,
+    "rounds": 7,
+    "seed": 5001,
+    "split_role": "test",
+    "word_order": "block=(x,y); master_key=(l[2],l[1],l[0],k[0])"
+  },
+  "schema": "neural_sat_speck.attack_shard.v1",
+  "task": "single_key_related_pairs"
+}

@@ -5,6 +5,7 @@ import pytest
 from neural_sat_speck.data.generator import (
     DEFAULT_INPUT_DIFFERENCE,
     DatasetConfig,
+    assert_disjoint_master_keys,
     encode_ciphertext_pair,
     generate_dataset,
     validate_split_configs,
@@ -149,6 +150,17 @@ def test_split_configs_require_distinct_seeds_and_shared_protocol() -> None:
         for config in configs
     ]
     assert len({dataset.metadata.data_checksum for dataset in datasets}) == 3
+
+    keyed = [
+        generate_dataset(
+            config,
+            include_master_keys=True,
+            generated_at=FIXED_TIMESTAMP,
+        )
+        for config in configs
+    ]
+    assert_disjoint_master_keys(keyed)
+    assert keyed[0].features == datasets[0].features
 
     with pytest.raises(ValueError):
         validate_split_configs(

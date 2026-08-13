@@ -1,0 +1,47 @@
+{
+  "cipher": "SPECK32/64",
+  "dataset_format_version": "1.0.0",
+  "dataset_id": "speck32_64_attack_v1",
+  "generated_at": "2026-08-13T00:00:00+00:00",
+  "generator_version": "0.1.0",
+  "input_difference": [
+    64,
+    0
+  ],
+  "license": "MIT",
+  "pair_construction": "plaintext_difference",
+  "repository_commit": null,
+  "rounds": 7,
+  "schema": "neural_sat_speck.attack_manifest.v1",
+  "splits": {
+    "test": {
+      "data_checksum": "4c0ed740129588844c678d1c6ed08d0f7ac7a6f1d043b1b86591c46e642d2f25",
+      "file_sha256": "76c33eecff0dfc1c603805922e5d0bf02d580086444c427f07f166eb7af16e93",
+      "instance_count": 2,
+      "pair_count": 2,
+      "path": "test.json",
+      "seed": 5001,
+      "split_role": "test"
+    },
+    "train": {
+      "data_checksum": "5555c3520c1ee82934af2b3cedf4b1502c172befcde19f35399f738e7f85fa92",
+      "file_sha256": "68b69d6a8d8f04191d3ed4124ae8fe1e1ad0689af96be70dee2d8d06f076a39b",
+      "instance_count": 2,
+      "pair_count": 2,
+      "path": "train.json",
+      "seed": 4001,
+      "split_role": "train"
+    },
+    "validation": {
+      "data_checksum": "c543b482d65cf754939f71825eddfbb5646b7b4cac2d25a266093559027767e5",
+      "file_sha256": "6006866622857169280e3398184a9ea338423813ccf38a3688b9f38186093e04",
+      "instance_count": 2,
+      "pair_count": 2,
+      "path": "validation.json",
+      "seed": 6001,
+      "split_role": "validation"
+    }
+  },
+  "task": "single_key_related_pairs",
+  "word_order": "block=(x,y); master_key=(l[2],l[1],l[0],k[0])"
+}

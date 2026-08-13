@@ -1,0 +1,30 @@
+{
+  "cipher": "SPECK32/64",
+  "dataset_format_version": "1.0.0",
+  "dataset_id": "speck32_64_attack_v1",
+  "status": "frozen",
+  "generated_at": "2026-08-13T00:00:00+00:00",
+  "input_difference": [64, 0],
+  "license": "MIT",
+  "pair_construction": "plaintext_difference",
+  "rounds": 7,
+  "splits": {
+    "test": {
+      "instance_count": 2,
+      "pair_count": 2,
+      "seed": 5001
+    },
+    "train": {
+      "instance_count": 2,
+      "pair_count": 2,
+      "seed": 4001
+    },
+    "validation": {
+      "instance_count": 2,
+      "pair_count": 2,
+      "seed": 6001
+    }
+  },
+  "task": "single_key_related_pairs",
+  "word_order": "block=(x,y); master_key=(l[2],l[1],l[0],k[0])"
+}

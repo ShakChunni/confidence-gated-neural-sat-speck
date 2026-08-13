@@ -165,12 +165,16 @@ Run the command from the repository root and set the platform-specific
 ### The test count differs
 
 Run the tests from the repository root in the activated environment. The
-current baseline is 109 passing tests; the count may increase as the project
-develops.
+previous baseline was 109 passing tests; the count increases as Dataset v1
+and later components are added. Do not treat a stored count as the source of
+truth.
 
 ## Reproducibility guidance
 
 Record the operating system, CPU architecture, Python version, dependency
 versions, repository commit, and pilot configuration with every experiment.
-Do not commit `.venv`, generated datasets, checkpoints, or results; the
-repository `.gitignore` is configured for these local artefacts.
+Do not commit `.venv`, large generated datasets, checkpoints, or results; the
+repository `.gitignore` is configured for these local artefacts. The tiny
+Dataset v1 fixtures under `tests/fixtures/dataset_v1/` are inspectable
+exceptions; regenerate them with `scripts/export_dataset_v1.py` and see
+[DATASETS.md](DATASETS.md).

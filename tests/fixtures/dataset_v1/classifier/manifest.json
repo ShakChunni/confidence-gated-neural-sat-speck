@@ -1,0 +1,59 @@
+{
+  "bit_order": "first_ciphertext_x_msb_to_lsb, first_ciphertext_y_msb_to_lsb, second_ciphertext_x_msb_to_lsb, second_ciphertext_y_msb_to_lsb",
+  "cipher": "SPECK32/64",
+  "dataset_format_version": "1.0.0",
+  "dataset_id": "speck32_64_classifier_v1",
+  "feature_dtype": "uint8",
+  "feature_representation": "four 16-bit ciphertext words encoded as 64 binary uint8 values",
+  "generated_at": "2026-08-13T00:00:00+00:00",
+  "generator_version": "0.1.0",
+  "input_difference": [
+    64,
+    0
+  ],
+  "key_generation_policy": "independent_random_key_per_sample",
+  "license": "MIT",
+  "repository_commit": null,
+  "rounds": 7,
+  "schema": "neural_sat_speck.classifier_manifest.v1",
+  "splits": {
+    "test": {
+      "class_balance": {
+        "0": 2,
+        "1": 2
+      },
+      "data_checksum": "edab9ee28efe92a929b23e774a3bd560f7aaa9539bc379abc7569c1a3db98c82",
+      "file_sha256": "bf632e918de1cd398b42050c573f9289b5f9e1fc5965b97cd2bfabb698c0194b",
+      "path": "test.json",
+      "sample_count": 4,
+      "seed": 3001,
+      "split_role": "test"
+    },
+    "train": {
+      "class_balance": {
+        "0": 2,
+        "1": 2
+      },
+      "data_checksum": "fa391c386a5e58fd669fd5b8a17588891649a61d3cbc8fa5f25cb1f847759568",
+      "file_sha256": "1ad12b40f6ea49a1d3627af3c5dc87485f9dfd15c8fc5c1ff6be89bfae2d022b",
+      "path": "train.json",
+      "sample_count": 4,
+      "seed": 1001,
+      "split_role": "train"
+    },
+    "validation": {
+      "class_balance": {
+        "0": 2,
+        "1": 2
+      },
+      "data_checksum": "75a58a9ea9a2197dee1cadd641616ecfc5ceeaec95eee8813dd196a155a772be",
+      "file_sha256": "52d4af3997d637ada8c7694acc05f2a56d14cccf43123f6360a842418bda8dbf",
+      "path": "validation.json",
+      "sample_count": 4,
+      "seed": 2001,
+      "split_role": "validation"
+    }
+  },
+  "task": "related_vs_random",
+  "word_order": "block=(x,y); master_key=(l[2],l[1],l[0],k[0])"
+}
