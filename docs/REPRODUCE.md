@@ -42,6 +42,15 @@ $env:PYTHONPATH = ".;src"
 If PowerShell blocks activation, run
 `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` first.
 
+`py -3.12` needs a 3.12 runtime registered with the Python launcher, and a
+machine with only 3.14 installed answers `No runtime installed that matches
+3.12`. Run `py -0p` to see which versions are there and use any of 3.11 to 3.13.
+
+Windows also needs the Microsoft Visual C++ 2015-2022 Redistributable (x64)
+before the `pip` steps. Without it the first `import torch` fails with
+`OSError: [WinError 1114] A dynamic link library (DLL) initialization routine
+failed`, which names `torch\lib\c10.dll` and hides the real cause.
+
 **macOS or Linux**
 
 ```bash
@@ -86,7 +95,8 @@ test should pass.
 - **Windows.** The experiment runners use POSIX process groups, file locks
   and resource limits. On Windows their test modules are not collected (about
   700 of the 2,099 tests), and the pytest header says so. The cipher, SAT
-  model, ranking, verification, statistics and figure tests all still run.
+  model, ranking, verification, statistics and figure tests all still run; the
+  ones that do not pass there are listed under Known platform limits.
   The list is in `tests/conftest.py`.
 
 Checked on 27 Oct 2026 on a fresh clone with Python 3.12 on macOS: 2,108
@@ -174,3 +184,9 @@ other hardware is a replication, not a byte-for-byte reproduction.
   environment (Python 3.12, NumPy 1.26). Levels 1 to 3 do not need it.
 - `.gitattributes` turns off line-ending conversion, so a Windows checkout
   keeps the exact bytes that the hash checks expect.
+- **Windows, Level 1.** The durability guard opens a directory to `fsync` it
+  (`src/neural_sat_speck/backend/guard.py`). That is correct on POSIX and raises
+  `PermissionError: [Errno 13]` on Windows, so the tests that write through the
+  guard fail, and the tests that call an external solver binary error when the
+  binary is not installed. A fresh Windows clone on 27 October 2026 gave 1,231
+  passed, 77 failed, 22 errors and 136 skipped. Level 2 is unaffected.
