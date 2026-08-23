@@ -72,8 +72,12 @@ python -m pip install -e .
 python -m pytest -q
 ```
 
-On Windows (PowerShell), create the environment with `py -3.12 -m venv .venv`
-and activate it with `.\.venv\Scripts\Activate.ps1`.
+On Windows (PowerShell), check which versions the launcher can see with
+`py -0p`, then create the environment with any installed 3.11 to 3.13, for
+example `py -3.12 -m venv .venv`, and activate it with
+`.\.venv\Scripts\Activate.ps1`. Windows also needs the Microsoft Visual C++
+2015-2022 Redistributable (x64) before the `pip` steps; without it the first
+`import torch` fails with `OSError: [WinError 1114]`.
 
 A short check of the cipher and a small demo dataset:
 
