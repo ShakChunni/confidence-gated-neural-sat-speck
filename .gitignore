@@ -16,4 +16,6 @@ dist/
 # Research artefacts generated locally.
 datasets/
 checkpoints/
+models/
 results/
+*.pt

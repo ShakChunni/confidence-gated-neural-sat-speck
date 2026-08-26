@@ -8,7 +8,8 @@ from typing import Final
 
 from neural_sat_speck.sat.model import SpeckSatModel
 from neural_sat_speck.speck.cipher import encrypt_block
-from tests.fixtures.speck32_64_vectors import MASTER_KEY
+
+MASTER_KEY: Final[tuple[int, int, int, int]] = (0x1918, 0x1110, 0x0908, 0x0100)
 
 PLAINTEXTS: Final[tuple[tuple[int, int], ...]] = (
     (0x6574, 0x694C),

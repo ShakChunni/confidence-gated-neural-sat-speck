@@ -7,7 +7,7 @@ name = "neural-sat-speck"
 version = "0.1.0"
 description = "Research artefact for confidence-gated neural guidance of exact SPECK32/64 recovery."
 readme = "README.md"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
@@ -18,13 +18,17 @@ dev = [
 sat = [
     "pycryptosat>=5.14,<6",
 ]
+neural = [
+    "torch>=2.0",
+    "numpy>=1.24",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
 addopts = ["--strict-config", "--strict-markers", "-ra"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 
 [tool.ruff]
