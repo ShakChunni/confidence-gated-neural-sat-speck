@@ -2,9 +2,9 @@
 
 These instructions cover the source-verified scalar SPECK32/64 implementation,
 the deterministic Dataset v1 foundation, the bounded CryptoMiniSat feasibility
-pilot, and the Phase 3 neural distinguisher baseline. Full subkey ranking,
-confidence gating, and neural-SAT integration are later phases and are not
-included here.
+pilot, the Phase 3 neural distinguisher baseline, and the Phase 4 final-round
+ranking baseline. Confidence gating and neural-SAT integration are later
+phases and are not included here.
 
 The supported interpreter is **64-bit CPython 3.11**. The Python version limit
 is declared in `pyproject.toml`; the 64-bit requirement comes from the
@@ -72,6 +72,8 @@ python scripts\phase1_data_pilot.py --sample-count 256 --rounds 7 --seed 1001 --
 python scripts\phase2_sat_pilot.py --rounds 2 4 7 --pair-count 4 --timeout 10
 python scripts\export_dataset_v1.py --classifier-config configs\data\phase3_classifier_r5.json --output-dir datasets\phase3_classifier_r5 --skip-attack --include-commit
 python scripts\train_distinguisher.py --config configs\training\phase3_baseline.json
+python scripts\export_dataset_v1.py --attack-config configs\data\phase4_attack_r6.json --output-dir datasets\phase4_attack_r6 --skip-classifier --include-commit
+python scripts\rank_subkeys.py --config configs\experiments\phase4_ranking_r6.json
 ```
 
 The `PYTHONPATH` setting lasts only for the current PowerShell session.
@@ -120,6 +122,8 @@ python scripts/phase1_data_pilot.py --sample-count 256 --rounds 7 --seed 1001 --
 python scripts/phase2_sat_pilot.py --rounds 2 4 7 --pair-count 4 --timeout 10
 python scripts/export_dataset_v1.py --classifier-config configs/data/phase3_classifier_r5.json --output-dir datasets/phase3_classifier_r5 --skip-attack --include-commit
 python scripts/train_distinguisher.py --config configs/training/phase3_baseline.json
+python scripts/export_dataset_v1.py --attack-config configs/data/phase4_attack_r6.json --output-dir datasets/phase4_attack_r6 --skip-classifier --include-commit
+python scripts/rank_subkeys.py --config configs/experiments/phase4_ranking_r6.json
 ```
 
 The `PYTHONPATH` setting lasts only for the current Terminal session.

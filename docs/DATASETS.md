@@ -109,6 +109,36 @@ labels = shard["labels"]      # list[int], values in {0, 1}
 The same JSON can be converted to NumPy, PyTorch, or TensorFlow tensors by the
 caller. The repository does not hide a model-specific preprocess step.
 
+## Phase 4 ranking benchmark
+
+Phase 4 uses a separately named attack export so the frozen seven-round
+Dataset v1 fixture is unchanged. Configuration:
+[`configs/data/phase4_attack_r6.json`](../configs/data/phase4_attack_r6.json).
+It has six-round plaintext-difference instances, 32 related pairs per
+instance, and disjoint train/validation/test seeds. The test split contains
+four independent attack keys. The six-round choice is paired with the
+verified five-round Phase 3 classifier: a correct inverse final-round
+candidate exposes a five-round related state.
+
+The ranking experiment configuration is
+[`configs/experiments/phase4_ranking_r6.json`](../configs/experiments/phase4_ranking_r6.json).
+It enumerates every value from `0x0000` through `0xffff`, applies one inverse
+round to both ciphertexts of every pair, encodes the resulting words in the
+existing MSB-first layout, and sums raw classifier logits over pairs. Raw
+logits preserve the ordering of summed log-odds. Ties are resolved by
+ascending candidate value. The result JSON is local and ignored by Git.
+
+Generate the local benchmark and run the ranking command from the repository
+root:
+
+```text
+PYTHONPATH=.:src python scripts/export_dataset_v1.py --attack-config configs/data/phase4_attack_r6.json --output-dir datasets/phase4_attack_r6 --skip-classifier --include-commit
+PYTHONPATH=.:src python scripts/rank_subkeys.py --config configs/experiments/phase4_ranking_r6.json
+```
+
+This phase measures candidate-ranking behaviour only. It does not implement
+the SAT candidate-assumption interface or confidence gate.
+
 ## Attack benchmark
 
 Task identifier: `single_key_related_pairs`.
@@ -122,8 +152,9 @@ Each instance has one secret master key and several related pairs. Dataset v1
 uses the frozen plaintext-difference construction: every pair satisfies
 `P1 = P0 XOR (0x0040, 0x0000)` and both blocks are encrypted under that
 instance key. This is intentionally not Gohr's later first-round-difference
-ranking arrangement. That ranking protocol is out of Dataset v1 and remains a
-Phase 4 decision.
+ranking arrangement. That arrangement remains documented as a separate source
+protocol and is not silently mixed into either Dataset v1 or the Phase 4
+baseline.
 
 The fixture includes the synthetic master key and the true final-round subkey
 so later ranking or SAT recovery can be verified. These keys are research
