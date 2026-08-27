@@ -10,8 +10,11 @@ from neural_sat_speck.data.attack import (
     assert_disjoint_attack_keys,
     export_attack_benchmark,
     generate_attack_instances,
+    load_attack_manifest,
     load_attack_shard,
     validate_attack_split_configs,
+    verify_attack_benchmark,
+    verify_attack_shard,
 )
 from neural_sat_speck.data.format import ATTACK_DATASET_ID, ATTACK_TASK
 from neural_sat_speck.data.generator import DEFAULT_INPUT_DIFFERENCE
@@ -125,6 +128,31 @@ def test_attack_export_checksums_and_independent_load(
         generated_at=FIXED_TIMESTAMP,
     )
     assert loaded == generated
+
+    assert verify_attack_shard(first_dir / "test.json") == loaded
+    assert load_attack_manifest(first_dir / "manifest.json")["dataset_id"] == (
+        ATTACK_DATASET_ID
+    )
+    assert verify_attack_benchmark(first_dir / "manifest.json")["task"] == (
+        ATTACK_TASK
+    )
+
+
+def test_attack_loader_rejects_tampered_ciphertext(tmp_path: Path) -> None:
+    output_dir = tmp_path / "attack"
+    export_attack_benchmark(
+        _split_configs(),
+        output_dir,
+        generated_at=FIXED_TIMESTAMP,
+    )
+    shard_path = output_dir / "test.json"
+    document = json.loads(shard_path.read_text(encoding="utf-8"))
+    current = int(document["instances"][0]["pairs"][0]["ciphertext0"][0], 16)
+    document["instances"][0]["pairs"][0]["ciphertext0"][0] = f"{current ^ 1:04x}"
+    shard_path.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        load_attack_shard(shard_path)
 
 
 @pytest.mark.parametrize(

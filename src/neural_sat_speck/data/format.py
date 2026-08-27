@@ -54,6 +54,8 @@ def hex_to_word(value: str) -> int:
         raise TypeError("hex word must be a string")
     if len(value) != 4:
         raise ValueError("hex word must contain exactly four digits")
+    if any(character not in "0123456789abcdefABCDEF" for character in value):
+        raise ValueError("hex word must contain exactly four hexadecimal digits")
     try:
         parsed = int(value, 16)
     except ValueError as error:

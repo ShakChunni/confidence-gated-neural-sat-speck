@@ -18,6 +18,11 @@ PLAINTEXTS: Final[tuple[tuple[int, int], ...]] = (
     (0xDEAD, 0xBEEF),
 )
 
+INDEPENDENT_VERIFICATION_PLAINTEXTS: Final[tuple[tuple[int, int], ...]] = (
+    (0x0BAD, 0xF00D),
+    (0x2468, 0x1357),
+)
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -52,17 +57,30 @@ def main() -> None:
         result = model.solve(time_limit=args.timeout)
 
         recovered_key = None
-        verified = False
+        known_pairs_verified = False
+        independent_pairs_verified = False
         if result.satisfiable and result.solution is not None:
             try:
                 recovered_key = model.master_key_from_solution(result.solution)
             except ValueError:
                 recovered_key = None
             if recovered_key is not None:
-                verified = all(
+                known_pairs_verified = all(
                     encrypt_block(plaintext, recovered_key, rounds)
                     == ciphertext
                     for plaintext, ciphertext in pairs
+                )
+                independent_pairs = tuple(
+                    (
+                        plaintext,
+                        encrypt_block(plaintext, MASTER_KEY, rounds),
+                    )
+                    for plaintext in INDEPENDENT_VERIFICATION_PLAINTEXTS
+                )
+                independent_pairs_verified = all(
+                    encrypt_block(plaintext, recovered_key, rounds)
+                    == ciphertext
+                    for plaintext, ciphertext in independent_pairs
                 )
 
         results.append(
@@ -72,7 +90,12 @@ def main() -> None:
                 "timeout_seconds": args.timeout,
                 "satisfiable": result.satisfiable,
                 "timed_out": result.timed_out,
-                "verified": verified,
+                "status": result.status,
+                "known_pairs_verified": known_pairs_verified,
+                "independent_pairs_verified": independent_pairs_verified,
+                "verified": (
+                    known_pairs_verified and independent_pairs_verified
+                ),
                 "recovered_master_key": (
                     [f"{word:04x}" for word in recovered_key]
                     if recovered_key is not None

@@ -1,5 +1,6 @@
 """Tests for the compact Gohr-style ResNet architecture."""
 
+import pytest
 import torch
 
 from neural_sat_speck.neural.model import GohrResNet, GohrResNetConfig
@@ -26,6 +27,27 @@ def test_gohr_resnet_probabilities_in_range() -> None:
     probs = model.predict_proba(x)
     assert probs.shape == (4, 1)
     assert (probs >= 0.0).all() and (probs <= 1.0).all()
+
+
+def test_predict_proba_supports_one_sample_without_changing_training_mode() -> None:
+    model = GohrResNet()
+    assert model.training
+    probs = model.predict_proba(torch.randn(1, 4, 16))
+    assert probs.shape == (1, 1)
+    assert model.training
+
+
+def test_single_sample_training_batch_is_supported() -> None:
+    model = GohrResNet()
+    logits = model(torch.randn(1, 4, 16))
+    assert logits.shape == (1, 1)
+
+
+def test_invalid_resnet_configuration_is_rejected() -> None:
+    with pytest.raises(ValueError, match="odd"):
+        GohrResNetConfig(kernel_size=2)
+    with pytest.raises(ValueError, match="dropout"):
+        GohrResNetConfig(dropout_rate=1.0)
 
 
 def test_batched_vs_unbatched_inference_equivalence() -> None:

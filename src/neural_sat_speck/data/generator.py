@@ -211,9 +211,14 @@ def generate_dataset(
 
     rng = random.Random(config.seed)
     half_count = config.sample_count // 2
-    examples: list[
-        tuple[int, FeatureVector, PlaintextPair, CiphertextPair, MasterKey]
-    ] = []
+    examples: list[tuple[int, FeatureVector]] = []
+    plaintext_pairs: list[PlaintextPair] | None = (
+        [] if include_debug_pairs else None
+    )
+    ciphertext_pairs: list[CiphertextPair] | None = (
+        [] if include_debug_pairs else None
+    )
+    master_keys: list[MasterKey] | None = [] if include_master_keys else None
 
     for label in (1, 0):
         for _ in range(half_count):
@@ -238,21 +243,18 @@ def generate_dataset(
                 config.rounds,
             )
             ciphertext_pair = (first_ciphertext, second_ciphertext)
-            examples.append(
-                (
-                    label,
-                    encode_ciphertext_pair(*ciphertext_pair),
-                    (first_plaintext, second_plaintext),
-                    ciphertext_pair,
-                    master_key,
-                )
-            )
+            examples.append((label, encode_ciphertext_pair(*ciphertext_pair)))
+            if plaintext_pairs is not None:
+                plaintext_pairs.append((first_plaintext, second_plaintext))
+            if ciphertext_pairs is not None:
+                ciphertext_pairs.append(ciphertext_pair)
+            if master_keys is not None:
+                master_keys.append(master_key)
 
     order = list(range(config.sample_count))
     rng.shuffle(order)
-    ordered_examples = [examples[index] for index in order]
-    ordered_features = tuple(example[1] for example in ordered_examples)
-    ordered_labels = tuple(example[0] for example in ordered_examples)
+    ordered_features = tuple(examples[index][1] for index in order)
+    ordered_labels = tuple(examples[index][0] for index in order)
 
     timestamp = generated_at or datetime.now(UTC).isoformat()
     metadata = DatasetMetadata(
@@ -279,18 +281,18 @@ def generate_dataset(
         labels=ordered_labels,
         metadata=metadata,
         plaintext_pairs=(
-            tuple(example[2] for example in ordered_examples)
-            if include_debug_pairs
+            tuple(plaintext_pairs[index] for index in order)
+            if plaintext_pairs is not None
             else None
         ),
         ciphertext_pairs=(
-            tuple(example[3] for example in ordered_examples)
-            if include_debug_pairs
+            tuple(ciphertext_pairs[index] for index in order)
+            if ciphertext_pairs is not None
             else None
         ),
         master_keys=(
-            tuple(example[4] for example in ordered_examples)
-            if include_master_keys
+            tuple(master_keys[index] for index in order)
+            if master_keys is not None
             else None
         ),
     )

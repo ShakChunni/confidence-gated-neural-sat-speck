@@ -17,6 +17,11 @@ PLAINTEXTS = (
     (0xDEAD, 0xBEEF),
 )
 
+INDEPENDENT_PLAINTEXTS = (
+    (0x0BAD, 0xF00D),
+    (0x2468, 0x1357),
+)
+
 
 def _known_pairs(rounds: int) -> tuple[tuple[tuple[int, int], tuple[int, int]], ...]:
     return tuple(
@@ -63,6 +68,11 @@ def test_unknown_key_recovery_produces_a_verifiable_candidate() -> None:
     assert all(
         encrypt_block(plaintext, recovered_key, rounds) == ciphertext
         for plaintext, ciphertext in pairs
+    )
+    assert all(
+        encrypt_block(plaintext, recovered_key, rounds)
+        == encrypt_block(plaintext, MASTER_KEY, rounds)
+        for plaintext in INDEPENDENT_PLAINTEXTS
     )
 
 

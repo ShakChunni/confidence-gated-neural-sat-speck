@@ -9,12 +9,14 @@ from neural_sat_speck.data.export import (
     export_classifier_benchmark,
     load_classifier_manifest,
     load_classifier_shard,
+    verify_classifier_benchmark,
     verify_classifier_shard,
 )
 from neural_sat_speck.data.format import (
     CLASSIFIER_DATASET_ID,
     CLASSIFIER_TASK,
     DATASET_FORMAT_VERSION,
+    hex_to_word,
 )
 from neural_sat_speck.data.generator import (
     DatasetConfig,
@@ -105,6 +107,54 @@ def test_exported_classifier_metadata_and_balance_are_complete(
     assert dataset.labels.count(1) == 4
     assert all(len(feature) == 64 for feature in dataset.features)
     assert all(bit in (0, 1) for feature in dataset.features for bit in feature)
+
+
+def test_classifier_benchmark_verifies_all_shards_against_manifest(
+    tmp_path: Path,
+) -> None:
+    output_dir = tmp_path / "classifier"
+    export_classifier_benchmark(
+        _split_configs(),
+        output_dir,
+        generated_at=FIXED_TIMESTAMP,
+    )
+
+    manifest = verify_classifier_benchmark(
+        output_dir / "manifest.json",
+        expected_rounds=7,
+        expected_input_difference=(0x0040, 0),
+    )
+    assert manifest["dataset_id"] == CLASSIFIER_DATASET_ID
+
+    shard_path = output_dir / "test.json"
+    shard_path.write_bytes(shard_path.read_bytes() + b"\n")
+    with pytest.raises(ValueError):
+        verify_classifier_benchmark(output_dir / "manifest.json")
+
+
+def test_classifier_loader_rejects_nonbinary_content(tmp_path: Path) -> None:
+    output_dir = tmp_path / "classifier"
+    export_classifier_benchmark(
+        _split_configs(),
+        output_dir,
+        generated_at=FIXED_TIMESTAMP,
+    )
+    shard_path = output_dir / "train.json"
+    document = json.loads(shard_path.read_text(encoding="utf-8"))
+    document["features"][0][0] = 2
+    shard_path.write_text(
+        json.dumps(document),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="0/1"):
+        load_classifier_shard(shard_path)
+
+
+@pytest.mark.parametrize("value", [" 123", "+123", "0x12", "12-3"])
+def test_hex_word_rejects_noncanonical_text(value: str) -> None:
+    with pytest.raises(ValueError):
+        hex_to_word(value)
 
 
 def test_exported_classifier_loads_without_the_generator(

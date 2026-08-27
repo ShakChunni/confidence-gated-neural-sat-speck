@@ -1,0 +1,29 @@
+{
+  "schema": "neural_sat_speck.phase3_training_config.v1",
+  "phase": 3,
+  "dataset_root": "datasets/phase3_classifier_r5/classifier",
+  "expected_dataset_id": "speck32_64_classifier_phase3_r5",
+  "require_repository_commit": true,
+  "expected_rounds": 5,
+  "expected_input_difference": [64, 0],
+  "model": {
+    "in_channels": 4,
+    "word_bits": 16,
+    "num_filters": 32,
+    "num_blocks": 4,
+    "dense_dim": 64,
+    "kernel_size": 3,
+    "dropout_rate": 0.0
+  },
+  "training": {
+    "epochs": 5,
+    "batch_size": 256,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "lr_decay": 0.95,
+    "seed": 73001,
+    "device": "auto",
+    "deterministic": true
+  },
+  "output": "models/speck32_64_phase3_r5_distinguisher.pt"
+}

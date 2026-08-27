@@ -86,7 +86,8 @@ class SatSolveResult:
     satisfiable: bool
     solution: tuple[bool | None, ...] | None
     elapsed_seconds: float
-    timed_out: bool
+    timed_out: bool | None
+    status: str
 
 
 @dataclass
@@ -212,6 +213,18 @@ class SpeckSatModel:
                 time_limit=time_limit,
             )
         elapsed = perf_counter() - started
+        if satisfiable:
+            status = "sat"
+            timed_out: bool | None = False
+        elif time_limit is not None and elapsed >= time_limit:
+            # pycryptosat returns (False, None) for both a proven UNSAT
+            # result and a solve call interrupted by its time limit. Keep
+            # this outcome explicitly ambiguous rather than mislabelling it.
+            status = "unsat_or_timeout"
+            timed_out = None
+        else:
+            status = "unsat"
+            timed_out = False
         return SatSolveResult(
             satisfiable=bool(satisfiable),
             solution=(
@@ -220,11 +233,8 @@ class SpeckSatModel:
                 else None
             ),
             elapsed_seconds=elapsed,
-            timed_out=(
-                time_limit is not None
-                and elapsed >= time_limit
-                and not bool(satisfiable)
-            ),
+            timed_out=timed_out,
+            status=status,
         )
 
     def master_key_from_solution(

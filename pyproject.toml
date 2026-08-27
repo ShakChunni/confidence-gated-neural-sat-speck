@@ -19,8 +19,8 @@ sat = [
     "pycryptosat>=5.14,<6",
 ]
 neural = [
-    "torch>=2.0",
-    "numpy>=1.24",
+    "torch>=2.0,<3",
+    "numpy>=1.24,<3",
 ]
 
 [tool.setuptools.packages.find]

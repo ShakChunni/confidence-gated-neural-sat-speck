@@ -2,11 +2,14 @@
 
 from pathlib import Path
 
+import pytest
+
 from neural_sat_speck.data.generator import DatasetConfig, generate_dataset
 from neural_sat_speck.neural.dataset import (
     SpeckClassifierDataset,
     create_dataloader,
     features_to_tensor,
+    load_classifier_splits,
 )
 
 FIXTURE_PATH = (
@@ -20,11 +23,11 @@ FIXTURE_PATH = (
 
 
 def test_features_to_tensor_reshapes_64_bits_to_4_words() -> None:
-    raw_64 = list(range(64))
+    raw_64 = [index % 2 for index in range(64)]
     tensor = features_to_tensor(raw_64)
     assert tensor.shape == (4, 16)
     assert tensor[0, 0].item() == 0.0
-    assert tensor[3, 15].item() == 63.0
+    assert tensor[3, 15].item() == 1.0
 
     batch_64 = [raw_64, raw_64]
     batch_tensor = features_to_tensor(batch_64)
@@ -38,6 +41,17 @@ def test_dataset_from_fixture_json() -> None:
     assert features.shape == (4, 16)
     assert label.shape == (1,)
     assert label.item() in (0.0, 1.0)
+
+
+def test_features_to_tensor_rejects_nonbinary_values() -> None:
+    with pytest.raises(ValueError, match="binary"):
+        features_to_tensor([[0] * 63 + [2]])
+
+
+def test_classifier_splits_load_and_verify_fixture() -> None:
+    splits = load_classifier_splits(FIXTURE_PATH.parent)
+    assert set(splits.as_dict()) == {"train", "validation", "test"}
+    assert len(splits.train) == len(splits.validation) == len(splits.test) == 4
 
 
 def test_dataset_from_generated_in_memory() -> None:

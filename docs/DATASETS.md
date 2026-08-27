@@ -74,6 +74,27 @@ The tiny committed fixture uses four samples per split:
 Configuration: [`configs/data/dataset_v1_classifier.json`](../configs/data/dataset_v1_classifier.json).
 Fixture: [`tests/fixtures/dataset_v1/classifier/`](../tests/fixtures/dataset_v1/classifier/).
 
+## Phase 3 baseline export
+
+The canonical Dataset v1 fixture remains a seven-round reference. Phase 2
+identified five rounds as the first measurable, bounded operating point, so
+Phase 3 uses a separately named export with the same classifier protocol and
+feature schema rather than changing the frozen fixture:
+
+- dataset id: `speck32_64_classifier_phase3_r5`;
+- rounds: `5`;
+- samples: 20,000 train, 4,000 validation, and 4,000 test;
+- seeds: 51,001, 52,001, and 53,001 respectively;
+- configuration: [`configs/data/phase3_classifier_r5.json`](../configs/data/phase3_classifier_r5.json).
+
+This is an explicit protocol-compatible Phase 3 baseline, not a third-party
+dataset and not a key-ranking dataset. Run `scripts/export_dataset_v1.py`
+with that configuration to create the local
+`datasets/phase3_classifier_r5/classifier/` directory. The exporter records
+the repository commit when `--include-commit` is used. The training script
+requires the existing manifest and verifies all three shard hashes before it
+starts; it never generates replacement samples.
+
 Load a shard with the standard library only:
 
 ```python
@@ -132,7 +153,8 @@ The command rewrites the inspectable fixture. It is not a large-scale
 generator. Do not commit large local exports from `datasets/`.
 
 Identical configuration, seed, and `generated_at` timestamp must reproduce the
-same shard bytes and the same SHA-256 checksums. The manifest records both a
+same shard bytes and the same SHA-256 checksums. If `repository_commit` is
+included, the same commit must also be used. The manifest records both a
 content checksum over the cryptographic payload and a file checksum over the
 canonical JSON.
 
@@ -167,6 +189,8 @@ dataset version and a plan change-log entry.
 | Licence | MIT |
 | Train / validation / test | disjoint seeds and keys |
 
-Authoritative files: this document, [PLAN.md](../PLAN.md) section 1J,
+Authoritative files: this document, the local `PLAN.md` section 1J,
 `configs/data/dataset_v1_classifier.json`, and
-`configs/data/dataset_v1_attack.json`.
+`configs/data/dataset_v1_attack.json`. The Phase 3 variant is defined by
+`configs/data/phase3_classifier_r5.json` and does not modify the canonical
+Dataset v1 fixture.

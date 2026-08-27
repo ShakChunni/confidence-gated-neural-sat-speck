@@ -4,11 +4,11 @@ This repository supports the COMP6002 research project:
 
 **Learning When to Trust Neural Guidance: Confidence-Gated Incremental XOR-SAT Key Recovery for Reduced-Round SPECK32/64**
 
-The authoritative plan is [PLAN.md](PLAN.md). The current implementation phase
-is the Phase 2 SAT-only feasibility pilot built on the source-verified scalar
-and deterministic data foundation. Dataset v1 is frozen. Neural training,
-confidence gating, full subkey ranking, and large dataset generation remain
-deferred.
+The local `PLAN.md` is an untracked working-instructions file and is not part
+of the public repository. The current implementation stops at the completed
+Phase 3 neural distinguisher baseline, built on the source-verified scalar,
+deterministic data, and bounded SAT foundations. Full subkey ranking,
+confidence gating, and neural-SAT integration remain later phases.
 
 ## Current implementation
 
@@ -20,11 +20,15 @@ deferred.
 - A deterministic Gohr-style baseline generator with machine-readable metadata.
 - Dataset v1 export: separate classifier and attack fixtures, manifests, and checksums.
 - A bounded exact CryptoMiniSat model for reduced-round feasibility tests.
-- Unit tests for primitives, key expansion, cipher, partial decryption, and data.
+- A verified PyTorch Dataset v1-compatible loader and compact residual distinguisher.
+- A committed Phase 3 configuration with checksummed train/validation/test inputs.
+- Unit and integration tests for primitives, key expansion, cipher, partial decryption,
+  data, SAT feasibility, neural training, and checkpoint reload.
 
 The current API is word-level: a block is represented as (x, y), and a master key
 uses the explicit word order (l[2], l[1], l[0], k[0]). Byte serialization is not
-fixed until the team reviews the source ambiguity.
+fixed because the verified SPECK32/64 vector is word-oriented and the reviewed
+implementation guide does not define a 32-bit-block byte API.
 
 ## Development setup
 
@@ -66,6 +70,27 @@ Run the Phase 2 SAT-only pilot:
 ~~~text
 PYTHONPATH=.:src python scripts/phase2_sat_pilot.py --rounds 2 4 7 --pair-count 4 --timeout 10
 ~~~
+
+Generate the local Phase 3 baseline shards from the committed protocol and
+then train from those verified shards:
+
+~~~text
+PYTHONPATH=.:src python scripts/export_dataset_v1.py --classifier-config configs/data/phase3_classifier_r5.json --output-dir datasets/phase3_classifier_r5 --skip-attack --include-commit
+PYTHONPATH=.:src python scripts/train_distinguisher.py --config configs/training/phase3_baseline.json
+~~~
+
+The exporter and trainer keep large data, checkpoints, and summaries out of
+Git. The training script does not call the generator; it verifies the manifest,
+file hashes, content hashes, schema, shape, labels, and split metadata before
+training, selects weights using validation AUC, and evaluates the held-out test
+split once after that selection.
+
+The baseline follows Gohr's published SPECK32/64 input representation and
+residual-network design ([paper, Section 4](https://eprint.iacr.org/2019/037.pdf);
+[supplementary implementation](https://github.com/agohr/deep_speck/blob/master/train_nets.py)).
+This repository uses a smaller four-block PyTorch network, BCE-with-logits
+training, and explicit seeded data splits; these are recorded implementation
+choices, not claims that the original training results have been reproduced.
 
 The repository does not commit virtual environments, large generated datasets,
 model checkpoints, or experiment output. The MIT licence covers the code and

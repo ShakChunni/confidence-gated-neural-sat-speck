@@ -60,6 +60,28 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Record the current Git commit in exported metadata.",
     )
+    parser.add_argument(
+        "--classifier-config",
+        type=Path,
+        default=CLASSIFIER_CONFIG_PATH,
+        help="JSON configuration for the classifier export.",
+    )
+    parser.add_argument(
+        "--attack-config",
+        type=Path,
+        default=ATTACK_CONFIG_PATH,
+        help="JSON configuration for the attack export.",
+    )
+    parser.add_argument(
+        "--skip-classifier",
+        action="store_true",
+        help="Do not generate the classifier subtree.",
+    )
+    parser.add_argument(
+        "--skip-attack",
+        action="store_true",
+        help="Do not generate the attack subtree.",
+    )
     return parser.parse_args()
 
 
@@ -67,54 +89,51 @@ def main() -> None:
     args = _parse_args()
     commit = _repository_commit() if args.include_commit else None
 
-    classifier_config = _load_json(CLASSIFIER_CONFIG_PATH)
-    classifier_splits = classifier_config["splits"]
-    classifier_configs = tuple(
-        DatasetConfig(
-            sample_count=int(classifier_splits[role]["sample_count"]),
-            rounds=int(classifier_config["rounds"]),
-            seed=int(classifier_splits[role]["seed"]),
-            split_role=role,
-        )
-        for role in ("train", "validation", "test")
-    )
-    classifier_manifest = export_classifier_benchmark(
-        classifier_configs,
-        args.output_dir / "classifier",
-        generated_at=str(classifier_config["generated_at"]),
-        repository_commit=commit,
-    )
+    output: dict[str, object] = {"output_dir": str(args.output_dir)}
 
-    attack_config = _load_json(ATTACK_CONFIG_PATH)
-    attack_splits = attack_config["splits"]
-    attack_configs = tuple(
-        AttackInstanceConfig(
-            instance_count=int(attack_splits[role]["instance_count"]),
-            pair_count=int(attack_splits[role]["pair_count"]),
-            rounds=int(attack_config["rounds"]),
-            seed=int(attack_splits[role]["seed"]),
-            split_role=role,
+    if not args.skip_classifier:
+        classifier_config = _load_json(args.classifier_config)
+        classifier_splits = classifier_config["splits"]
+        classifier_configs = tuple(
+            DatasetConfig(
+                sample_count=int(classifier_splits[role]["sample_count"]),
+                rounds=int(classifier_config["rounds"]),
+                seed=int(classifier_splits[role]["seed"]),
+                split_role=role,
+                input_difference=tuple(classifier_config["input_difference"]),
+            )
+            for role in ("train", "validation", "test")
         )
-        for role in ("train", "validation", "test")
-    )
-    attack_manifest = export_attack_benchmark(
-        attack_configs,
-        args.output_dir / "attack",
-        generated_at=str(attack_config["generated_at"]),
-        repository_commit=commit,
-    )
+        output["classifier_manifest"] = export_classifier_benchmark(
+            classifier_configs,
+            args.output_dir / "classifier",
+            dataset_id=str(classifier_config["dataset_id"]),
+            generated_at=str(classifier_config["generated_at"]),
+            repository_commit=commit,
+        )
+    if not args.skip_attack:
+        attack_config = _load_json(args.attack_config)
+        attack_splits = attack_config["splits"]
+        attack_configs = tuple(
+            AttackInstanceConfig(
+                instance_count=int(attack_splits[role]["instance_count"]),
+                pair_count=int(attack_splits[role]["pair_count"]),
+                rounds=int(attack_config["rounds"]),
+                seed=int(attack_splits[role]["seed"]),
+                split_role=role,
+                input_difference=tuple(attack_config["input_difference"]),
+            )
+            for role in ("train", "validation", "test")
+        )
+        output["attack_manifest"] = export_attack_benchmark(
+            attack_configs,
+            args.output_dir / "attack",
+            dataset_id=str(attack_config["dataset_id"]),
+            generated_at=str(attack_config["generated_at"]),
+            repository_commit=commit,
+        )
 
-    print(
-        json.dumps(
-            {
-                "classifier_manifest": classifier_manifest,
-                "attack_manifest": attack_manifest,
-                "output_dir": str(args.output_dir),
-            },
-            indent=2,
-            sort_keys=True,
-        )
-    )
+    print(json.dumps(output, indent=2, sort_keys=True))
 
 
 if __name__ == "__main__":

@@ -7,13 +7,17 @@ from .attack import (
     AttackPair,
     export_attack_benchmark,
     generate_attack_instances,
+    load_attack_manifest,
     load_attack_shard,
     validate_attack_split_configs,
+    verify_attack_benchmark,
+    verify_attack_shard,
 )
 from .export import (
     export_classifier_benchmark,
     load_classifier_manifest,
     load_classifier_shard,
+    verify_classifier_benchmark,
     verify_classifier_shard,
 )
 from .format import (
@@ -64,12 +68,16 @@ __all__ = [
     "export_classifier_benchmark",
     "generate_attack_instances",
     "generate_dataset",
+    "load_attack_manifest",
     "load_attack_shard",
     "load_classifier_manifest",
     "load_classifier_shard",
     "metadata_to_json",
     "validate_attack_split_configs",
     "validate_split_configs",
+    "verify_attack_benchmark",
+    "verify_classifier_benchmark",
     "verify_classifier_shard",
+    "verify_attack_shard",
     "word_to_bits_msb",
 ]

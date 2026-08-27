@@ -1,0 +1,30 @@
+{
+  "bit_order": "first_ciphertext_x_msb_to_lsb, first_ciphertext_y_msb_to_lsb, second_ciphertext_x_msb_to_lsb, second_ciphertext_y_msb_to_lsb",
+  "cipher": "SPECK32/64",
+  "dataset_format_version": "1.0.0",
+  "dataset_id": "speck32_64_classifier_phase3_r5",
+  "input_difference": [64, 0],
+  "key_generation_policy": "independent_random_key_per_sample",
+  "license": "MIT",
+  "parent_protocol": "speck32_64_classifier_v1",
+  "purpose": "Phase 3 neural baseline at the first measurable reduced-round setting",
+  "rounds": 5,
+  "splits": {
+    "test": {
+      "sample_count": 4000,
+      "seed": 53001
+    },
+    "train": {
+      "sample_count": 20000,
+      "seed": 51001
+    },
+    "validation": {
+      "sample_count": 4000,
+      "seed": 52001
+    }
+  },
+  "status": "frozen_phase3_baseline_config",
+  "task": "related_vs_random",
+  "word_order": "block=(x,y); master_key=(l[2],l[1],l[0],k[0])",
+  "generated_at": "2026-08-27T00:00:00+08:00"
+}

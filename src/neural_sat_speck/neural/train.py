@@ -28,6 +28,33 @@ class TrainingConfig:
     lr_decay: float = 0.95
     seed: int = 1001
     device: str = "auto"
+    deterministic: bool = True
+
+    def __post_init__(self) -> None:
+        """Validate training values before an experiment starts."""
+
+        integer_fields = (
+            ("epochs", self.epochs),
+            ("batch_size", self.batch_size),
+            ("seed", self.seed),
+        )
+        for name, value in integer_fields:
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise TypeError(f"{name} must be an integer")
+        if self.epochs <= 0:
+            raise ValueError("epochs must be positive")
+        if self.batch_size <= 0:
+            raise ValueError("batch_size must be positive")
+        if self.learning_rate <= 0.0:
+            raise ValueError("learning_rate must be positive")
+        if self.weight_decay < 0.0:
+            raise ValueError("weight_decay cannot be negative")
+        if self.lr_decay <= 0.0:
+            raise ValueError("lr_decay must be positive")
+        if not isinstance(self.device, str) or not self.device:
+            raise ValueError("device must be a non-empty string")
+        if not isinstance(self.deterministic, bool):
+            raise TypeError("deterministic must be a boolean")
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -42,27 +69,57 @@ class TrainingConfig:
             lr_decay=float(data.get("lr_decay", 0.95)),
             seed=int(data.get("seed", 1001)),
             device=str(data.get("device", "auto")),
+            deterministic=bool(data.get("deterministic", True)),
         )
 
 
 def select_device(preferred: str = "auto") -> torch.device:
     """Select the best available compute device (MPS, CUDA, or CPU)."""
+    preferred = preferred.lower()
     if preferred == "auto":
         if torch.backends.mps.is_available():
             return torch.device("mps")
         if torch.cuda.is_available():
             return torch.device("cuda")
         return torch.device("cpu")
-    return torch.device(preferred)
+    if preferred == "mps":
+        if not torch.backends.mps.is_available():
+            raise RuntimeError("MPS was requested but is not available")
+        return torch.device("mps")
+    if preferred == "cuda":
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA was requested but is not available")
+        return torch.device("cuda")
+    if preferred != "cpu":
+        raise ValueError("device must be one of auto, cpu, mps, or cuda")
+    return torch.device("cpu")
 
 
-def set_seed(seed: int) -> None:
-    """Set random seeds for PyTorch, NumPy, and random for reproducibility."""
+def set_seed(seed: int, *, deterministic: bool = True) -> None:
+    """Set process RNGs and PyTorch deterministic-operation preferences."""
+    if isinstance(seed, bool) or not isinstance(seed, int):
+        raise TypeError("seed must be an integer")
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+    torch.use_deterministic_algorithms(deterministic, warn_only=True)
+    if hasattr(torch.backends, "cudnn"):
+        torch.backends.cudnn.deterministic = deterministic
+        torch.backends.cudnn.benchmark = False
+
+
+def build_model(
+    model_config: GohrResNetConfig | None = None,
+    *,
+    seed: int,
+    deterministic: bool = True,
+) -> GohrResNet:
+    """Construct a model after seeding its parameter initialisation."""
+
+    set_seed(seed, deterministic=deterministic)
+    return GohrResNet(model_config)
 
 
 def train_one_epoch(
@@ -99,7 +156,7 @@ def evaluate(
     dataloader: DataLoader,
     criterion: nn.Module,
     device: torch.device,
-) -> dict[str, float]:
+) -> dict[str, Any]:
     """Evaluate loss, accuracy, and ROC-AUC on a dataset."""
     model.eval()
     total_loss = 0.0
@@ -129,11 +186,18 @@ def evaluate(
 
     acc = binary_accuracy(probs_tensor, targets_tensor)
     auc = roc_auc_score(all_probs, all_targets)
+    positive_count = sum(all_targets)
+    negative_count = len(all_targets) - positive_count
 
     return {
         "loss": avg_loss,
         "accuracy": acc,
         "auc": auc,
+        "sample_count": len(all_targets),
+        "class_balance": {
+            "0": negative_count,
+            "1": positive_count,
+        },
     }
 
 
@@ -143,9 +207,14 @@ def train_distinguisher(
     val_dataset: SpeckClassifierDataset,
     config: TrainingConfig | None = None,
 ) -> dict[str, Any]:
-    """Train a GohrResNet model on train_dataset and evaluate on val_dataset."""
+    """Train on train_dataset and select the checkpoint by validation AUC.
+
+    The caller must construct a new model with :func:`build_model` when exact
+    parameter-initialisation reproducibility is required. The function still
+    seeds all subsequent RNG use before creating loaders and the optimiser.
+    """
     config = config or TrainingConfig()
-    set_seed(config.seed)
+    set_seed(config.seed, deterministic=config.deterministic)
     device = select_device(config.device)
     model = model.to(device)
 
@@ -173,7 +242,8 @@ def train_distinguisher(
     )
 
     history: list[dict[str, Any]] = []
-    best_val_auc = 0.0
+    best_val_auc = float("-inf")
+    best_epoch = 0
     best_weights: dict[str, torch.Tensor] | None = None
 
     for epoch in range(1, config.epochs + 1):
@@ -199,17 +269,21 @@ def train_distinguisher(
 
         if val_metrics["auc"] > best_val_auc:
             best_val_auc = val_metrics["auc"]
+            best_epoch = epoch
             best_weights = {
                 k: v.cpu().clone() for k, v in model.state_dict().items()
             }
 
     if best_weights is not None:
         model.load_state_dict(best_weights)
+        model.to(device)
 
     return {
         "config": config.to_dict(),
         "model_config": model.config.to_dict(),
         "best_val_auc": best_val_auc,
+        "best_epoch": best_epoch,
+        "device": str(device),
         "history": history,
     }
 
@@ -222,9 +296,11 @@ def save_checkpoint(
     """Save model weights and metadata."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
+        "checkpoint_format_version": 1,
         "model_config": model.config.to_dict(),
         "state_dict": model.state_dict(),
         "metadata": metadata or {},
+        "torch_version": str(torch.__version__),
     }
     torch.save(payload, output_path)
 
@@ -238,5 +314,6 @@ def load_checkpoint(
     model_config = GohrResNetConfig.from_dict(payload["model_config"])
     model = GohrResNet(model_config)
     model.load_state_dict(payload["state_dict"])
+    model.to(device)
     model.eval()
     return model, payload.get("metadata", {})

@@ -1,9 +1,10 @@
 # Development setup
 
-These instructions cover the current repository state: the source-verified
-scalar SPECK32/64 implementation, deterministic data foundation, and bounded
-CryptoMiniSat feasibility pilot. Neural training, PyTorch, large data
-generation, and Phase 3 attack work are not part of this installation yet.
+These instructions cover the source-verified scalar SPECK32/64 implementation,
+the deterministic Dataset v1 foundation, the bounded CryptoMiniSat feasibility
+pilot, and the Phase 3 neural distinguisher baseline. Full subkey ranking,
+confidence gating, and neural-SAT integration are later phases and are not
+included here.
 
 The supported interpreter is **64-bit CPython 3.11**. The Python version limit
 is declared in `pyproject.toml`; the 64-bit requirement comes from the
@@ -11,14 +12,15 @@ available `pycryptosat` wheels.
 
 ## Installed packages
 
-`requirements.txt` installs the current test, lint, and SAT dependencies:
+`requirements.txt` installs the test, lint, SAT, and Phase 3 neural dependencies:
 
 - `pytest` for the test suite;
 - `ruff` for linting;
-- `pycryptosat` for the CryptoMiniSat Python interface.
+- `pycryptosat` for the CryptoMiniSat Python interface;
+- `numpy` for numerical support used by the training pipeline;
+- `torch` for the compact Phase 3 distinguisher.
 
-The project is then installed in editable mode. There are currently no runtime
-packages such as NumPy or PyTorch.
+The project is then installed in editable mode.
 
 ## Windows 10/11
 
@@ -68,6 +70,8 @@ Run the pilots from the repository root. The root is included in
 $env:PYTHONPATH = ".;src"
 python scripts\phase1_data_pilot.py --sample-count 256 --rounds 7 --seed 1001 --split-role train
 python scripts\phase2_sat_pilot.py --rounds 2 4 7 --pair-count 4 --timeout 10
+python scripts\export_dataset_v1.py --classifier-config configs\data\phase3_classifier_r5.json --output-dir datasets\phase3_classifier_r5 --skip-attack --include-commit
+python scripts\train_distinguisher.py --config configs\training\phase3_baseline.json
 ```
 
 The `PYTHONPATH` setting lasts only for the current PowerShell session.
@@ -114,6 +118,8 @@ Run the pilots:
 export PYTHONPATH=.:src
 python scripts/phase1_data_pilot.py --sample-count 256 --rounds 7 --seed 1001 --split-role train
 python scripts/phase2_sat_pilot.py --rounds 2 4 7 --pair-count 4 --timeout 10
+python scripts/export_dataset_v1.py --classifier-config configs/data/phase3_classifier_r5.json --output-dir datasets/phase3_classifier_r5 --skip-attack --include-commit
+python scripts/train_distinguisher.py --config configs/training/phase3_baseline.json
 ```
 
 The `PYTHONPATH` setting lasts only for the current Terminal session.
@@ -164,10 +170,9 @@ Run the command from the repository root and set the platform-specific
 
 ### The test count differs
 
-Run the tests from the repository root in the activated environment. The
-previous baseline was 109 passing tests; the count increases as Dataset v1
-and later components are added. Do not treat a stored count as the source of
-truth.
+Run the tests from the repository root in the activated environment. The test
+count is intentionally not fixed in this document; use the command output as
+the source of truth.
 
 ## Reproducibility guidance
 
@@ -178,3 +183,12 @@ repository `.gitignore` is configured for these local artefacts. The tiny
 Dataset v1 fixtures under `tests/fixtures/dataset_v1/` are inspectable
 exceptions; regenerate them with `scripts/export_dataset_v1.py` and see
 [DATASETS.md](DATASETS.md).
+
+The Phase 3 baseline export is reproducible but deliberately not committed.
+Its protocol configuration is
+[`configs/data/phase3_classifier_r5.json`](../configs/data/phase3_classifier_r5.json),
+and its training configuration is
+[`configs/training/phase3_baseline.json`](../configs/training/phase3_baseline.json).
+The exporter writes a manifest and three checksummed shards. The training
+script verifies those files before training and evaluates the test split only
+after validation-based model selection.
