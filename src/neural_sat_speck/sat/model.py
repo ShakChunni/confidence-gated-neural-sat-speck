@@ -13,7 +13,7 @@ from neural_sat_speck.speck.key_schedule import (
     SPECK32_64_BETA,
     SPECK32_64_ROUND_COUNT,
 )
-from neural_sat_speck.speck.primitives import mask_word
+from neural_sat_speck.speck.primitives import WORD_MASK, mask_word
 
 from .encoding import (
     VariablePool,
@@ -284,6 +284,44 @@ class SpeckSatModel:
                 for index, variable in enumerate(bits)
             )
         return tuple(assumptions)
+
+    def assumptions_for_final_round_subkey(
+        self,
+        final_round_subkey: int,
+    ) -> tuple[int, ...]:
+        """Return literals fixing the generated final round-key word.
+
+        The returned literals are intended as temporary assumptions for one
+        ``solve`` call. They constrain ``round_keys[-1]``, not the master-key
+        variables directly, so a candidate is tested through the exact key
+        schedule already present in this model.
+        """
+
+        if isinstance(final_round_subkey, bool) or not isinstance(
+            final_round_subkey,
+            int,
+        ):
+            raise TypeError("final_round_subkey must be an integer")
+        if not 0 <= final_round_subkey <= WORD_MASK:
+            raise ValueError("final_round_subkey must be a 16-bit word")
+        final_key_bits = self.round_keys[-1]
+        return tuple(
+            variable if (final_round_subkey >> index) & 1 else -variable
+            for index, variable in enumerate(final_key_bits)
+        )
+
+    def solve_final_round_subkey(
+        self,
+        final_round_subkey: int,
+        *,
+        time_limit: float | None = None,
+    ) -> SatSolveResult:
+        """Solve under one temporary final-round subkey assumption."""
+
+        return self.solve(
+            self.assumptions_for_final_round_subkey(final_round_subkey),
+            time_limit=time_limit,
+        )
 
     def add_blocking_clause(
         self,

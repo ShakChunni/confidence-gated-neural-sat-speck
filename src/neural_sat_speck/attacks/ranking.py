@@ -22,6 +22,10 @@ from torch import nn
 from neural_sat_speck.data.attack import AttackInstance
 from neural_sat_speck.data.generator import encode_ciphertext_pair
 from neural_sat_speck.neural.dataset import features_to_tensor
+from neural_sat_speck.neural.numpy_inference import (
+    NumpyInferenceModule,
+    vectorized_final_round_features,
+)
 from neural_sat_speck.speck.partial import partial_decrypt_final_round
 from neural_sat_speck.speck.primitives import WORD_MASK
 
@@ -77,6 +81,104 @@ def _model_logits(model: nn.Module, features: torch.Tensor) -> torch.Tensor:
     return logits
 
 
+def _validate_pair_subsets(
+    pair_subsets: Sequence[Sequence[int]] | None,
+    *,
+    pair_count: int,
+    candidate_count: int,
+    top_k: int,
+) -> tuple[tuple[int, ...], ...]:
+    """Validate fixed pair subsets used for optional ranking stability."""
+
+    if pair_subsets is None:
+        return ()
+    if isinstance(pair_subsets, (str, bytes)):
+        raise TypeError("pair_subsets must be a sequence of index sequences")
+    subsets = tuple(pair_subsets)
+    if len(subsets) < 2:
+        raise ValueError("pair_subsets must contain at least two subsets")
+    if isinstance(top_k, bool) or not isinstance(top_k, int):
+        raise TypeError("stability_top_k must be an integer")
+    if not 1 <= top_k <= candidate_count:
+        raise ValueError("stability_top_k must be between one and the candidate count")
+
+    validated: list[tuple[int, ...]] = []
+    subset_size: int | None = None
+    for subset in subsets:
+        if isinstance(subset, (str, bytes)):
+            raise TypeError("each pair subset must be a sequence of indices")
+        indices = tuple(subset)
+        if not indices:
+            raise ValueError("pair subsets cannot be empty")
+        if any(
+            isinstance(index, bool)
+            or not isinstance(index, int)
+            or not 0 <= index < pair_count
+            for index in indices
+        ):
+            raise ValueError("pair subset indices must be valid pair positions")
+        if len(set(indices)) != len(indices):
+            raise ValueError("pair subset indices must not repeat")
+        if subset_size is None:
+            subset_size = len(indices)
+        elif len(indices) != subset_size:
+            raise ValueError("pair subsets must contain the same number of pairs")
+        validated.append(tuple(sorted(indices)))
+    return tuple(validated)
+
+
+@dataclass(frozen=True)
+class PairSubsetStability:
+    """Stability summary for fixed pair-subset rankings."""
+
+    pair_subsets: tuple[tuple[int, ...], ...]
+    top_k: int
+    subset_top_k_candidates: tuple[tuple[int, ...], ...]
+    full_top_k_jaccard: float
+    pairwise_top_k_jaccard: float
+    top1_full_order_agreement: float
+
+    def __post_init__(self) -> None:
+        if len(self.pair_subsets) < 2:
+            raise ValueError("stability requires at least two pair subsets")
+        if len(self.pair_subsets) != len(self.subset_top_k_candidates):
+            raise ValueError("stability subset metadata must have equal length")
+        if isinstance(self.top_k, bool) or not isinstance(self.top_k, int):
+            raise TypeError("stability top_k must be an integer")
+        if self.top_k <= 0:
+            raise ValueError("stability top_k must be positive")
+        for subset, candidates in zip(
+            self.pair_subsets,
+            self.subset_top_k_candidates,
+            strict=True,
+        ):
+            if not subset or len(set(subset)) != len(subset):
+                raise ValueError("stability pair subsets must be non-empty and unique")
+            if len(candidates) != self.top_k or len(set(candidates)) != len(candidates):
+                raise ValueError("stability top-k candidates are invalid")
+        for value in (
+            self.full_top_k_jaccard,
+            self.pairwise_top_k_jaccard,
+            self.top1_full_order_agreement,
+        ):
+            if not 0.0 <= value <= 1.0:
+                raise ValueError("stability scores must be in [0, 1]")
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize stability metadata and aggregate scores."""
+
+        return {
+            "pair_subsets": [list(subset) for subset in self.pair_subsets],
+            "top_k": self.top_k,
+            "subset_top_k_candidates": [
+                list(candidates) for candidates in self.subset_top_k_candidates
+            ],
+            "full_top_k_jaccard": self.full_top_k_jaccard,
+            "pairwise_top_k_jaccard": self.pairwise_top_k_jaccard,
+            "top1_full_order_agreement": self.top1_full_order_agreement,
+        }
+
+
 @dataclass(frozen=True)
 class SubkeyRanking:
     """Scores and deterministic order for one final-round ranking run.
@@ -100,6 +202,7 @@ class SubkeyRanking:
     sorting_seconds: float
     total_seconds: float
     peak_feature_tensor_bytes: int
+    pair_subset_stability: PairSubsetStability | None = None
 
     def __post_init__(self) -> None:
         if len(self.candidate_values) != len(self.candidate_scores):
@@ -112,6 +215,15 @@ class SubkeyRanking:
             raise ValueError("candidate_batch_size must be positive")
         if self.score_aggregation != SCORE_AGGREGATION:
             raise ValueError("unsupported score aggregation")
+        if self.pair_subset_stability is not None:
+            if self.pair_subset_stability.top_k > len(self.candidate_values):
+                raise ValueError("stability top_k exceeds the candidate count")
+            candidate_set = set(self.candidate_values)
+            for subset_candidates in (
+                self.pair_subset_stability.subset_top_k_candidates
+            ):
+                if not set(subset_candidates) <= candidate_set:
+                    raise ValueError("stability contains an unscored candidate")
 
     def score_for(self, candidate: int) -> float:
         """Return the aggregate score for one candidate value."""
@@ -158,7 +270,7 @@ class SubkeyRanking:
     def to_dict(self) -> dict[str, Any]:
         """Serialize the ranking and resource measurements to JSON data."""
 
-        return {
+        result: dict[str, Any] = {
             "candidate_values": list(self.candidate_values),
             "candidate_scores": list(self.candidate_scores),
             "candidate_order": list(self.candidate_order),
@@ -173,6 +285,9 @@ class SubkeyRanking:
             },
             "peak_feature_tensor_bytes": self.peak_feature_tensor_bytes,
         }
+        if self.pair_subset_stability is not None:
+            result["pair_subset_stability"] = self.pair_subset_stability.to_dict()
+        return result
 
 
 def rank_final_round_subkeys(
@@ -182,6 +297,8 @@ def rank_final_round_subkeys(
     candidate_values: Sequence[int] | None = None,
     candidate_batch_size: int = 1024,
     device: torch.device | str | None = None,
+    stability_pair_subsets: Sequence[Sequence[int]] | None = None,
+    stability_top_k: int = 16,
 ) -> SubkeyRanking:
     """Rank candidate 16-bit final-round keys for one attack instance.
 
@@ -206,6 +323,12 @@ def rank_final_round_subkeys(
         raise TypeError("model must be a torch.nn.Module")
 
     candidates = _validate_candidate_values(candidate_values)
+    validated_pair_subsets = _validate_pair_subsets(
+        stability_pair_subsets,
+        pair_count=len(instance.pairs),
+        candidate_count=len(candidates),
+        top_k=stability_top_k,
+    )
     resolved_device = _resolve_device(model, device)
     original_parameter = next(model.parameters(), None)
     original_device = (
@@ -217,6 +340,12 @@ def rank_final_round_subkeys(
     inference_seconds = 0.0
     peak_feature_tensor_bytes = 0
     scores: list[float] = []
+    numpy_backend = isinstance(model, NumpyInferenceModule)
+    stability_scores = (
+        [[0.0] * len(candidates) for _ in validated_pair_subsets]
+        if validated_pair_subsets
+        else None
+    )
 
     model.to(resolved_device)
     model.eval()
@@ -225,30 +354,65 @@ def rank_final_round_subkeys(
             for start in range(0, len(candidates), candidate_batch_size):
                 candidate_batch = candidates[start : start + candidate_batch_size]
                 feature_started = time.perf_counter()
-                features: list[tuple[int, ...]] = []
-                for candidate in candidate_batch:
-                    for pair in instance.pairs:
-                        state0 = partial_decrypt_final_round(
-                            pair.ciphertext0,
-                            candidate,
-                        )
-                        state1 = partial_decrypt_final_round(
-                            pair.ciphertext1,
-                            candidate,
-                        )
-                        features.append(encode_ciphertext_pair(state0, state1))
-                feature_tensor = features_to_tensor(features)
-                peak_feature_tensor_bytes = max(
-                    peak_feature_tensor_bytes,
-                    feature_tensor.numel() * feature_tensor.element_size(),
-                )
-                feature_tensor = feature_tensor.to(resolved_device)
+                if numpy_backend:
+                    feature_array = vectorized_final_round_features(
+                        instance.pairs,
+                        candidate_batch,
+                    )
+                    peak_feature_tensor_bytes = max(
+                        peak_feature_tensor_bytes,
+                        feature_array.nbytes,
+                    )
+                else:
+                    features: list[tuple[int, ...]] = []
+                    for candidate in candidate_batch:
+                        for pair in instance.pairs:
+                            state0 = partial_decrypt_final_round(
+                                pair.ciphertext0,
+                                candidate,
+                            )
+                            state1 = partial_decrypt_final_round(
+                                pair.ciphertext1,
+                                candidate,
+                            )
+                            features.append(encode_ciphertext_pair(state0, state1))
+                    feature_tensor = features_to_tensor(features)
+                    peak_feature_tensor_bytes = max(
+                        peak_feature_tensor_bytes,
+                        feature_tensor.numel() * feature_tensor.element_size(),
+                    )
+                    feature_tensor = feature_tensor.to(resolved_device)
                 feature_seconds += time.perf_counter() - feature_started
 
                 inference_started = time.perf_counter()
-                logits = _model_logits(model, feature_tensor)
+                if numpy_backend:
+                    logits = torch.from_numpy(
+                        model.predict_numpy(  # type: ignore[attr-defined]
+                            feature_array.reshape(
+                                len(candidate_batch) * len(instance.pairs),
+                                4,
+                                16,
+                            )
+                        )
+                    )
+                else:
+                    logits = _model_logits(model, feature_tensor)
                 batch_scores = logits.view(len(candidate_batch), len(instance.pairs))
                 scores.extend(batch_scores.sum(dim=1).detach().cpu().tolist())
+                if stability_scores is not None:
+                    for subset_index, pair_indices in enumerate(
+                        validated_pair_subsets
+                    ):
+                        subset_scores = (
+                            batch_scores[:, list(pair_indices)]
+                            .sum(dim=1)
+                            .detach()
+                            .cpu()
+                            .tolist()
+                        )
+                        stability_scores[subset_index][
+                            start : start + len(candidate_batch)
+                        ] = [float(score) for score in subset_scores]
                 inference_seconds += time.perf_counter() - inference_started
     finally:
         if was_training:
@@ -263,12 +427,53 @@ def rank_final_round_subkeys(
         zip(scores, candidates, strict=True),
         key=lambda item: (-item[0], item[1]),
     )
+    candidate_order = tuple(candidate for _, candidate in ranked_pairs)
+    pair_subset_stability: PairSubsetStability | None = None
+    if stability_scores is not None:
+        subset_orders = tuple(
+            tuple(
+                candidate
+                for _, candidate in sorted(
+                    zip(subset_score, candidates, strict=True),
+                    key=lambda item: (-item[0], item[1]),
+                )
+            )
+            for subset_score in stability_scores
+        )
+        full_top_k = set(candidate_order[:stability_top_k])
+        full_jaccards = tuple(
+            len(full_top_k & set(subset_order[:stability_top_k]))
+            / len(full_top_k | set(subset_order[:stability_top_k]))
+            for subset_order in subset_orders
+        )
+        pairwise_jaccards: list[float] = []
+        for first_index, first_order in enumerate(subset_orders):
+            first_set = set(first_order[:stability_top_k])
+            for second_order in subset_orders[first_index + 1 :]:
+                second_set = set(second_order[:stability_top_k])
+                pairwise_jaccards.append(
+                    len(first_set & second_set) / len(first_set | second_set)
+                )
+        pair_subset_stability = PairSubsetStability(
+            pair_subsets=validated_pair_subsets,
+            top_k=stability_top_k,
+            subset_top_k_candidates=tuple(
+                subset_order[:stability_top_k] for subset_order in subset_orders
+            ),
+            full_top_k_jaccard=sum(full_jaccards) / len(full_jaccards),
+            pairwise_top_k_jaccard=sum(pairwise_jaccards) / len(pairwise_jaccards),
+            top1_full_order_agreement=sum(
+                subset_order[0] == candidate_order[0]
+                for subset_order in subset_orders
+            )
+            / len(subset_orders),
+        )
     sorting_seconds = time.perf_counter() - sorting_started
     total_seconds = time.perf_counter() - total_started
     return SubkeyRanking(
         candidate_values=candidates,
         candidate_scores=tuple(float(score) for score in scores),
-        candidate_order=tuple(candidate for _, candidate in ranked_pairs),
+        candidate_order=candidate_order,
         pair_count=len(instance.pairs),
         candidate_batch_size=candidate_batch_size,
         score_aggregation=SCORE_AGGREGATION,
@@ -277,6 +482,7 @@ def rank_final_round_subkeys(
         sorting_seconds=sorting_seconds,
         total_seconds=total_seconds,
         peak_feature_tensor_bytes=peak_feature_tensor_bytes,
+        pair_subset_stability=pair_subset_stability,
     )
 
 

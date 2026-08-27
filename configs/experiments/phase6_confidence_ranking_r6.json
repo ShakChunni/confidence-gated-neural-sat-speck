@@ -1,0 +1,19 @@
+{
+  "schema": "neural_sat_speck.phase4_ranking_config.v1",
+  "phase": 4,
+  "checkpoint": "models/speck32_64_phase3_r5_distinguisher.pt",
+  "expected_model_dataset_id": "speck32_64_classifier_phase3_r5",
+  "expected_model_rounds": 5,
+  "attack_dataset_root": "datasets/phase6_confidence_r6/attack",
+  "expected_attack_dataset_id": "speck32_64_attack_phase6_confidence_r6",
+  "expected_rounds": 6,
+  "expected_input_difference": [64, 0],
+  "split_role": "validation",
+  "instance_index": 0,
+  "candidate_count": 65536,
+  "candidate_batch_size": 256,
+  "score_aggregation": "sum_logits",
+  "top_k_values": [1, 16, 32, 64, 128, 256, 1024],
+  "device": "cpu",
+  "output": "results/phase6_ranking_r6_validation_0000.json"
+}

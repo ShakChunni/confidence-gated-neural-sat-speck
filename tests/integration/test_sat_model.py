@@ -55,6 +55,61 @@ def test_fixed_key_model_states_match_the_python_reference() -> None:
             ) == state
 
 
+def test_final_round_subkey_assumptions_follow_the_key_schedule() -> None:
+    rounds = 4
+    pairs = _known_pairs(rounds)
+    model = SpeckSatModel.from_known_pairs(pairs, rounds)
+    true_final_subkey = expand_key(MASTER_KEY, rounds)[-1]
+
+    result = model.solve_final_round_subkey(
+        true_final_subkey,
+        time_limit=5.0,
+    )
+
+    assert result.satisfiable
+    assert not result.timed_out
+    assert result.solution is not None
+    recovered_key = model.master_key_from_solution(result.solution)
+    assert expand_key(recovered_key, rounds)[-1] == true_final_subkey
+    assert all(
+        encrypt_block(plaintext, recovered_key, rounds) == ciphertext
+        for plaintext, ciphertext in pairs
+    )
+
+
+def test_final_round_assumptions_are_temporary() -> None:
+    rounds = 4
+    pairs = _known_pairs(rounds)
+    model = SpeckSatModel.from_known_pairs(pairs, rounds)
+    true_final_subkey = expand_key(MASTER_KEY, rounds)[-1]
+    wrong_final_subkey = true_final_subkey ^ 1
+    master_key_assumptions = model.assumptions_for_master_key(MASTER_KEY)
+
+    contradictory = model.solve(
+        master_key_assumptions
+        + model.assumptions_for_final_round_subkey(wrong_final_subkey),
+        time_limit=5.0,
+    )
+    assert not contradictory.satisfiable
+    assert not contradictory.timed_out
+
+    restored = model.solve(master_key_assumptions, time_limit=5.0)
+    assert restored.satisfiable
+    assert not restored.timed_out
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    [True, False, -1, 1 << 16, 1.0],
+)
+def test_final_round_subkey_assumption_rejects_invalid_values(
+    candidate: object,
+) -> None:
+    model = SpeckSatModel.from_known_pairs(_known_pairs(2), 2)
+    with pytest.raises((TypeError, ValueError)):
+        model.assumptions_for_final_round_subkey(candidate)  # type: ignore[arg-type]
+
+
 def test_unknown_key_recovery_produces_a_verifiable_candidate() -> None:
     rounds = 4
     pairs = _known_pairs(rounds)

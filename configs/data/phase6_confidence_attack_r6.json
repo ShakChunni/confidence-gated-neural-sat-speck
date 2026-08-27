@@ -1,0 +1,33 @@
+{
+  "bit_order": "first_ciphertext_x_msb_to_lsb, first_ciphertext_y_msb_to_lsb, second_ciphertext_x_msb_to_lsb, second_ciphertext_y_msb_to_lsb",
+  "cipher": "SPECK32/64",
+  "dataset_format_version": "1.0.0",
+  "dataset_id": "speck32_64_attack_phase6_confidence_r6",
+  "input_difference": [64, 0],
+  "key_generation_policy": "one_random_master_key_per_instance",
+  "license": "MIT",
+  "parent_protocol": "speck32_64_attack_phase4_r6",
+  "purpose": "Phase 6 validation-only confidence feature pilot with independent attack keys",
+  "rounds": 6,
+  "splits": {
+    "test": {
+      "instance_count": 4,
+      "pair_count": 32,
+      "seed": 83001
+    },
+    "train": {
+      "instance_count": 8,
+      "pair_count": 32,
+      "seed": 81001
+    },
+    "validation": {
+      "instance_count": 16,
+      "pair_count": 32,
+      "seed": 82001
+    }
+  },
+  "status": "phase6_confidence_pilot",
+  "task": "single_key_related_pairs",
+  "word_order": "block=(x,y); master_key=(l[2],l[1],l[0],k[0])",
+  "generated_at": "2026-08-27T00:00:00+08:00"
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "neural_sat_speck.phase5_integration_config.v1",
+  "phase": 5,
+  "attack_dataset_root": "datasets/phase4_attack_r6/attack",
+  "expected_attack_dataset_id": "speck32_64_attack_phase4_r6",
+  "expected_rounds": 6,
+  "expected_input_difference": [64, 0],
+  "split_role": "validation",
+  "instance_index": 1,
+  "known_pair_count": 32,
+  "ranking_result": "results/phase4_ranking_r6_validation_0001.json",
+  "candidate_budget": 32,
+  "solver_timeout_seconds": 10.0,
+  "max_solutions_per_candidate": 2,
+  "verification_pair_count": 4,
+  "verification_seed": 72001,
+  "random_seed": 73001,
+  "methods": ["sat_only", "random", "neural"],
+  "output": "results/phase5_integration_validation_0001.json"
+}

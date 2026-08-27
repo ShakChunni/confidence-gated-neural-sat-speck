@@ -7,6 +7,22 @@ from .dataset import (
     features_to_tensor,
     load_classifier_splits,
 )
+from .group_dataset import PairGroupDataset, create_pair_group_dataloader
+from .group_model import (
+    PAIR_GROUP_MODEL_IDS,
+    PAIR_GROUP_VARIANTS,
+    PairGroupRanker,
+    SharedGohrPairEncoder,
+    build_pair_group_model,
+)
+from .group_train import (
+    PairGroupTrainingConfig,
+    build_transferred_pair_group_model,
+    evaluate_pair_group,
+    load_pair_group_checkpoint,
+    save_pair_group_checkpoint,
+    train_pair_group_ranker,
+)
 from .metrics import binary_accuracy, roc_auc_score
 from .model import GohrResNet, GohrResNetConfig, ResBlock1D
 from .train import (
@@ -35,4 +51,17 @@ __all__ = [
     "roc_auc_score",
     "save_checkpoint",
     "train_distinguisher",
+    "PairGroupDataset",
+    "create_pair_group_dataloader",
+    "PAIR_GROUP_MODEL_IDS",
+    "PAIR_GROUP_VARIANTS",
+    "PairGroupRanker",
+    "SharedGohrPairEncoder",
+    "build_pair_group_model",
+    "PairGroupTrainingConfig",
+    "build_transferred_pair_group_model",
+    "evaluate_pair_group",
+    "load_pair_group_checkpoint",
+    "save_pair_group_checkpoint",
+    "train_pair_group_ranker",
 ]

@@ -1,0 +1,23 @@
+{
+  "schema": "neural_sat_speck.phase6a_group_training_config.v1",
+  "dataset_root": "datasets/phase6a_pair_group_r5_g64",
+  "expected_dataset_id": "speck32_64_pair_group_phase6a_r5_g64",
+  "baseline_checkpoint": "models/speck32_64_phase3_r5_distinguisher.pt",
+  "expected_model_dataset_id": "speck32_64_classifier_phase3_r5",
+  "expected_model_rounds": 5,
+  "training": {
+    "epochs": 8,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "lr_decay": 0.95,
+    "seed": 63001,
+    "device": "cpu",
+    "deterministic": true
+  },
+  "outputs": {
+    "b1_mean": "models/speck32_64_phase6a_b1_mean_g64.pt",
+    "b2_moments": "models/speck32_64_phase6a_b2_moments_g64.pt",
+    "b3_weighted": "models/speck32_64_phase6a_b3_weighted_g64.pt"
+  }
+}

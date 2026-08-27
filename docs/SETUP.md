@@ -2,9 +2,9 @@
 
 These instructions cover the source-verified scalar SPECK32/64 implementation,
 the deterministic Dataset v1 foundation, the bounded CryptoMiniSat feasibility
-pilot, the Phase 3 neural distinguisher baseline, and the Phase 4 final-round
-ranking baseline. Confidence gating and neural-SAT integration are later
-phases and are not included here.
+pilot, the Phase 3 neural distinguisher baseline, the Phase 4 final-round
+ranking baseline, and the bounded Phase 5 neural-SAT integration pilot.
+Confidence gating and fallback selection remain later phases.
 
 The supported interpreter is **64-bit CPython 3.11**. The Python version limit
 is declared in `pyproject.toml`; the 64-bit requirement comes from the
@@ -74,6 +74,17 @@ python scripts\export_dataset_v1.py --classifier-config configs\data\phase3_clas
 python scripts\train_distinguisher.py --config configs\training\phase3_baseline.json
 python scripts\export_dataset_v1.py --attack-config configs\data\phase4_attack_r6.json --output-dir datasets\phase4_attack_r6 --skip-classifier --include-commit
 python scripts\rank_subkeys.py --config configs\experiments\phase4_ranking_r6.json
+python scripts\plot_phase4_figures.py
+python scripts\run_phase5_integration.py --config configs\experiments\phase5_integration_r6.json
+python scripts\summarize_phase5.py
+python scripts\export_dataset_v1.py --attack-config configs\data\phase6_confidence_attack_r6.json --output-dir datasets\phase6_confidence_r6 --skip-classifier --include-commit
+python scripts\rank_subkeys.py --config configs\experiments\phase6_confidence_ranking_r6.json --split-role validation --instance-index 0 --output results\phase6_ranking_r6_validation_0000.json
+python scripts\evaluate_phase6_confidence.py --config configs\experiments\phase6_confidence_r6.json
+python scripts\plot_phase6_confidence.py
+python scripts\export_dataset_v1.py --attack-config configs\data\phase6_pair64_attack_r6.json --output-dir datasets\phase6_pair64_r6 --skip-classifier --include-commit
+python scripts\rank_subkeys.py --config configs\experiments\phase6_pair64_ranking_r6.json --split-role validation --instance-index 0 --output results\phase6_pair64_ranking_r6_validation_0000.json
+python scripts\rank_subkeys.py --config configs\experiments\phase6_pair64_ranking_r6.json --pair-count 32 --split-role validation --instance-index 0 --output results\phase6_pair64_prefix32_ranking_r6_validation_0000.json
+python scripts\compare_pair_counts.py
 ```
 
 The `PYTHONPATH` setting lasts only for the current PowerShell session.
@@ -124,6 +135,17 @@ python scripts/export_dataset_v1.py --classifier-config configs/data/phase3_clas
 python scripts/train_distinguisher.py --config configs/training/phase3_baseline.json
 python scripts/export_dataset_v1.py --attack-config configs/data/phase4_attack_r6.json --output-dir datasets/phase4_attack_r6 --skip-classifier --include-commit
 python scripts/rank_subkeys.py --config configs/experiments/phase4_ranking_r6.json
+python scripts/plot_phase4_figures.py
+python scripts/run_phase5_integration.py --config configs/experiments/phase5_integration_r6.json
+python scripts/summarize_phase5.py
+python scripts/export_dataset_v1.py --attack-config configs/data/phase6_confidence_attack_r6.json --output-dir datasets/phase6_confidence_r6 --skip-classifier --include-commit
+python scripts/rank_subkeys.py --config configs/experiments/phase6_confidence_ranking_r6.json --split-role validation --instance-index 0 --output results/phase6_ranking_r6_validation_0000.json
+python scripts/evaluate_phase6_confidence.py --config configs/experiments/phase6_confidence_r6.json
+python scripts/plot_phase6_confidence.py
+python scripts/export_dataset_v1.py --attack-config configs/data/phase6_pair64_attack_r6.json --output-dir datasets/phase6_pair64_r6 --skip-classifier --include-commit
+python scripts/rank_subkeys.py --config configs/experiments/phase6_pair64_ranking_r6.json --split-role validation --instance-index 0 --output results/phase6_pair64_ranking_r6_validation_0000.json
+python scripts/rank_subkeys.py --config configs/experiments/phase6_pair64_ranking_r6.json --pair-count 32 --split-role validation --instance-index 0 --output results/phase6_pair64_prefix32_ranking_r6_validation_0000.json
+python scripts/compare_pair_counts.py
 ```
 
 The `PYTHONPATH` setting lasts only for the current Terminal session.
@@ -196,3 +218,72 @@ and its training configuration is
 The exporter writes a manifest and three checksummed shards. The training
 script verifies those files before training and evaluates the test split only
 after validation-based model selection.
+
+The Phase 5 configuration is
+[`configs/experiments/phase5_integration_r6.json`](../configs/experiments/phase5_integration_r6.json).
+It consumes a complete Phase 4 ranking result, uses the same 32-pair validation
+instance for all methods, and keeps its JSON result under the ignored
+`results/` directory. The integration runner does not tune a confidence
+threshold, modify the SAT model between methods, or treat a timeout as UNSAT.
+
+The Phase 6 commands use a separately seeded 16-instance validation benchmark.
+Repeat the ranking command for each validation index, changing both
+`--instance-index` and the output filename, before running the confidence
+evaluator. The evaluator refuses non-validation ranking results and does not
+select a threshold or fallback.
+
+## Phase 6A/6B pair-aware ranker study
+
+The pair-aware study adds a separate group-data format and two validation-only
+attack roles. It does not change Dataset v1, B0, or the held-out test split.
+The source basis is Gohr's single-pair rank-and-sum baseline, Chen et al.'s
+multi-pair derived-feature distinguisher, and the permutation-invariant Deep
+Sets construction.
+
+From the repository root, export and verify the group data and both validation
+roles:
+
+```text
+PYTHONPATH=.:src python scripts/export_phase6a_group_dataset.py --config configs/data/phase6a_pair_group_r5_g64.json --include-commit
+PYTHONPATH=.:src python scripts/export_phase6a_attack_validation.py --config configs/data/phase6a_selection_attack_r6.json --include-commit
+PYTHONPATH=.:src python scripts/export_phase6a_attack_validation.py --config configs/data/phase6a_confirmation_attack_r6.json --include-commit
+PYTHONPATH=.:src python scripts/phase6a_feasibility.py
+```
+
+Train B1, B2, and B3 from the frozen Phase 3 B0 encoder:
+
+```text
+PYTHONPATH=.:src python scripts/train_phase6a_rankers.py --config configs/training/phase6a_pair_group_rankers.json
+```
+
+Run complete-domain rankings for every method and validation instance. The
+following is one example; repeat it for methods `b0`, `b1_mean`, `b2_moments`,
+and `b3_weighted`, roles `selection` and `confirmation`, and indices 0--31:
+
+```text
+PYTHONPATH=.:src python scripts/rank_phase6a_candidates.py --config configs/experiments/phase6a_ranking.json --method b0 --role selection --instance-index 0
+```
+
+The reference PyTorch path is the default. An opt-in CPU NumPy path is
+available for timing experiments:
+
+```text
+PYTHONPATH=.:src python scripts/rank_phase6a_candidates.py --config configs/experiments/phase6a_ranking.json --method b1_mean --role selection --instance-index 0 --inference-backend numpy
+```
+
+It uses the same checkpoint weights but is only an execution optimisation.
+Compare its logits and candidate order with the reference path before using
+it for a reported result; the PyTorch path remains authoritative if ordering
+differs.
+
+Omit `--candidate-count` for the full 65,536-candidate domain. The prefix
+option is only for feasibility checks. Once the 256 ranking result files are
+present, summarize them with:
+
+```text
+PYTHONPATH=.:src python scripts/summarize_phase6a.py --config configs/experiments/phase6a_ranking.json
+```
+
+The summary uses fixed top-16 and median-rank rules to select a candidate from
+the selection role and checks it independently on confirmation. It does not
+open a held-out test split or select a confidence fallback.

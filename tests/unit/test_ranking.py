@@ -207,3 +207,49 @@ def test_evaluation_reports_missing_true_candidate_without_guessing() -> None:
     assert evaluation["true_subkey_in_candidate_set"] is False
     assert evaluation["true_rank"] is None
     assert evaluation["top_k_membership"] == {"0": False, "1": False, "3": False}
+
+
+def test_pair_subset_stability_reuses_per_pair_logits() -> None:
+    instance = _instance()
+    ranking = rank_final_round_subkeys(
+        instance,
+        _ConstantModel(),
+        candidate_values=(0, 1, 2, 3),
+        candidate_batch_size=2,
+        stability_pair_subsets=((0,), (1,)),
+        stability_top_k=2,
+    )
+
+    assert ranking.candidate_order == (0, 1, 2, 3)
+    assert ranking.pair_subset_stability is not None
+    stability = ranking.pair_subset_stability
+    assert stability.pair_subsets == ((0,), (1,))
+    assert stability.subset_top_k_candidates == ((0, 1), (0, 1))
+    assert stability.full_top_k_jaccard == 1.0
+    assert stability.pairwise_top_k_jaccard == 1.0
+    assert stability.top1_full_order_agreement == 1.0
+    assert ranking.to_dict()["pair_subset_stability"]["top_k"] == 2
+
+
+@pytest.mark.parametrize(
+    "pair_subsets",
+    [
+        ((0,),),
+        ((), (1,)),
+        ((0, 0), (1,)),
+        ((0,), (0, 1)),
+        ((0,), (2,)),
+        ((True,), (1,)),
+    ],
+)
+def test_invalid_pair_subset_stability_is_rejected(
+    pair_subsets: tuple[tuple[object, ...], ...],
+) -> None:
+    with pytest.raises((TypeError, ValueError)):
+        rank_final_round_subkeys(
+            _instance(),
+            _ConstantModel(),
+            candidate_values=(0, 1, 2, 3),
+            stability_pair_subsets=pair_subsets,  # type: ignore[arg-type]
+            stability_top_k=2,
+        )

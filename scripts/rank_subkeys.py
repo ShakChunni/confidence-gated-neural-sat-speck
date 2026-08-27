@@ -8,6 +8,7 @@ import json
 import platform
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -117,6 +118,12 @@ def _parse_args() -> argparse.Namespace:
         help="Override the zero-based instance index in the configured split.",
     )
     parser.add_argument(
+        "--pair-count",
+        type=int,
+        default=None,
+        help="Pilot override; use the prefix of the instance's related pairs.",
+    )
+    parser.add_argument(
         "--split-role",
         choices=ATTACK_SPLIT_ROLES,
         default=None,
@@ -198,6 +205,10 @@ def main() -> None:
         raise SystemExit("candidate_batch_size must be positive")
     if config.get("score_aggregation") != "sum_logits":
         raise SystemExit("Phase 4 currently requires score_aggregation=sum_logits")
+    stability_pair_subsets = config.get("stability_pair_subsets")
+    stability_top_k = config.get("stability_top_k", 16)
+    if isinstance(stability_top_k, bool) or not isinstance(stability_top_k, int):
+        raise SystemExit("stability_top_k must be an integer")
 
     expected_difference_value = config.get("expected_input_difference")
     if (
@@ -229,6 +240,11 @@ def main() -> None:
     print(f"Candidate count: {candidate_count}")
     print(f"Candidate batch size: {candidate_batch_size}")
     print(f"Device: {device}")
+    if stability_pair_subsets is not None:
+        print(
+            f"Pair-subset stability: {len(stability_pair_subsets)} subsets, "
+            f"top-{stability_top_k}"
+        )
     print("=" * 70)
 
     expected_attack_dataset_id = str(config["expected_attack_dataset_id"])
@@ -248,6 +264,12 @@ def main() -> None:
             f"instance_index {instance_index} is outside the {split_role} split"
         )
     instance = attack_set.instances[instance_index]
+    if args.pair_count is not None:
+        if args.pair_count <= 0 or args.pair_count > len(instance.pairs):
+            raise SystemExit(
+                "pair-count must be between one and the instance pair count"
+            )
+        instance = replace(instance, pairs=instance.pairs[: args.pair_count])
     print(
         f"Verified {split_role} shard: {len(attack_set.instances)} instances, "
         f"{len(instance.pairs)} pairs for {instance.instance_id}"
@@ -269,6 +291,8 @@ def main() -> None:
         candidate_values=range(candidate_count),
         candidate_batch_size=candidate_batch_size,
         device=device,
+        stability_pair_subsets=stability_pair_subsets,
+        stability_top_k=stability_top_k,
     )
     configured_top_k_values = tuple(config.get("top_k_values", ()))
     for top_k in configured_top_k_values:

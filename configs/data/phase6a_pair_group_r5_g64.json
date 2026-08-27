@@ -1,0 +1,19 @@
+{
+  "schema": "neural_sat_speck.phase6a_pair_group_config.v1",
+  "dataset_id": "speck32_64_pair_group_phase6a_r5_g64",
+  "output_dir": "datasets/phase6a_pair_group_r5_g64",
+  "generated_at": "2026-08-27T00:00:00+08:00",
+  "rounds": 5,
+  "group_size": 64,
+  "input_difference": [64, 0],
+  "splits": {
+    "train": {
+      "group_count": 4096,
+      "seed": 61001
+    },
+    "validation": {
+      "group_count": 1024,
+      "seed": 62001
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "neural_sat_speck.phase6a_validation_attack_config.v1",
+  "dataset_id": "speck32_64_attack_phase6a_selection_r6",
+  "output_dir": "datasets/phase6a_attack_selection_r6",
+  "generated_at": "2026-08-27T00:00:00+08:00",
+  "rounds": 6,
+  "pair_count": 64,
+  "instance_count": 32,
+  "seed": 64001,
+  "split_role": "validation"
+}

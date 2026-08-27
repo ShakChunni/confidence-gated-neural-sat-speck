@@ -1,0 +1,18 @@
+{
+  "schema": "neural_sat_speck.phase6_confidence_config.v1",
+  "phase": 6,
+  "ranking_results_glob": "results/phase6_pair64_ranking_r6_validation_*.json",
+  "expected_dataset_id": "speck32_64_attack_phase6_pair64_r6",
+  "expected_rounds": 6,
+  "expected_input_difference": [64, 0],
+  "split_role": "validation",
+  "top_k": 16,
+  "feature_names": [
+    "top1_top2_margin",
+    "top1_top_k_margin",
+    "top1_softmax_concentration",
+    "normalized_softmax_entropy"
+  ],
+  "primary_confidence_feature": "top1_top2_margin",
+  "output": "results/phase6_pair64_confidence_validation_r6.json"
+}

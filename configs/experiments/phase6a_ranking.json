@@ -1,0 +1,25 @@
+{
+  "schema": "neural_sat_speck.phase6a_ranking_config.v1",
+  "candidate_count": 65536,
+  "candidate_batch_size": 128,
+  "device": "cpu",
+  "validation_instance_count": 32,
+  "top_k_values": [1, 16, 32, 64],
+  "baseline_checkpoint": "models/speck32_64_phase3_r5_distinguisher.pt",
+  "candidate_checkpoints": {
+    "b1_mean": "models/speck32_64_phase6a_b1_mean_g64.pt",
+    "b2_moments": "models/speck32_64_phase6a_b2_moments_g64.pt",
+    "b3_weighted": "models/speck32_64_phase6a_b3_weighted_g64.pt"
+  },
+  "attack_manifests": {
+    "selection": {
+      "manifest": "datasets/phase6a_attack_selection_r6/manifest.json",
+      "dataset_id": "speck32_64_attack_phase6a_selection_r6"
+    },
+    "confirmation": {
+      "manifest": "datasets/phase6a_attack_confirmation_r6/manifest.json",
+      "dataset_id": "speck32_64_attack_phase6a_confirmation_r6"
+    }
+  },
+  "output_root": "results/phase6a_rankings"
+}
