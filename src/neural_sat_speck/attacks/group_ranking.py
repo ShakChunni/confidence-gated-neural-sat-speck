@@ -160,8 +160,10 @@ def rank_pair_group_subkeys(
         raise TypeError("instance must be an AttackInstance")
     if len(instance.pairs) != 64:
         raise ValueError("pair-aware ranking requires an instance with 64 pairs")
-    if not isinstance(model, PairGroupRanker):
+    if not isinstance(model, (PairGroupRanker, NumpyInferenceModule)):
         raise TypeError("model must be a PairGroupRanker")
+    if isinstance(model, NumpyInferenceModule) and not model.is_group_model:
+        raise TypeError("NumPy ranking model must wrap a PairGroupRanker")
     if isinstance(candidate_batch_size, bool) or not isinstance(
         candidate_batch_size, int
     ):
@@ -179,6 +181,7 @@ def rank_pair_group_subkeys(
     peak_feature_tensor_bytes = 0
     scores: list[float] = []
     numpy_backend = isinstance(model, NumpyInferenceModule)
+    vectorized_features = numpy_backend or resolved_device.type == "cpu"
 
     model.to(resolved_device)
     model.eval()
@@ -187,11 +190,15 @@ def rank_pair_group_subkeys(
             for start in range(0, len(candidates), candidate_batch_size):
                 candidate_batch = candidates[start : start + candidate_batch_size]
                 partial_started = time.perf_counter()
-                if numpy_backend:
+                if vectorized_features:
                     feature_array = vectorized_final_round_features(
                         instance.pairs,
                         candidate_batch,
                     )
+                    if not numpy_backend:
+                        features = torch.from_numpy(feature_array).to(
+                            resolved_device
+                        )
                 else:
                     batch_features: list[tuple[int, ...]] = []
                     for candidate in candidate_batch:
@@ -208,7 +215,7 @@ def rank_pair_group_subkeys(
                                 encode_ciphertext_pair(state0, state1)
                             )
                 partial_seconds += time.perf_counter() - partial_started
-                if numpy_backend:
+                if vectorized_features:
                     feature_bytes = feature_array.nbytes
                 else:
                     features = features_to_tensor(batch_features).reshape(

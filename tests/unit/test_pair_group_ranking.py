@@ -8,6 +8,10 @@ from neural_sat_speck.attacks.group_ranking import (
 from neural_sat_speck.data.attack import AttackInstanceConfig, generate_attack_instances
 from neural_sat_speck.neural.group_model import build_pair_group_model
 from neural_sat_speck.neural.model import GohrResNet
+from neural_sat_speck.neural.numpy_inference import (
+    NumpyInferenceModule,
+    NumpyRankerInference,
+)
 
 
 def _instance():
@@ -76,3 +80,32 @@ def test_pair_group_ties_use_ascending_candidate_value() -> None:
     assert ranking.candidate_order == (2, 7, 9)
     assert ranking.rank_interval(7) == (1, 3)
     assert ranking.rank(7) == 2
+
+
+def test_numpy_pair_group_ranking_matches_reference_on_small_domain() -> None:
+    instance = _instance()
+    model = _model()
+    candidates = tuple(instance.final_round_subkey ^ offset for offset in range(5))
+    reference = rank_pair_group_subkeys(
+        instance,
+        model,
+        candidate_values=candidates,
+        candidate_batch_size=2,
+        device="cpu",
+    )
+    numpy_model = NumpyInferenceModule(NumpyRankerInference(model))
+    accelerated = rank_pair_group_subkeys(
+        instance,
+        numpy_model,
+        candidate_values=candidates,
+        candidate_batch_size=2,
+        device="cpu",
+    )
+
+    assert accelerated.candidate_order == reference.candidate_order
+    assert torch.allclose(
+        torch.tensor(accelerated.candidate_scores),
+        torch.tensor(reference.candidate_scores),
+        atol=1e-4,
+        rtol=1e-5,
+    )

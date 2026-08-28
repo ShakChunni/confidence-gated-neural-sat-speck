@@ -341,6 +341,7 @@ def rank_final_round_subkeys(
     peak_feature_tensor_bytes = 0
     scores: list[float] = []
     numpy_backend = isinstance(model, NumpyInferenceModule)
+    vectorized_features = numpy_backend or resolved_device.type == "cpu"
     stability_scores = (
         [[0.0] * len(candidates) for _ in validated_pair_subsets]
         if validated_pair_subsets
@@ -354,7 +355,7 @@ def rank_final_round_subkeys(
             for start in range(0, len(candidates), candidate_batch_size):
                 candidate_batch = candidates[start : start + candidate_batch_size]
                 feature_started = time.perf_counter()
-                if numpy_backend:
+                if vectorized_features:
                     feature_array = vectorized_final_round_features(
                         instance.pairs,
                         candidate_batch,
@@ -363,6 +364,14 @@ def rank_final_round_subkeys(
                         peak_feature_tensor_bytes,
                         feature_array.nbytes,
                     )
+                    if not numpy_backend:
+                        feature_tensor = torch.from_numpy(
+                            feature_array.reshape(
+                                len(candidate_batch) * len(instance.pairs),
+                                4,
+                                16,
+                            )
+                        ).to(resolved_device)
                 else:
                     features: list[tuple[int, ...]] = []
                     for candidate in candidate_batch:

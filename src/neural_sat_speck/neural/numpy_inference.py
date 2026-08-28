@@ -56,24 +56,16 @@ def _conv1d(
         raise ValueError("convolution kernel must be a positive odd size")
 
     padding = kernel_size // 2
-    output = np.zeros((batch, output_channels, width), dtype=np.float32)
-    for kernel_index in range(kernel_size):
-        offset = kernel_index - padding
-        source_start = max(0, offset)
-        source_end = min(width, width + offset)
-        destination_start = max(0, -offset)
-        destination_end = min(width, width - offset)
-        shifted = np.zeros_like(values)
-        shifted[:, :, destination_start:destination_end] = values[
-            :, :, source_start:source_end
-        ]
-        output += np.einsum(
-            "ncl,oc->nol",
-            shifted,
-            weight[:, :, kernel_index],
-            optimize=True,
-        )
-    return output
+    padded = np.pad(values, ((0, 0), (0, 0), (padding, padding)))
+    windows = np.lib.stride_tricks.sliding_window_view(
+        padded,
+        kernel_size,
+        axis=2,
+    )
+    return np.asarray(
+        np.einsum("nclk,ock->nol", windows, weight, optimize=True),
+        dtype=np.float32,
+    )
 
 
 def _batch_norm(
@@ -239,6 +231,12 @@ class NumpyRankerInference:
         )
         self.config = model.config
         self._prefix = "encoder." if self._is_group_model else ""
+
+    @property
+    def is_group_model(self) -> bool:
+        """Whether this predictor wraps a pair-group ranker."""
+
+        return self._is_group_model
 
     def _array(self, name: str, *, encoder: bool = False) -> np.ndarray:
         if encoder and not self._is_group_model:
@@ -426,6 +424,12 @@ class NumpyInferenceModule(nn.Module):
         """Evaluate a float32 NumPy feature array without a tensor round-trip."""
 
         return self._predictor.predict(features)
+
+    @property
+    def is_group_model(self) -> bool:
+        """Whether the wrapped predictor expects grouped pair features."""
+
+        return self._predictor.is_group_model
 
 
 __all__ = [
