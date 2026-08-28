@@ -256,9 +256,10 @@ Train B1, B2, and B3 from the frozen Phase 3 B0 encoder:
 PYTHONPATH=.:src python scripts/train_phase6a_rankers.py --config configs/training/phase6a_pair_group_rankers.json
 ```
 
-Run complete-domain rankings for every method and validation instance. The
-following is one example; repeat it for methods `b0`, `b1_mean`, `b2_moments`,
-and `b3_weighted`, roles `selection` and `confirmation`, and indices 0--31:
+Run complete-domain rankings for every method in the selection role. For the
+confirmation role, run only `b0` and the method selected from the selection
+role. Thus the frozen study has 128 selection jobs and 64 confirmation jobs,
+192 complete-domain rankings in total. The following is one example:
 
 ```text
 PYTHONPATH=.:src python scripts/rank_phase6a_candidates.py --config configs/experiments/phase6a_ranking.json --method b0 --role selection --instance-index 0
@@ -277,7 +278,7 @@ it for a reported result; the PyTorch path remains authoritative if ordering
 differs.
 
 Omit `--candidate-count` for the full 65,536-candidate domain. The prefix
-option is only for feasibility checks. Once the 256 ranking result files are
+option is only for feasibility checks. Once the 192 ranking result files are
 present, summarize them with:
 
 ```text
@@ -287,3 +288,9 @@ PYTHONPATH=.:src python scripts/summarize_phase6a.py --config configs/experiment
 The summary uses fixed top-16 and median-rank rules to select a candidate from
 the selection role and checks it independently on confirmation. It does not
 open a held-out test split or select a confidence fallback.
+
+The recorded Phase 6A outcome selected B1 on the selection role, but B1 did
+not pass the confirmation median-rank condition. This is retained as a
+validation result; it does not promote B1 to the preferred ranker or open the
+SAT pilot. Large datasets, checkpoints, and ranking JSON files remain local
+and ignored by Git.

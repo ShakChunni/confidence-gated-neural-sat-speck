@@ -15,6 +15,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = REPOSITORY_ROOT / "configs" / "experiments" / "phase6a_ranking.json"
 METHODS = ("b0", *PAIR_GROUP_VARIANTS)
 ROLES = ("selection", "confirmation")
+COMPLETE_CANDIDATE_COUNT = 1 << 16
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -43,6 +44,39 @@ def _parse_args() -> argparse.Namespace:
 
 def _result_path(root: Path, role: str, method: str, index: int) -> Path:
     return root / role / method / f"ranking_{index:04d}.json"
+
+
+def _load_records(
+    output_root: Path,
+    *,
+    role: str,
+    methods: tuple[str, ...],
+    instance_count: int,
+) -> dict[str, list[dict[str, Any]]]:
+    records_by_method: dict[str, list[dict[str, Any]]] = {}
+    for method in methods:
+        records: list[dict[str, Any]] = []
+        for index in range(instance_count):
+            result_path = _result_path(output_root, role, method, index)
+            if not result_path.is_file():
+                raise SystemExit(f"missing ranking result: {result_path}")
+            record = _load_json(result_path)
+            if record.get("method") != method:
+                raise SystemExit(f"result method mismatch in {result_path}")
+            if record.get("instance", {}).get("validation_role") != role:
+                raise SystemExit(f"result validation role mismatch in {result_path}")
+            candidate_domain = record.get("candidate_domain")
+            if (
+                not isinstance(candidate_domain, dict)
+                or candidate_domain.get("complete_16_bit_domain") is not True
+                or candidate_domain.get("count") != COMPLETE_CANDIDATE_COUNT
+                or candidate_domain.get("first") != 0
+                or candidate_domain.get("last") != COMPLETE_CANDIDATE_COUNT - 1
+            ):
+                raise SystemExit(f"result is not complete-domain ranking: {result_path}")
+            records.append(record)
+        records_by_method[method] = records
+    return records_by_method
 
 
 def _bootstrap_interval(
@@ -157,36 +191,27 @@ def main() -> None:
         raise SystemExit("Phase 6A ranking configuration schema is not recognised")
     output_root = _repository_path(str(config["output_root"])).resolve()
     instance_count = int(config.get("validation_instance_count", 32))
-    all_records: dict[str, dict[str, list[dict[str, Any]]]] = {}
-    for role in ROLES:
-        all_records[role] = {}
-        for method in METHODS:
-            records: list[dict[str, Any]] = []
-            for index in range(instance_count):
-                result_path = _result_path(output_root, role, method, index)
-                if not result_path.is_file():
-                    raise SystemExit(f"missing ranking result: {result_path}")
-                record = _load_json(result_path)
-                if record.get("method") != method:
-                    raise SystemExit(f"result method mismatch in {result_path}")
-                if record.get("instance", {}).get("validation_role") != role:
-                    raise SystemExit(f"result validation role mismatch in {result_path}")
-                if record.get("candidate_domain", {}).get("complete_16_bit_domain") is not True:
-                    raise SystemExit(f"result is not complete-domain ranking: {result_path}")
-                records.append(record)
-            all_records[role][method] = records
+    all_records: dict[str, dict[str, list[dict[str, Any]]]] = {
+        "selection": _load_records(
+            output_root,
+            role="selection",
+            methods=METHODS,
+            instance_count=instance_count,
+        )
+    }
 
     summaries: dict[str, Any] = {"selection": {}, "confirmation": {}}
-    for role in ROLES:
-        for method in METHODS:
-            summaries[role][method] = _method_summary(all_records[role][method])
-        baseline = all_records[role]["b0"]
-        for method in PAIR_GROUP_VARIANTS:
-            summaries[role][method]["paired_vs_b0"] = _paired_summary(
-                all_records[role][method],
-                baseline,
-                seed=63001 + ROLES.index(role) * 100 + PAIR_GROUP_VARIANTS.index(method),
-            )
+    for method in METHODS:
+        summaries["selection"][method] = _method_summary(
+            all_records["selection"][method]
+        )
+    baseline_selection_records = all_records["selection"]["b0"]
+    for method in PAIR_GROUP_VARIANTS:
+        summaries["selection"][method]["paired_vs_b0"] = _paired_summary(
+            all_records["selection"][method],
+            baseline_selection_records,
+            seed=63001 + PAIR_GROUP_VARIANTS.index(method),
+        )
 
     selection_scores = {
         method: (
@@ -205,6 +230,23 @@ def main() -> None:
         >= baseline_selection["top_k_hits"]["16"] + 4
         and selection_summary["median_rank"] < baseline_selection["median_rank"]
     )
+
+    confirmation_methods = ("b0", selected_method)
+    all_records["confirmation"] = _load_records(
+        output_root,
+        role="confirmation",
+        methods=confirmation_methods,
+        instance_count=instance_count,
+    )
+    for method in confirmation_methods:
+        summaries["confirmation"][method] = _method_summary(
+            all_records["confirmation"][method]
+        )
+    summaries["confirmation"][selected_method]["paired_vs_b0"] = _paired_summary(
+        all_records["confirmation"][selected_method],
+        all_records["confirmation"]["b0"],
+        seed=63101 + PAIR_GROUP_VARIANTS.index(selected_method),
+    )
     confirmation_summary = summaries["confirmation"][selected_method]
     baseline_confirmation = summaries["confirmation"]["b0"]
     confirmation_pass = (
@@ -221,6 +263,7 @@ def main() -> None:
             "geometric-mean rank, then lexical method id"
         ),
         "selected_method_by_selection": selected_method,
+        "confirmation_methods": list(confirmation_methods),
         "selection_gate": {
             "required_top16_hit_margin": 4,
             "required_lower_median_rank": True,
@@ -250,7 +293,7 @@ def main() -> None:
     print(f"SAT pilot promotion: {report['promotion_to_sat_pilot']}")
     for role in ROLES:
         print(f"{role}:")
-        for method in METHODS:
+        for method in summaries[role]:
             summary = summaries[role][method]
             print(
                 f"  {method}: top16 {summary['top_k_hits']['16']}/{instance_count}, "

@@ -6,11 +6,11 @@ This repository supports the COMP6002 research project:
 
 The local `PLAN.md` is an untracked working-instructions file and is not part
 of the public repository. The current implementation includes the bounded
-Phase 5 incremental neural-SAT integration pilot and the Phase 6 validation-only
-confidence-feature pilot, built on the
-source-verified scalar, deterministic data, exact SAT, Phase 3 neural, and
-Phase 4 ranking foundations. A frozen confidence threshold and fallback
-selection remain later decisions.
+Phase 5 incremental neural-SAT integration pilot, the Phase 6 validation-only
+confidence-feature pilot, and the completed Phase 6A pair-aware ranker study,
+built on the source-verified scalar, deterministic data, exact SAT, Phase 3
+neural, and Phase 4 ranking foundations. A frozen confidence threshold and
+fallback selection remain later decisions.
 
 The current baseline checkpoint is frozen at commit `b5597a4`. Future ranker
 improvements must use new configurations and remain comparable with this
@@ -36,6 +36,10 @@ criteria have been met.
   verification.
 - A Phase 6 post-hoc confidence layer with reproducible margins,
   score-concentration, entropy, and validation-only risk--coverage metrics.
+- A Phase 6A group dataset and three separately identified pair-aware rankers
+  (B1 mean pooling, B2 mean-plus-variance pooling, and B3 learned
+  reliability-weighted pooling), with complete-domain ranking and a frozen
+  selection/confirmation protocol.
 - Unit and integration tests for primitives, key expansion, cipher, partial decryption,
   data, SAT feasibility, neural training, checkpoint reload, and candidate ranking.
 
@@ -178,12 +182,12 @@ The paired analysis can be regenerated with
 `scripts/compare_pair_counts.py` after producing both ranking prefixes. It is
 kept separate from the frozen 32-pair Phase 4 baseline.
 
-The next bounded study compares three new, separately identified pair-aware
-rankers against frozen B0: B1 mean pooling, B2 mean-plus-variance pooling, and
-B3 learned reliability-weighted pooling. The source basis is Gohr's ranking
-baseline, Chen et al.'s multi-pair distinguisher, and Deep Sets. The group
-dataset and attack roles are new validation-only artefacts; Dataset v1 and the
-held-out test split remain untouched.
+The completed bounded study compared three new, separately identified
+pair-aware rankers against frozen B0: B1 mean pooling, B2 mean-plus-variance
+pooling, and B3 learned reliability-weighted pooling. The source basis is
+Gohr's ranking baseline, Chen et al.'s multi-pair distinguisher, and Deep Sets.
+The group dataset and attack roles are validation-only artefacts; Dataset v1
+and the held-out test split remain untouched.
 
 Generate the local group data and validation roles:
 
@@ -200,18 +204,29 @@ Train the three candidates from the frozen B0 encoder:
 PYTHONPATH=.:src python scripts/train_phase6a_rankers.py --config configs/training/phase6a_pair_group_rankers.json
 ~~~
 
-Run one complete-domain ranking job. Repeat for each method (`b0`, `b1_mean`,
-`b2_moments`, `b3_weighted`), validation role, and index from 0 through 31:
+Run one complete-domain ranking job. For the frozen study, run all four methods
+(`b0`, `b1_mean`, `b2_moments`, `b3_weighted`) for the 32-instance selection
+role. The confirmation role is deliberately narrower: run `b0` and the
+method selected from the selection role for indices 0 through 31. This gives
+128 selection rankings plus 64 confirmation rankings, or 192 complete-domain
+jobs in total:
 
 ~~~text
 PYTHONPATH=.:src python scripts/rank_phase6a_candidates.py --config configs/experiments/phase6a_ranking.json --method b1_mean --role selection --instance-index 0
 ~~~
 
 The optional `--candidate-count` is only a feasibility prefix. Omit it for the
-declared 65,536-candidate domain. After all 256 ranking jobs are complete,
+declared 65,536-candidate domain. After the 192 ranking jobs are complete,
 run `PYTHONPATH=.:src python scripts/summarize_phase6a.py`. The summary applies
 the frozen selection and confirmation gates; it does not inspect the held-out
 test split or implement confidence fallback.
+
+In the completed results, B1 improved selection top-16 recall from 24/32 to
+30/32 and was checked on a fresh confirmation role. Confirmation top-16 recall
+was 31/32 for B1 versus 26/32 for B0, but B1's median rank was 8.5 versus 7.5
+for B0. The predeclared confirmation gate therefore failed: B1 is retained as
+an informative top-16/rank-distribution trade-off, while B0 remains the
+preferred frozen ranker. The SAT pilot was not opened.
 
 The plotting command creates a local SVG risk--coverage figure (and an
 optional local PNG preview can be rendered with `rsvg-convert`).
