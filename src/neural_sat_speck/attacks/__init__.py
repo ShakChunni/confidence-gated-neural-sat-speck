@@ -6,6 +6,14 @@ from .group_ranking import (
     evaluate_pair_group_subkey_ranking,
     rank_pair_group_subkeys,
 )
+from .hierarchical_ranking import (
+    HIERARCHICAL_METHOD_ID,
+    HIERARCHICAL_PAIR_COUNT,
+    HIERARCHICAL_TIE_RULE,
+    HIERARCHICAL_WINDOW_SIZE,
+    HierarchicalSubkeyRanking,
+    rank_hierarchical_subkeys,
+)
 from .ranking import (
     ALL_FINAL_ROUND_SUBKEYS,
     PairSubsetStability,
@@ -28,6 +36,11 @@ from .recovery import (
 __all__ = [
     "ALL_FINAL_ROUND_SUBKEYS",
     "CandidateAttempt",
+    "HIERARCHICAL_METHOD_ID",
+    "HIERARCHICAL_PAIR_COUNT",
+    "HIERARCHICAL_TIE_RULE",
+    "HIERARCHICAL_WINDOW_SIZE",
+    "HierarchicalSubkeyRanking",
     "PairSubsetStability",
     "RecoveryResult",
     "SubkeyRanking",
@@ -36,6 +49,7 @@ __all__ = [
     "independent_verification_pairs",
     "known_pairs_for_attack_instance",
     "rank_final_round_subkeys",
+    "rank_hierarchical_subkeys",
     "PAIR_GROUP_SCORE_AGGREGATION",
     "PairGroupSubkeyRanking",
     "evaluate_pair_group_subkey_ranking",

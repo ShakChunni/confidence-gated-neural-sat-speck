@@ -1,0 +1,153 @@
+{
+  "schema": "neural_sat_speck.phase6b_h1_adjudication_config.v1",
+  "phase": 6,
+  "study": "phase6b_h1_b0_b1_adjudication",
+  "validation_only": true,
+  "held_out_test_generated": false,
+  "dataset": {
+    "dataset_id": "speck32_64_attack_phase6b_h1_adjudication_r6",
+    "manifest_path": "datasets/phase6b_h1_adjudication_r6/manifest.json",
+    "output_dir": "datasets/phase6b_h1_adjudication_r6",
+    "generated_at": "2026-08-29T00:00:00+08:00",
+    "rounds": 6,
+    "pair_count": 64,
+    "instance_count": 64,
+    "seed": 96001,
+    "split_role": "validation",
+    "input_difference": [64, 0],
+    "pair_construction": "plaintext_difference",
+    "key_generation_policy": "one_random_master_key_per_instance"
+  },
+  "candidate_domain": {
+    "first": 0,
+    "last": 65535,
+    "count": 65536,
+    "complete_16_bit_domain": true
+  },
+  "methods": {
+    "b0": {
+      "method_id": "b0_sum_logits",
+      "score_aggregation": "sum_logits",
+      "checkpoint_path": "models/speck32_64_phase3_r5_distinguisher.pt",
+      "checkpoint_sha256": "cb0cbd895acd53f2779b437eb613dcee916007c1111ef39082f1e1236adfc9e8",
+      "model_id": "speck32_64_b0_gohr_baseline"
+    },
+    "b1": {
+      "method_id": "b1_group_logit",
+      "score_aggregation": "group_logit",
+      "checkpoint_path": "models/speck32_64_phase6a_b1_mean_g64.pt",
+      "checkpoint_sha256": "a93d29a76a521b6f3fd0f1dff943df9f74de3857169b9d735c9aa478817954d5",
+      "model_id": "speck32_64_b1_mean_g64",
+      "group_size": 64
+    },
+    "h1": {
+      "method_id": "h1_b1_top16_b0_rerank",
+      "window_size": 16,
+      "candidate_budget": 16,
+      "tie_rule": "descending_b0_sum_logits_then_ascending_candidate"
+    }
+  },
+  "ranking": {
+    "b0_candidate_batch_size": 4096,
+    "b1_candidate_batch_size": 4096,
+    "h1_b0_window_batch_size": 16,
+    "pair_count": 64,
+    "candidate_domain": "complete_16_bit_domain",
+    "b1_order_is_input": true,
+    "h1_tail_policy": "unchanged_b1_positions_17_through_65536"
+  },
+  "backend_policy": {
+    "reference": "pytorch",
+    "default": "pytorch",
+    "accelerated_candidate": "numpy",
+    "accelerated_requires_equivalence": true,
+    "accelerated_equivalence_scope": "scores_and_order_for_the_budget_relevant_top16",
+    "score_abs_tolerance": 0.00001,
+    "reported_b1_reference_required": true
+  },
+  "runtime": {
+    "device": "cpu",
+    "torch_num_threads": 4,
+    "torch_num_interop_threads": 10
+  },
+  "metrics": {
+    "primary": "capped_attempts",
+    "capped_attempts_definition": "rank if rank <= 16 else 17",
+    "miss_value": 17,
+    "top_k_values": [1, 2, 4, 8, 12, 16],
+    "report": [
+      "exact_true_subkey_rank",
+      "top_k_recall",
+      "median_exact_rank",
+      "median_capped_attempts",
+      "mean_capped_attempts",
+      "geometric_mean_rank",
+      "mean_log2_rank",
+      "paired_win_tie_loss",
+      "solved_instance_curves",
+      "paired_bootstrap_confidence_intervals",
+      "worst_rank",
+      "complete_ranking_time",
+      "h1_b0_window_overhead",
+      "peak_feature_memory"
+    ],
+    "bootstrap_replicates": 10000,
+    "bootstrap_seed": 97001,
+    "bootstrap_confidence": 0.95
+  },
+  "acceptance_gate": {
+    "h1_top16_set_equals_b1_on_every_instance": true,
+    "h1_top16_recall_equals_b1_by_construction": true,
+    "h1_median_capped_attempts_lower_than_b0_and_b1": true,
+    "h1_mean_capped_attempts_lower_than_b0_and_b1": true,
+    "report_top1_through_top8": true,
+    "h1_b0_window_overhead_max_fraction_of_b1": 0.05,
+    "open_exact_sat_only_if_all_conditions_pass": true
+  },
+  "timing_policy": {
+    "clock": "time.perf_counter",
+    "include_b1_complete_domain": true,
+    "include_b0_complete_domain": true,
+    "include_h1_b0_window": true,
+    "include_h1_composition": true,
+    "training_time_reported_separately": true,
+    "same_device_and_backend_for_compared_methods": true,
+    "peak_feature_tensor_bytes_recorded": true,
+    "execution_order": "b0_then_b1_for_even_validation_index_b1_then_b0_for_odd",
+    "single_process_sequential": true,
+    "concurrent_ranking_jobs": false,
+    "peak_rss_bytes_recorded": true
+  },
+  "smoke": {
+    "instance_count": 1,
+    "deterministic_rerun_required": true,
+    "serialization_round_trip_required": true,
+    "b0_window_call_count_required": 16,
+    "backend_equivalence_required_before_acceleration": true
+  },
+  "seed_exclusions": [
+    1001,
+    2001,
+    3001,
+    4001,
+    5001,
+    6001,
+    51001,
+    52001,
+    53001,
+    61001,
+    62001,
+    63001,
+    64001,
+    65001,
+    72001,
+    73001,
+    81001,
+    82001,
+    83001,
+    91001,
+    92001,
+    93001
+  ],
+  "output_root": "results/phase6b_h1_adjudication"
+}
