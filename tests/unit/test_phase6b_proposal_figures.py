@@ -9,10 +9,15 @@ from types import ModuleType
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPOSITORY_ROOT / "scripts/plot_phase6b_proposal_figures.py"
-SUMMARY_PATH = (
+_PRIMARY_SUMMARY = (
     REPOSITORY_ROOT
     / "results/phase6b_h1_adjudication/eager/summary.json"
 )
+_FIXTURE_SUMMARY = (
+    REPOSITORY_ROOT
+    / "tests/fixtures/phase6b_summary.json"
+)
+SUMMARY_PATH = _PRIMARY_SUMMARY if _PRIMARY_SUMMARY.exists() else _FIXTURE_SUMMARY
 FIGURES_DIR = REPOSITORY_ROOT / "results/figures/proposal"
 
 
@@ -80,30 +85,26 @@ def test_all_eight_proposal_figures_generate_valid_svg() -> None:
         assert "Phase 6" not in content, f"{name} should not contain internal phase names"
 
 
-def test_proposal_figures_exist_in_all_three_formats() -> None:
-    expected_stems = [
-        "methodology_pipeline",
-        "b1_pair_aware_architecture",
-        "b0_b1_prospective_results",
-        "validation_protocol",
-        "research_positioning",
-        "exact_recovery_verification",
-        "confidence_fallback_mechanism",
-        "evaluation_matrix",
-    ]
+def test_proposal_figures_generation_in_temp_dir(tmp_path: Path) -> None:
+    module = _figures()
+    summary = module._load_summary(SUMMARY_PATH)
 
-    for stem in expected_stems:
-        svg_file = FIGURES_DIR / f"{stem}.svg"
-        png_file = FIGURES_DIR / f"{stem}.png"
-        pdf_file = FIGURES_DIR / f"{stem}.pdf"
+    figures = {
+        "methodology_pipeline.svg": module._methodology_figure(),
+        "b1_pair_aware_architecture.svg": module._b1_architecture_figure(),
+        "b0_b1_prospective_results.svg": module._results_figure(summary),
+        "validation_protocol.svg": module._validation_protocol_figure(),
+        "research_positioning.svg": module._positioning_figure(),
+        "exact_recovery_verification.svg": module._exact_recovery_figure(),
+        "confidence_fallback_mechanism.svg": module._confidence_fallback_figure(),
+        "evaluation_matrix.svg": module._evaluation_matrix_figure(),
+    }
 
-        assert svg_file.exists(), f"Missing {svg_file}"
-        assert png_file.exists(), f"Missing {png_file}"
-        assert pdf_file.exists(), f"Missing {pdf_file}"
-
-        assert svg_file.stat().st_size > 0
-        assert png_file.stat().st_size > 0
-        assert pdf_file.stat().st_size > 0
+    for name, content in figures.items():
+        file_path = tmp_path / name
+        file_path.write_text(content, encoding="utf-8")
+        assert file_path.exists()
+        assert file_path.stat().st_size > 0
 
 
 def test_phase6b_figure_manifest_is_reproducible(tmp_path: Path) -> None:

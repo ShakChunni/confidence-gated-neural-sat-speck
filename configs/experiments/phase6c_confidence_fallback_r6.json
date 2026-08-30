@@ -1,0 +1,209 @@
+{
+  "schema": "neural_sat_speck.phase6c_confidence_fallback_config.v1",
+  "phase": 6,
+  "study": "phase6c_confidence_gated_pair_aware_fallback",
+  "validation_only": true,
+  "held_out_test_generated": false,
+  "calibration": {
+    "source_result_glob": "results/phase6b_h1_adjudication/eager/ranking_*.json",
+    "source_dataset_id": "speck32_64_attack_phase6b_h1_adjudication_r6",
+    "source_manifest_path": "datasets/phase6b_h1_adjudication_r6/manifest.json",
+    "source_manifest_sha256": "d514366d39735162a1ed5fae3eaff50f41a9c378b4edabd6b2e3ba8fba83b8bc",
+    "source_seed": 96001,
+    "source_record_count": 64,
+    "source_backend": "eager",
+    "source_split_role": "validation",
+    "target": "true_pair_aware_rank <= 8",
+    "top_k": 8,
+    "feature_name": "top1_top8_margin_over_score_std",
+    "feature_formula": "(ordered_score_1 - ordered_score_8) / max(score_std_over_all_65536_candidates, 1e-12)",
+    "score_std_epsilon": 1e-12,
+    "calibrator": {
+      "type": "one_dimensional_platt_logistic",
+      "arithmetic": "float64",
+      "intercept_penalty": "none",
+      "slope_penalty": "l2",
+      "l2_lambda": 1.0,
+      "max_iterations": 100,
+      "gradient_tolerance": 1e-10,
+      "step_tolerance": 1e-12
+    },
+    "threshold": {
+      "risk_limit": 0.1,
+      "minimum_accepted": 16,
+      "accept_rule": "estimated_probability >= selected_threshold",
+      "candidate_thresholds": "unique_calibrated_probabilities_descending",
+      "tie_break": "maximum_accepted_count_then_lower_risk_then_higher_threshold"
+    },
+    "dry_run_output": "results/phase6c_confidence_fallback/calibration_dry_run.json"
+  },
+  "dataset": {
+    "dataset_id": "speck32_64_attack_phase6c_confidence_fallback_r6",
+    "manifest_path": "datasets/phase6c_confidence_fallback_r6/manifest.json",
+    "output_dir": "datasets/phase6c_confidence_fallback_r6",
+    "generated_at": "2026-08-29T00:00:00+08:00",
+    "rounds": 6,
+    "pair_count": 64,
+    "instance_count": 64,
+    "seed": 97001,
+    "seed_namespace": "validation_attack_instance_seed",
+    "split_role": "validation",
+    "input_difference": [64, 0],
+    "pair_construction": "plaintext_difference",
+    "key_generation_policy": "one_random_master_key_per_instance"
+  },
+  "candidate_domain": {
+    "first": 0,
+    "last": 65535,
+    "count": 65536,
+    "complete_16_bit_domain": true
+  },
+  "methods": {
+    "b0": {
+      "method_id": "b0_sum_logits",
+      "score_aggregation": "sum_logits",
+      "checkpoint_path": "models/speck32_64_phase3_r5_distinguisher.pt",
+      "checkpoint_sha256": "cb0cbd895acd53f2779b437eb613dcee916007c1111ef39082f1e1236adfc9e8",
+      "model_id": "speck32_64_b0_gohr_baseline"
+    },
+    "b1": {
+      "method_id": "b1_group_logit",
+      "score_aggregation": "group_logit",
+      "checkpoint_path": "models/speck32_64_phase6a_b1_mean_g64.pt",
+      "checkpoint_sha256": "a93d29a76a521b6f3fd0f1dff943df9f74de3857169b9d735c9aa478817954d5",
+      "model_id": "speck32_64_b1_mean_g64",
+      "group_size": 64
+    }
+  },
+  "ranking": {
+    "b0_candidate_batch_size": 4096,
+    "b1_candidate_batch_size": 4096,
+    "pair_count": 64,
+    "candidate_domain": "complete_16_bit_domain",
+    "score_outputs": "complete_finite_candidate_scores_and_permutation",
+    "execution_order": "b0_then_b1_for_even_validation_index_b1_then_b0_for_odd"
+  },
+  "fallback": {
+    "trusted_method": "b1_group_logit",
+    "trusted_budget": 8,
+    "trusted_target": "true_subkey_in_b1_top8",
+    "diversity_method_id": "phase6c_b1_b0_alternating_top16_fill_b1_to32",
+    "head_size": 16,
+    "budget": 32,
+    "ordering": "alternate_b1_rank_1_then_b0_rank_1_through_rank_16_deduplicate_then_fill_unseen_b1_rank_17_onward",
+    "comparator": "b1_top32",
+    "descriptive_baseline": "b0_top32"
+  },
+  "backend_policy": {
+    "reference": "eager_pytorch",
+    "device": "cpu",
+    "numpy_authoritative": false,
+    "tolerance_relaxation": false,
+    "candidate_batch_size_is_frozen": true
+  },
+  "runtime": {
+    "device": "cpu",
+    "torch_num_threads": 4,
+    "torch_num_interop_threads": 10,
+    "single_process_sequential": true,
+    "concurrent_ranking_jobs": false,
+    "prevent_sleep": "caller_managed_if_available"
+  },
+  "metrics": {
+    "primary": "route_specific_capped_attempts",
+    "capped_attempts": {
+      "trusted": "rank_if_rank <= 8_else_9",
+      "b1_top32": "rank_if_rank <= 32_else_33",
+      "b0_top32": "rank_if_rank <= 32_else_33",
+      "diversity_fallback": "rank_in_composed_order_if_present_else_33"
+    },
+    "top_k_values": [8, 16, 32],
+    "report": [
+      "true_subkey_position",
+      "top8_top16_top32_containment",
+      "route_coverage",
+      "route_specific_containment",
+      "false_accepts",
+      "false_abstentions",
+      "paired_fallback_vs_b1_top32_win_tie_loss",
+      "paired_bootstrap_confidence_intervals",
+      "ranking_confidence_sat_verification_total_timing",
+      "inconclusive_timeout_policy"
+    ],
+    "bootstrap_replicates": 10000,
+    "bootstrap_seed": 97101,
+    "bootstrap_seed_namespace": "metric_resampling_only",
+    "bootstrap_confidence": 0.95
+  },
+  "exact_recovery": {
+    "sat_executed": false,
+    "verification_executed": false,
+    "status": "deferred_until_phase6c_a_ranking_gates_and_later_sat_gate",
+    "timeout_policy": "not_applicable_in_ranking_only_phase",
+    "later_common_solver_settings": {
+      "reference_config": "configs/experiments/phase5_integration_r6.json",
+      "known_pair_count": 32,
+      "solver_timeout_seconds": 10.0,
+      "max_solutions_per_candidate": 2,
+      "verification_pair_count": 4,
+      "verification_seed": 72001,
+      "status": "frozen_reference_only_not_run_in_phase6c_a"
+    }
+  },
+  "timing_policy": {
+    "clock": "time.perf_counter",
+    "include_b0_complete_ranking": true,
+    "include_b1_complete_ranking": true,
+    "include_confidence_feature_and_decision": true,
+    "include_fallback_composition": true,
+    "fallback_online_cost_includes_b0_ranking": true,
+    "sat_time_recorded_as": "not_run",
+    "verification_time_recorded_as": "not_run",
+    "peak_rss_bytes_recorded": true,
+    "execution_order": "b0_then_b1_for_even_validation_index_b1_then_b0_for_odd",
+    "single_process_sequential": true,
+    "concurrent_ranking_jobs": false
+  },
+  "smoke": {
+    "instance_count": 1,
+    "candidate_subset_count": 32,
+    "full_domain_eager_smoke_required_before_confirmation": true,
+    "deterministic_rerun_required": true,
+    "serialization_round_trip_required": true,
+    "atomic_record_write_required": true,
+    "peak_rss_safe_limit_bytes": 12800000000
+  },
+  "seed_exclusions": [
+    1001,
+    2001,
+    3001,
+    4001,
+    5001,
+    6001,
+    51001,
+    52001,
+    53001,
+    61001,
+    62001,
+    63001,
+    64001,
+    65001,
+    72001,
+    73001,
+    81001,
+    82001,
+    83001,
+    91001,
+    92001,
+    93001,
+    96001
+  ],
+  "known_non_data_seed_namespaces": [
+    {
+      "seed": 97001,
+      "namespace": "phase6b_metric_bootstrap",
+      "does_not_generate_keys": true
+    }
+  ],
+  "output_root": "results/phase6c_confidence_fallback"
+}

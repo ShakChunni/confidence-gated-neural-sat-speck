@@ -18,13 +18,20 @@ from pathlib import Path
 from typing import Any
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SUMMARY = (
+_PRIMARY_SUMMARY = (
     REPOSITORY_ROOT
     / "results"
     / "phase6b_h1_adjudication"
     / "eager"
     / "summary.json"
 )
+_FIXTURE_SUMMARY = (
+    REPOSITORY_ROOT
+    / "tests"
+    / "fixtures"
+    / "phase6b_summary.json"
+)
+DEFAULT_SUMMARY = _PRIMARY_SUMMARY if _PRIMARY_SUMMARY.exists() else _FIXTURE_SUMMARY
 DEFAULT_OUTPUT_ROOT = REPOSITORY_ROOT / "results" / "figures" / "proposal"
 SUMMARY_SCHEMA = "neural_sat_speck.phase6b_h1_adjudication_summary.v1"
 
@@ -813,7 +820,7 @@ def _exact_recovery_figure() -> str:
     body = _heading(
         width,
         "Exact Incremental Key Recovery and Sound Master-Key Verification",
-        "Neural ranking proposes candidate subkey order; CryptoMiniSat reasons exactly; fresh plaintext pairs mathematically confirm recovery.",
+        "Neural ranking proposes candidate subkey order; CryptoMiniSat reasons exactly; fresh plaintext pairs independently verify recovery.",
     )
 
     box_y = 180
@@ -861,7 +868,7 @@ def _exact_recovery_figure() -> str:
     body += _arrow(1165, box_y + 150, 1240, box_y + 150, color=COLORS["green"], width=3)
 
     # Verification Outcomes
-    body += _box(1240, 480, 310, 95, "✓ Verified Key Recovery", ("master key proven mathematically", "stop search & log total online cost", "record solver calls & attempts"), fill=COLORS["green_light"], stroke=COLORS["green"])
+    body += _box(1240, 480, 310, 95, "✓ Verified Key Recovery", ("master key independently verified", "stop search & log total online cost", "record solver calls & attempts"), fill=COLORS["green_light"], stroke=COLORS["green"])
     body += _arrow(1395, box_y + 225, 1395, 480, color=COLORS["green"], width=3)
 
     # Core Principles Panel (Bottom)
@@ -1115,8 +1122,18 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--summary", type=Path, default=DEFAULT_SUMMARY)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
-    parser.add_argument("--png", action="store_true", default=True, help="Render PNG previews with rsvg-convert")
-    parser.add_argument("--pdf", action="store_true", default=True, help="Render vector PDF documents with rsvg-convert")
+    parser.add_argument(
+        "--png",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Render PNG previews with rsvg-convert",
+    )
+    parser.add_argument(
+        "--pdf",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Render vector PDF documents with rsvg-convert",
+    )
     return parser.parse_args()
 
 

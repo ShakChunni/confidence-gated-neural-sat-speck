@@ -5,17 +5,15 @@ This repository supports the COMP6002 research project:
 **Learning When to Trust Neural Guidance: Confidence-Gated Incremental XOR-SAT Key Recovery for Reduced-Round SPECK32/64**
 
 The local `PLAN.md` is an untracked working-instructions file and is not part
-of the public repository. The current implementation includes the bounded
-Phase 5 incremental neural-SAT integration pilot, the Phase 6 validation-only
-confidence-feature pilot, and the completed Phase 6A pair-aware ranker study,
-built on the source-verified scalar, deterministic data, exact SAT, Phase 3
-neural, and Phase 4 ranking foundations. A frozen confidence threshold and
-fallback selection remain later decisions.
+of the public repository. The current implementation includes the full
+cryptographic, dataset, SAT, neural, ranking, and prospective adjudication
+foundations through Phase 6B, alongside the proposal figure generation suite
+and the Phase 6C-A calibration/fallback checkpoint.
 
-The current baseline checkpoint is frozen at commit `b5597a4`. Future ranker
-improvements must use new configurations and remain comparable with this
-baseline; this freeze does not claim that the Phase 6 confidence-gate exit
-criteria have been met.
+The pair-aware ranker (**B1**) is the promoted headline neural method following
+prospective Phase 6B adjudication on 64 fresh validation keys; the Gohr-style
+single-pair model (**B0**) serves as the frozen comparator. The held-out attack
+test split remains strictly closed and unopened.
 
 ## Current implementation
 
@@ -40,8 +38,16 @@ criteria have been met.
   (B1 mean pooling, B2 mean-plus-variance pooling, and B3 learned
   reliability-weighted pooling), with complete-domain ranking and a frozen
   selection/confirmation protocol.
-- Unit and integration tests for primitives, key expansion, cipher, partial decryption,
-  data, SAT feasibility, neural training, checkpoint reload, and candidate ranking.
+- A Phase 6B prospective adjudication on 64 fresh validation keys, promoting B1
+  over B0 (+14.06 pp top-16 recall, 22.10% lower mean attempts) and recording H1
+  as an ablation.
+- A publication and proposal figure generator producing 8 publication-grade
+  diagrams in SVG, 300 DPI PNG, and vector PDF formats.
+- A Phase 6C-A confidence calibration and diversity fallback module, recording a
+  fail-closed threshold gate on initial validation calibration.
+- Unit and integration tests covering cryptographic primitives, key schedule,
+  cipher, partial decryption, datasets, SAT models, neural training, NumPy/PyTorch
+  equivalence, full candidate ranking, calibration, and fallback logic.
 
 The current API is word-level: a block is represented as (x, y), and a master key
 uses the explicit word order (l[2], l[1], l[0], k[0]). Byte serialization is not
@@ -97,12 +103,6 @@ PYTHONPATH=.:src python scripts/export_dataset_v1.py --classifier-config configs
 PYTHONPATH=.:src python scripts/train_distinguisher.py --config configs/training/phase3_baseline.json
 ~~~
 
-The exporter and trainer keep large data, checkpoints, and summaries out of
-Git. The training script does not call the generator; it verifies the manifest,
-file hashes, content hashes, schema, shape, labels, and split metadata before
-training, selects weights using validation AUC, and evaluates the held-out test
-split once after that selection.
-
 Generate the local Phase 4 attack benchmark and rank every candidate for the
 declared test instance:
 
@@ -112,18 +112,6 @@ PYTHONPATH=.:src python scripts/rank_subkeys.py --config configs/experiments/pha
 PYTHONPATH=.:src python scripts/plot_phase4_figures.py
 ~~~
 
-The Phase 4 configuration deliberately uses six-round attack instances with
-the five-round Phase 3 classifier. Correct inverse removal of the final round
-therefore leaves the five-round related state expected by the model. The
-ranker only orders candidates; it does not call CryptoMiniSat, apply a
-confidence gate, or recover a master key. A smaller candidate prefix can be
-used for a quick pilot with `--candidate-count`; the declared run uses all
-65,536 values.
-
-The plotting command creates dependency-free SVG figures from the local
-ranking JSON files. The corresponding local PNG previews are rendered with
-the system SVG renderer and are not committed.
-
 Run the bounded Phase 5 integration pilot after the Phase 4 ranking result has
 been generated:
 
@@ -132,111 +120,33 @@ PYTHONPATH=.:src python scripts/run_phase5_integration.py --config configs/exper
 PYTHONPATH=.:src python scripts/summarize_phase5.py
 ~~~
 
-The pilot uses all 32 related pairs from one validation instance, a 32-candidate
-budget, and a ten-second per-solve timeout. It compares the same exact model
-under three candidate-order strategies and verifies any returned key against
-fresh plaintext/ciphertext pairs. A time-limit-ambiguous solver result is
-reported as inconclusive. The ranking time is included in the neural method's
-online total, but the ranking is deliberately recorded as precomputed input to
-this bounded integration result.
-
-The summary command aggregates the local validation result files descriptively;
-it does not choose a timeout, candidate budget, confidence threshold, or
-fallback policy. The Phase 5 validation extension currently records 3/4
-neural-order recoveries, 0/4 SAT-only recoveries, and 0/4 random-order
-recoveries under the bounded pilot settings. These are validation observations
-only, not final performance claims.
-
-Run the first Phase 6 confidence-feature analysis on the separately generated
-validation benchmark:
+Run the Phase 6B prospective adjudication comparison across 64 fresh validation keys:
 
 ~~~text
-PYTHONPATH=.:src python scripts/export_dataset_v1.py --attack-config configs/data/phase6_confidence_attack_r6.json --output-dir datasets/phase6_confidence_r6 --skip-classifier --include-commit
-PYTHONPATH=.:src python scripts/evaluate_phase6_confidence.py --config configs/experiments/phase6_confidence_r6.json
-PYTHONPATH=.:src python scripts/plot_phase6_confidence.py
+PYTHONPATH=.:src python scripts/run_phase6b_h1_adjudication.py --config configs/experiments/phase6b_h1_adjudication.json
 ~~~
 
-The Phase 6 evaluator consumes complete Phase 4 ranking JSON files for the
-validation split only. It uses a predeclared top-16 target and reports the
-accepted-prefix risk--coverage behaviour of four post-hoc features; it does
-not inspect the held-out test split, fit a threshold, choose a fallback, or
-use SAT outcomes as a confidence signal. The ranking files for this pilot are
-generated with the same five-round checkpoint and six-round attack protocol,
-but use an independently seeded 16-instance validation benchmark.
-
-In the current local pilot, 8/16 true final-round subkeys were in top-16.
-The top-1/top-16 margin produced a two-instance zero-error accepted prefix;
-top-1/top-2 margin produced one, and concentration/entropy produced none.
-This is evidence that score sharpness is not automatically reliable
-cryptanalytic confidence. No threshold or fallback has been selected from
-this small pilot, and the held-out test split remains closed.
-
-The repository also contains a separate source-aligned 64-pair pilot. Gohr's
-published key-ranking experiment combines scores over 64 ciphertext pairs;
-our paired check uses the same four keys with the first 32 pairs versus all 64.
-The full 64-pair ranking improved the true rank in 3/4 cases (median 11.0 to
-5.5), while top-16 recall remained 3/4. This is a small protocol observation,
-not a final performance claim.
-
-The paired analysis can be regenerated with
-`scripts/compare_pair_counts.py` after producing both ranking prefixes. It is
-kept separate from the frozen 32-pair Phase 4 baseline.
-
-The completed bounded study compared three new, separately identified
-pair-aware rankers against frozen B0: B1 mean pooling, B2 mean-plus-variance
-pooling, and B3 learned reliability-weighted pooling. The source basis is
-Gohr's ranking baseline, Chen et al.'s multi-pair distinguisher, and Deep Sets.
-The group dataset and attack roles are validation-only artefacts; Dataset v1
-and the held-out test split remain untouched.
-
-Generate the local group data and validation roles:
+Generate all 8 publication and proposal figures (SVG, 300 DPI PNG, and vector PDF):
 
 ~~~text
-PYTHONPATH=.:src python scripts/export_phase6a_group_dataset.py --config configs/data/phase6a_pair_group_r5_g64.json --include-commit
-PYTHONPATH=.:src python scripts/export_phase6a_attack_validation.py --config configs/data/phase6a_selection_attack_r6.json --include-commit
-PYTHONPATH=.:src python scripts/export_phase6a_attack_validation.py --config configs/data/phase6a_confirmation_attack_r6.json --include-commit
-PYTHONPATH=.:src python scripts/phase6a_feasibility.py
+PYTHONPATH=.:src python scripts/plot_phase6b_proposal_figures.py
 ~~~
 
-Train the three candidates from the frozen B0 encoder:
-
-~~~text
-PYTHONPATH=.:src python scripts/train_phase6a_rankers.py --config configs/training/phase6a_pair_group_rankers.json
-~~~
-
-Run one complete-domain ranking job. For the frozen study, run all four methods
-(`b0`, `b1_mean`, `b2_moments`, `b3_weighted`) for the 32-instance selection
-role. The confirmation role is deliberately narrower: run `b0` and the
-method selected from the selection role for indices 0 through 31. This gives
-128 selection rankings plus 64 confirmation rankings, or 192 complete-domain
-jobs in total:
-
-~~~text
-PYTHONPATH=.:src python scripts/rank_phase6a_candidates.py --config configs/experiments/phase6a_ranking.json --method b1_mean --role selection --instance-index 0
-~~~
-
-The optional `--candidate-count` is only a feasibility prefix. Omit it for the
-declared 65,536-candidate domain. After the 192 ranking jobs are complete,
-run `PYTHONPATH=.:src python scripts/summarize_phase6a.py`. The summary applies
-the frozen selection and confirmation gates; it does not inspect the held-out
-test split or implement confidence fallback.
-
-In the completed results, B1 improved selection top-16 recall from 24/32 to
-30/32 and was checked on a fresh confirmation role. Confirmation top-16 recall
-was 31/32 for B1 versus 26/32 for B0, but B1's median rank was 8.5 versus 7.5
-for B0. The predeclared confirmation gate therefore failed: B1 is retained as
-an informative top-16/rank-distribution trade-off, while B0 remains the
-preferred frozen ranker. The SAT pilot was not opened.
-
-The plotting command creates a local SVG risk--coverage figure (and an
-optional local PNG preview can be rendered with `rsvg-convert`).
+The 8 generated proposal figures in `results/figures/proposal/` are:
+1. `methodology_pipeline`: Full confidence-gated neural–XOR-SAT framework.
+2. `b1_pair_aware_architecture`: Pair-aware permutation-invariant scoring network (Deep Sets).
+3. `b0_b1_prospective_results`: Prospective validation recall curves and metrics on 64 fresh keys.
+4. `validation_protocol`: Leakage-resistant multi-stage development protocol.
+5. `research_positioning`: Four-strand research taxonomy mapping.
+6. `exact_recovery_verification`: Incremental CryptoMiniSat solving and fresh-pair verification.
+7. `confidence_fallback_mechanism`: Confidence calibration and diversity fallback routing.
+8. `evaluation_matrix`: Comparative evaluation matrix across attack configurations.
 
 The baseline follows Gohr's published SPECK32/64 input representation and
 residual-network design ([paper, Section 4](https://eprint.iacr.org/2019/037.pdf);
 [supplementary implementation](https://github.com/agohr/deep_speck/blob/master/train_nets.py)).
-This repository uses a smaller four-block PyTorch network, BCE-with-logits
-training, and explicit seeded data splits; these are recorded implementation
-choices, not claims that the original training results have been reproduced.
+This repository uses a compact four-block PyTorch network, BCE-with-logits
+training, and explicit seeded data splits.
 
 The repository does not commit virtual environments, large generated datasets,
 model checkpoints, or experiment output. The MIT licence covers the code and
