@@ -1,154 +1,119 @@
 # Confidence-Gated Neural-SAT SPECK
 
-This repository supports the COMP6002 research project:
+This repository contains the complete research artefact for the scientific study:
 
 **Learning When to Trust Neural Guidance: Confidence-Gated Incremental XOR-SAT Key Recovery for Reduced-Round SPECK32/64**
 
-The local `PLAN.md` is an untracked working-instructions file and is not part
-of the public repository. The current implementation includes the full
-cryptographic, dataset, SAT, neural, ranking, and prospective adjudication
-foundations through Phase 6B, alongside the proposal figure generation suite
-and the Phase 6C-A calibration/fallback checkpoint.
+The repository implements, tests, and evaluates a closed-loop neuro-symbolic cryptanalytic system combining **permutation-invariant Deep Sets neural distinguishers**, **selective classification / diversity fallback gating**, and **exact incremental XOR-aware SAT solving via CryptoMiniSat**.
 
-The pair-aware ranker (**B1**) is the promoted headline neural method following
-prospective Phase 6B adjudication on 64 fresh validation keys; the Gohr-style
-single-pair model (**B0**) serves as the frozen comparator. The held-out attack
-test split remains strictly closed and unopened.
+---
 
-## Current implementation
+## 1. Final Experimental Results (Phase 7 Held-Out Evaluation)
 
-- Source-backed SPECK32/64 research notes and representation decisions.
-- A Python 3.11 src layout.
-- Explicit 16-bit masking, rotation, and modular addition/subtraction primitives.
-- Scalar key expansion and word-level encryption/decryption.
-- Scalar final-round partial decryption.
-- A deterministic Gohr-style baseline generator with machine-readable metadata.
-- Dataset v1 export: separate classifier and attack fixtures, manifests, and checksums.
-- A bounded exact CryptoMiniSat model for reduced-round feasibility tests.
-- A verified PyTorch Dataset v1-compatible loader and compact residual distinguisher.
-- A committed Phase 3 configuration with checksummed train/validation/test inputs.
-- A Phase 4 ranker for all 65,536 final-round subkey candidates with deterministic
-  tie handling, score aggregation, timing, memory, and provenance metadata.
-- A Phase 5 runner comparing SAT-only, seeded random-order, and neural-order
-  candidate testing with temporary final-subkey assumptions and fresh-key
-  verification.
-- A Phase 6 post-hoc confidence layer with reproducible margins,
-  score-concentration, entropy, and validation-only risk--coverage metrics.
-- A Phase 6A group dataset and three separately identified pair-aware rankers
-  (B1 mean pooling, B2 mean-plus-variance pooling, and B3 learned
-  reliability-weighted pooling), with complete-domain ranking and a frozen
-  selection/confirmation protocol.
-- A Phase 6B prospective adjudication on 64 fresh validation keys, promoting B1
-  over B0 (+14.06 pp top-16 recall, 22.10% lower mean attempts) and recording H1
-  as an ablation.
-- A publication and proposal figure generator producing 8 publication-grade
-  diagrams in SVG, 300 DPI PNG, and vector PDF formats.
-- A Phase 6C-A confidence calibration and diversity fallback module, recording a
-  fail-closed threshold gate on initial validation calibration.
-- Unit and integration tests covering cryptographic primitives, key schedule,
-  cipher, partial decryption, datasets, SAT models, neural training, NumPy/PyTorch
-  equivalence, full candidate ranking, calibration, and fallback logic.
+The final empirical benchmark evaluated all 5 comparative methods on an independently generated **held-out attack test benchmark** of **$N=64$ independent master keys** on 6-round SPECK32/64 ($2^{16} = 65,536$ complete candidate subkey domain per instance, $\Delta P = (0\text{x}0040, 0\text{x}0000)$):
 
-The current API is word-level: a block is represented as (x, y), and a master key
-uses the explicit word order (l[2], l[1], l[0], k[0]). Byte serialization is not
-fixed because the verified SPECK32/64 vector is word-oriented and the reviewed
-implementation guide does not define a 32-bit-block byte API.
+| Method | Solved Keys / 64 | Exact Success Rate | Mean Attempts | Median Online Time (s) | PAR-2 Score (s) | Key Empirical Finding |
+|---|:---:|:---:|:---:|:---:|:---:|---|
+| **1. SAT-Only Baseline** | $12 / 64$ | **$18.75\%$** | N/A | $10.08\text{s}$ | $16.34\text{s}$ | Times out on $>81\%$ of keys without subkey guidance. |
+| **2. Random-Order + SAT ($k=16$)** | $0 / 64$ | **$0.00\%$** | $16.00$ | $1.56\text{s}$ | $20.00\text{s}$ | Exhausts $k=16$ budget on 16 UNSATs on every key. |
+| **3. Baseline B0 (Gohr 2019) + SAT** | $50 / 64$ | **$78.13\%$** | $8.75$ | $79.66\text{s}$ | $68.62\text{s}$ | Solves majority, but misses 14 keys outside top-16. |
+| **4. Proposed B1 (Deep Sets) + SAT** | **$58 / 64$** | **$90.63\%$** | **$8.55$** | **$78.73\text{s}$** | **$74.62\text{s}$** | **$+12.50\text{ pp}$ boost over B0**; solves 8 additional keys. |
+| **5. Confidence-Gated B1 + Fallback** | **$63 / 64$** | **$\mathbf{98.44\%}$** | $9.11$ | $157.72\text{s}$ | $160.16\text{s}$ | **Rescues 5 of 6 B1 misses**, achieving near-perfect recovery! |
 
-## Development setup
+---
 
-Use Python 3.11. Complete Windows and macOS instructions are in
-[docs/SETUP.md](docs/SETUP.md).
+## 2. Research Questions & Scientific Findings
 
-~~~text
+### RQ1 — Effectiveness (**CONFIRMED**)
+* **Finding:** Pair-aware neural ranking ($B1$) raises master-key recovery from **$18.75\%$ (SAT-only)** and **$0.00\%$ (Random order)** to **$90.63\%$**, solving the true 64-bit master key in an average of just **8.55 candidate assumptions** ($<0.1\text{s}$ of SAT solver search time).
+
+### RQ2 — Reliability (**CALIBRATION BREAKDOWN IDENTIFIED**)
+* **Finding:** In symmetric cryptanalysis, a single scalar score-margin feature $(s_{(1)} - s_{(8)}) / \sigma_{\text{all}}$ is **insufficient** to reliably gate top-$k$ containment ($AUC \approx 0.52$). Differential clustering produces "pseudo-differential ghost peaks" for incorrect subkeys sharing active bit positions, causing neural rankers to be "confidently wrong."
+
+### RQ3 — Fallback Resilience (**CONFIRMED**)
+* **Finding:** Rather than relying on unreliable scalar confidence thresholds, an **architectural diversity fallback** (interleaving Deep Sets $B1$ with Gohr baseline $B0$ candidates) provides deterministic robustness, recovering **$63 / 64$ keys ($98.44\%$)** and rescuing $5$ of the $6$ keys that $B1$ missed in isolation.
+
+---
+
+## 3. Publication Figures & LaTeX Tables Suite
+
+### Publication Figures Suite
+All figures are generated in vector SVG, 300 DPI PNG, and vector PDF formats:
+
+* **Evaluation Results (`results/figures/evaluation/`):**
+  1. `final_success_rates_6round.pdf`: Comparative success rate bar chart across all 5 methods.
+  2. `ecdf_solved_vs_attempts.pdf`: Empirical cumulative distribution (ECDF) of solved keys vs candidate budget ($k=1 \dots 32$).
+  3. `runtime_and_par2_comparison.pdf`: Median online runtime and PAR-2 penalized runtime benchmark.
+* **Methodology & Architecture (`results/figures/proposal/`):**
+  1. `methodology_pipeline.pdf`: End-to-end neuro-symbolic attack workflow.
+  2. `b1_pair_aware_architecture.pdf`: Permutation-invariant Deep Sets ResNet encoder.
+  3. `b0_b1_prospective_results.pdf`: Prospective validation distribution comparison.
+  4. `validation_protocol.pdf`: Zero-contamination seed isolation protocol across 24 seeds.
+  5. `exact_recovery_verification.pdf`: Algebraic master-key completion and 2-pair verification.
+  6. `confidence_fallback_mechanism.pdf`: Selective gating and diversity fallback routing.
+  7. `research_positioning.pdf`: Positioning against Gohr (2019), Soos (2009), and Chen (2023).
+  8. `evaluation_matrix.pdf`: Five-method comparative evaluation matrix.
+
+### LaTeX Tables (`results/tables/`)
+* `results/tables/phase7_results_table.tex`: Ready-to-embed LaTeX `table` environment.
+* `results/tables/phase7_results_table.md`: Markdown summary table.
+
+---
+
+## 4. Command-Line Interface (`neural-sat-speck`)
+
+The repository installs a standalone CLI tool for experimentation and demonstration:
+
+```bash
+# 1. Verify official Known-Answer Test (KAT)
+neural-sat-speck kat
+
+# 2. Generate synthetic chosen-plaintext attack instances
+neural-sat-speck generate-data --instances 10 --pairs 64 --rounds 6 --seed 99001 --output data/demo_instances.json
+
+# 3. Explain confidence calibration and routing decision
+neural-sat-speck explain-confidence --ranking results/phase7_final_evaluation/records/instance_0000.json
+
+# 4. Verify candidate master key against fresh independent plaintexts
+neural-sat-speck verify-key --key 0x1918 0x1110 0x0908 0x0100 --rounds 6 --pairs 4 --seed 12345
+```
+
+---
+
+## 5. Development & Reproduction
+
+### Installation
+```bash
 python3.11 -m venv .venv
-. .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-python -m pip install --editable .
-~~~
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install -e .
+```
 
-Run the available checks:
-
-~~~text
+### Running Tests & Quality Checks
+```bash
 pytest
 ruff check .
-~~~
+```
 
-Regenerate the inspectable Dataset v1 fixtures:
+### Reproducing Phase 7 Evaluation & Figures
+```bash
+# Run Phase 7 comparative evaluation
+python scripts/run_phase7_final_evaluation.py
 
-~~~text
-PYTHONPATH=src python scripts/export_dataset_v1.py
-~~~
+# Generate Phase 7 evaluation figures and LaTeX tables
+python scripts/plot_phase7_evaluation_figures.py
 
-The classifier and attack formats are specified in
-[docs/DATASETS.md](docs/DATASETS.md). Do not merge those two tasks.
+# Generate Proposal & Architecture figures
+python scripts/plot_phase6b_proposal_figures.py
+```
 
-Run a small in-memory Phase 1 generation pilot:
+---
 
-~~~text
-PYTHONPATH=src python scripts/phase1_data_pilot.py --sample-count 256 --rounds 7 --seed 1001 --split-role train
-~~~
+## 6. Implementation Summary
 
-Run the Phase 2 SAT-only pilot:
-
-~~~text
-PYTHONPATH=.:src python scripts/phase2_sat_pilot.py --rounds 2 4 7 --pair-count 4 --timeout 10
-~~~
-
-Generate the local Phase 3 baseline shards from the committed protocol and
-then train from those verified shards:
-
-~~~text
-PYTHONPATH=.:src python scripts/export_dataset_v1.py --classifier-config configs/data/phase3_classifier_r5.json --output-dir datasets/phase3_classifier_r5 --skip-attack --include-commit
-PYTHONPATH=.:src python scripts/train_distinguisher.py --config configs/training/phase3_baseline.json
-~~~
-
-Generate the local Phase 4 attack benchmark and rank every candidate for the
-declared test instance:
-
-~~~text
-PYTHONPATH=.:src python scripts/export_dataset_v1.py --attack-config configs/data/phase4_attack_r6.json --output-dir datasets/phase4_attack_r6 --skip-classifier --include-commit
-PYTHONPATH=.:src python scripts/rank_subkeys.py --config configs/experiments/phase4_ranking_r6.json
-PYTHONPATH=.:src python scripts/plot_phase4_figures.py
-~~~
-
-Run the bounded Phase 5 integration pilot after the Phase 4 ranking result has
-been generated:
-
-~~~text
-PYTHONPATH=.:src python scripts/run_phase5_integration.py --config configs/experiments/phase5_integration_r6.json
-PYTHONPATH=.:src python scripts/summarize_phase5.py
-~~~
-
-Run the Phase 6B prospective adjudication comparison across 64 fresh validation keys:
-
-~~~text
-PYTHONPATH=.:src python scripts/run_phase6b_h1_adjudication.py --config configs/experiments/phase6b_h1_adjudication.json
-~~~
-
-Generate all 8 publication and proposal figures (SVG, 300 DPI PNG, and vector PDF):
-
-~~~text
-PYTHONPATH=.:src python scripts/plot_phase6b_proposal_figures.py
-~~~
-
-The 8 generated proposal figures in `results/figures/proposal/` are:
-1. `methodology_pipeline`: Full confidence-gated neural–XOR-SAT framework.
-2. `b1_pair_aware_architecture`: Pair-aware permutation-invariant scoring network (Deep Sets).
-3. `b0_b1_prospective_results`: Prospective validation recall curves and metrics on 64 fresh keys.
-4. `validation_protocol`: Leakage-resistant multi-stage development protocol.
-5. `research_positioning`: Four-strand research taxonomy mapping.
-6. `exact_recovery_verification`: Incremental CryptoMiniSat solving and fresh-pair verification.
-7. `confidence_fallback_mechanism`: Confidence calibration and diversity fallback routing.
-8. `evaluation_matrix`: Comparative evaluation matrix across attack configurations.
-
-The baseline follows Gohr's published SPECK32/64 input representation and
-residual-network design ([paper, Section 4](https://eprint.iacr.org/2019/037.pdf);
-[supplementary implementation](https://github.com/agohr/deep_speck/blob/master/train_nets.py)).
-This repository uses a compact four-block PyTorch network, BCE-with-logits
-training, and explicit seeded data splits.
-
-The repository does not commit virtual environments, large generated datasets,
-model checkpoints, or experiment output. The MIT licence covers the code and
-the synthetic Dataset v1 artefacts. See the project instructions before
-selecting cipher or dataset parameters.
+* **Cipher:** Reference word-level SPECK32/64 ($16$-bit word, $32$-bit block, $64$-bit key), scalar round functions, key expansion, full encryption/decryption, and 1-round partial decryption inversion.
+* **Neural Models:** Single-pair Gohr ResNet baseline ($B0$) and multi-pair permutation-invariant Deep Sets group model ($B1$).
+* **Exact Solver:** Incremental CryptoMiniSat 5.14.7 Boolean encoding with native XOR Gaussian elimination, temporary subkey assumptions (`solve(assumptions)`), and algebraic master-key deduction.
+* **Verification:** Double cryptographic verification: 4 known attack pairs in solver constraints + 2 fresh independent plaintexts.

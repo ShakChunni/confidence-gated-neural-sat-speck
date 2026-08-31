@@ -1,0 +1,58 @@
+{
+  "instance_count": 64,
+  "methods": {
+    "b0_sat": {
+      "mean_candidates_attempted": 8.75,
+      "mean_online_seconds": 83.12531451556379,
+      "median_candidates_attempted": 8.0,
+      "median_online_seconds": 79.65737997950055,
+      "par2_seconds": 68.61803337822175,
+      "success_count": 50,
+      "success_rate": 0.78125
+    },
+    "b1_sat": {
+      "mean_candidates_attempted": 8.546875,
+      "mean_online_seconds": 80.15325382875426,
+      "median_candidates_attempted": 8.5,
+      "median_online_seconds": 78.7334391875338,
+      "par2_seconds": 74.6229744765692,
+      "success_count": 58,
+      "success_rate": 0.90625
+    },
+    "gated_b1_fallback_sat": {
+      "mean_candidates_attempted": 9.109375,
+      "mean_online_seconds": 162.33697422392515,
+      "median_candidates_attempted": 8.5,
+      "median_online_seconds": 157.71706195897423,
+      "par2_seconds": 160.1648818547701,
+      "success_count": 63,
+      "success_rate": 0.984375
+    },
+    "random_sat": {
+      "mean_candidates_attempted": 16.0,
+      "mean_online_seconds": 1.9074420728343284,
+      "median_candidates_attempted": 16.0,
+      "median_online_seconds": 1.5641609985032119,
+      "par2_seconds": 20.0,
+      "success_count": 0,
+      "success_rate": 0.0
+    },
+    "sat_only": {
+      "mean_candidates_attempted": 0.0,
+      "mean_online_seconds": 8.3101100787203,
+      "median_candidates_attempted": 0.0,
+      "median_online_seconds": 10.076398895995226,
+      "par2_seconds": 16.33850111517222,
+      "success_count": 12,
+      "success_rate": 0.1875
+    }
+  },
+  "phase": 7,
+  "provenance": {
+    "config_sha256": "445a77ae57cd59ec6bf896ada709238d20ca8bbcc4f13edb49e56af80bd34ef5",
+    "git_commit": "360847dd228626562a45fe4ec6d58e702abb30ba",
+    "manifest_sha256": "2cb2773a87b998c49fb90deb8485fdeb426bbe18a1f7cf63c5edf9341efdfd84"
+  },
+  "schema": "neural_sat_speck.phase7_final_evaluation_summary.v1",
+  "study": "phase7_held_out_comparative_evaluation"
+}

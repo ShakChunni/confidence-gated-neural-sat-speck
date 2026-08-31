@@ -1,0 +1,113 @@
+{
+  "schema": "neural_sat_speck.phase7_final_evaluation_config.v1",
+  "phase": 7,
+  "study": "phase7_held_out_comparative_evaluation",
+  "validation_only": false,
+  "held_out_test_generated": true,
+  "dataset": {
+    "dataset_id": "speck32_64_attack_phase7_held_out_r6",
+    "manifest_path": "datasets/phase7_held_out_r6/manifest.json",
+    "output_dir": "datasets/phase7_held_out_r6",
+    "generated_at": "2026-08-31T00:00:00+08:00",
+    "rounds": 6,
+    "pair_count": 64,
+    "instance_count": 64,
+    "seed": 98001,
+    "seed_namespace": "held_out_test_attack_instance_seed",
+    "split_role": "test",
+    "input_difference": [64, 0],
+    "pair_construction": "plaintext_difference",
+    "key_generation_policy": "one_random_master_key_per_instance"
+  },
+  "seed_exclusions": [
+    1001, 2001, 3001, 4001, 5001, 6001,
+    51001, 52001, 53001,
+    61001, 62001, 63001, 64001, 65001,
+    72001, 73001,
+    81001, 82001, 83001,
+    91001, 92001, 93001,
+    96001, 97001
+  ],
+  "candidate_domain": {
+    "first": 0,
+    "last": 65535,
+    "count": 65536,
+    "complete_16_bit_domain": true
+  },
+  "models": {
+    "b0": {
+      "model_id": "speck32_64_b0_gohr_baseline",
+      "checkpoint_path": "models/speck32_64_phase3_r5_distinguisher.pt",
+      "checkpoint_sha256": "cb0cbd895acd53f2779b437eb613dcee916007c1111ef39082f1e1236adfc9e8",
+      "score_aggregation": "sum_logits"
+    },
+    "b1": {
+      "model_id": "speck32_64_b1_mean_g64",
+      "checkpoint_path": "models/speck32_64_phase6a_b1_mean_g64.pt",
+      "checkpoint_sha256": "a93d29a76a521b6f3fd0f1dff943df9f74de3857169b9d735c9aa478817954d5",
+      "score_aggregation": "group_logit",
+      "group_size": 64
+    }
+  },
+  "confidence_and_fallback": {
+    "feature_name": "top1_top8_margin_over_score_std",
+    "feature_formula": "(ordered_score_1 - ordered_score_8) / max(score_std_over_all_65536_candidates, 1e-12)",
+    "score_std_epsilon": 1e-12,
+    "trusted_budget": 8,
+    "fallback_head_size": 16,
+    "fallback_budget": 32,
+    "fallback_composition": "alternate_b1_rank_1_then_b0_rank_1_through_rank_16_deduplicate_then_fill_unseen_b1_rank_17_onward",
+    "calibrator": {
+      "intercept": 0.5789959917731415,
+      "slope": 0.07917109093865415,
+      "feature_mean": 4.12053918838501,
+      "feature_std": 0.5482019782066345
+    },
+    "decision_threshold": null,
+    "gate_policy": "selective_prediction_with_diversity_fallback"
+  },
+  "solver": {
+    "solver_name": "CryptoMiniSat",
+    "solver_version": "5.14.7",
+    "known_pairs_used": 4,
+    "independent_verification_pairs_count": 2,
+    "solver_timeout_seconds": 10.0,
+    "max_solutions_per_candidate": 1
+  },
+  "evaluation_methods": [
+    {
+      "method_id": "sat_only",
+      "display_name": "SAT-Only Baseline",
+      "type": "exact_sat",
+      "candidate_budget": null
+    },
+    {
+      "method_id": "random_sat",
+      "display_name": "Random Candidate Order + SAT",
+      "type": "incremental_sat",
+      "candidate_budget": 16
+    },
+    {
+      "method_id": "b0_sat",
+      "display_name": "Baseline Distinguisher (B0) + SAT",
+      "type": "incremental_sat",
+      "candidate_budget": 16
+    },
+    {
+      "method_id": "b1_sat",
+      "display_name": "Pair-Aware Model (B1) + SAT",
+      "type": "incremental_sat",
+      "candidate_budget": 16
+    },
+    {
+      "method_id": "gated_b1_fallback_sat",
+      "display_name": "Confidence-Gated B1 + Diversity Fallback + SAT",
+      "type": "gated_incremental_sat",
+      "candidate_budget": 32
+    }
+  ],
+  "outputs": {
+    "records_dir": "results/phase7_final_evaluation/records",
+    "summary_path": "results/phase7_final_evaluation/summary.json"
+  }
+}
