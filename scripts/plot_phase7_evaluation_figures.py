@@ -239,9 +239,90 @@ def _figure_runtime_par2(summary: dict[str, Any]) -> str:
     leg_x, leg_y = pad_left + 15, pad_top + 15
     elements.append(f'<rect x="{leg_x}" y="{leg_y}" width="220" height="55" fill="{COLORS["white"]}" stroke="{COLORS["grid"]}" rx="4"/>')
     elements.append(f'<rect x="{leg_x + 10}" y="{leg_y + 12}" width="16" height="12" fill="{COLORS["navy"]}" rx="2"/>')
-    elements.append(f'<text x="{leg_x + 34}" y="{leg_y + 22}" font-family="Arial, sans-serif" font-size="11" fill="{COLORS["navy"]}">Median Online Runtime</text>')
     elements.append(f'<rect x="{leg_x + 10}" y="{leg_y + 32}" width="16" height="12" fill="{COLORS["navy"]}" fill-opacity="0.45" stroke="{COLORS["navy"]}" stroke-dasharray="2" rx="2"/>')
     elements.append(f'<text x="{leg_x + 34}" y="{leg_y + 42}" font-family="Arial, sans-serif" font-size="11" fill="{COLORS["navy"]}">PAR-2 Penalized Score</text>')
+
+    elements.append("</svg>")
+    return "\n".join(elements)
+
+
+def _figure_cactus_wallclock(summary: dict[str, Any], records: list[dict[str, Any]], max_time: float = 200.0) -> str:
+    width, height = 900, 520
+    pad_left, pad_right, pad_top, pad_bottom = 80, 50, 70, 70
+    plot_w = width - pad_left - pad_right
+    plot_h = height - pad_top - pad_bottom
+
+    elements = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}">',
+        f'<rect width="{width}" height="{height}" fill="{COLORS["white"]}"/>',
+        f'<text x="{width/2}" y="35" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="{COLORS["navy"]}" text-anchor="middle">Cumulative Master Keys Solved vs. Total Online Wall-Clock Time</text>',
+        f'<text x="{width/2}" y="56" font-family="Arial, sans-serif" font-size="13" fill="{COLORS["text_muted"]}" text-anchor="middle">ECDF / Cactus Curve on 64 Held-Out Test Instances (T_online = T_rank + T_conf + T_sat + T_ver)</text>',
+    ]
+
+    for y_pct in range(0, 101, 20):
+        y_pos = pad_top + plot_h - (y_pct / 100.0) * plot_h
+        elements.append(f'<line x1="{pad_left}" y1="{y_pos:.1f}" x2="{pad_left + plot_w}" y2="{y_pos:.1f}" stroke="{COLORS["grid"]}" stroke-dasharray="4" stroke-width="1"/>')
+        elements.append(f'<text x="{pad_left - 12}" y="{y_pos + 4:.1f}" font-family="Arial, sans-serif" font-size="12" fill="{COLORS["text_muted"]}" text-anchor="end">{y_pct}%</text>')
+
+    for t_step in [0, 40, 80, 120, 160, 200]:
+        x_pos = pad_left + (t_step / max_time) * plot_w
+        elements.append(f'<line x1="{x_pos:.1f}" y1="{pad_top}" x2="{x_pos:.1f}" y2="{pad_top + plot_h}" stroke="{COLORS["grid"]}" stroke-dasharray="2" stroke-width="0.8"/>')
+        elements.append(f'<text x="{x_pos:.1f}" y="{pad_top + plot_h + 20:.1f}" font-family="Arial, sans-serif" font-size="12" fill="{COLORS["text_muted"]}" text-anchor="middle">{t_step}s</text>')
+
+    # Vertical reference lines for ranking time onsets (~79s for B1, ~158s for Eager Fallback)
+    x_b1_onset = pad_left + (78.7 / max_time) * plot_w
+    x_fb_onset = pad_left + (158.0 / max_time) * plot_w
+    elements.append(f'<line x1="{x_b1_onset:.1f}" y1="{pad_top}" x2="{x_b1_onset:.1f}" y2="{pad_top + plot_h}" stroke="{COLORS["blue"]}" stroke-dasharray="4,4" stroke-width="1.2"/>')
+    elements.append(f'<text x="{x_b1_onset:.1f}" y="{pad_top + 18}" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="{COLORS["blue"]}" text-anchor="middle">B1 Ranking (~79s)</text>')
+
+    elements.append(f'<line x1="{x_fb_onset:.1f}" y1="{pad_top}" x2="{x_fb_onset:.1f}" y2="{pad_top + plot_h}" stroke="{COLORS["green"]}" stroke-dasharray="4,4" stroke-width="1.2"/>')
+    elements.append(f'<text x="{x_fb_onset:.1f}" y="{pad_top + 18}" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="{COLORS["green"]}" text-anchor="middle">Fallback Ranking (~158s)</text>')
+
+    lines_spec = [
+        ("sat_only", "SAT-Only Baseline", COLORS["slate"]),
+        ("random_sat", "Random Order + SAT", COLORS["red"]),
+        ("b0_sat", "Gohr Baseline (B0) + SAT", COLORS["orange"]),
+        ("b1_sat", "Pair-Aware (B1) + SAT", COLORS["blue"]),
+        ("gated_b1_fallback_sat", "Gated B1 + Diversity Fallback", COLORS["green"]),
+    ]
+
+    total_instances = len(records) if records else 64
+
+    for method, _label, color in lines_spec:
+        times = []
+        if records:
+            for r in records:
+                m_res = r["methods"][method]
+                if m_res["success"]:
+                    times.append(float(m_res["t_online"]))
+                else:
+                    times.append(9999.0)
+        else:
+            # Fixture estimation fallback
+            count = int(summary["methods"][method]["success_count"])
+            med_t = float(summary["methods"][method]["median_online_seconds"])
+            times = [med_t] * count + [9999.0] * (64 - count)
+
+        times.sort()
+        time_grid = [max_time * (i / 150.0) for i in range(151)]
+        pts = []
+        for t_eval in time_grid:
+            solved = sum(1 for tm in times if tm <= t_eval)
+            rate = (solved / float(total_instances)) * 100.0
+            x = pad_left + (t_eval / max_time) * plot_w
+            y = pad_top + plot_h - (rate / 100.0) * plot_h
+            pts.append((x, y))
+
+        path_data = " ".join([f"{'M' if idx == 0 else 'L'} {px:.1f},{py:.1f}" for idx, (px, py) in enumerate(pts)])
+        elements.append(f'<path d="{path_data}" fill="none" stroke="{color}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>')
+
+    # Legend
+    leg_x, leg_y = pad_left + 15, pad_top + 45
+    elements.append(f'<rect x="{leg_x}" y="{leg_y}" width="260" height="135" fill="{COLORS["white"]}" stroke="{COLORS["grid"]}" rx="4"/>')
+    for idx, (_method, label, color) in enumerate(lines_spec):
+        ly = leg_y + 18 + idx * 24
+        elements.append(f'<line x1="{leg_x + 12}" y1="{ly}" x2="{leg_x + 40}" y2="{ly}" stroke="{color}" stroke-width="3.2"/>')
+        elements.append(f'<text x="{leg_x + 48}" y="{ly + 4}" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="{COLORS["navy"]}">{label}</text>')
 
     elements.append("</svg>")
     return "\n".join(elements)
@@ -310,6 +391,7 @@ def main() -> None:
     figures = {
         "final_success_rates_6round.svg": _figure_success_rates(summary),
         "ecdf_solved_vs_attempts.svg": _figure_ecdf_attempts(summary, records),
+        "ecdf_solved_vs_wallclock.svg": _figure_cactus_wallclock(summary, records),
         "runtime_and_par2_comparison.svg": _figure_runtime_par2(summary),
     }
 

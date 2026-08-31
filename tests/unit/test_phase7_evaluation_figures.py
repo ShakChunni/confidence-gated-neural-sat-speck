@@ -57,6 +57,10 @@ def test_phase7_figures_render_valid_svg_strings() -> None:
     assert svg3.startswith("<svg")
     assert "Median Online Runtime and PAR-2" in svg3
 
+    svg4 = mod._figure_cactus_wallclock(summary, [])
+    assert svg4.startswith("<svg")
+    assert "Total Online Wall-Clock Time" in svg4
+
 
 def test_phase7_latex_and_markdown_tables_are_valid() -> None:
     mod = _module()

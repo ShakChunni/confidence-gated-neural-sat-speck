@@ -1,0 +1,31 @@
+{
+  "schema": "neural_sat_speck.phase9_equal_time_diagnostics_config.v1",
+  "phase": 9,
+  "study": "phase9_equal_time_diagnostics",
+  "description": "Retrospective equal-wall-clock diagnostics on historical seed 98001 (N=64)",
+  "dataset": {
+    "dataset_id": "speck32_64_attack_phase7_held_out_r6",
+    "manifest_path": "datasets/phase7_held_out_r6/manifest.json",
+    "rounds": 6,
+    "pair_count": 64,
+    "instance_count": 64,
+    "seed": 98001,
+    "split_role": "test"
+  },
+  "solver": {
+    "solver_name": "CryptoMiniSat",
+    "solver_version": "5.14.7",
+    "known_pairs_used": 4,
+    "independent_verification_pairs_count": 2,
+    "diagnostic_timeouts_seconds": [80.0],
+    "candidate_timeout_seconds": 10.0
+  },
+  "random_strategy": {
+    "seed_offset": 500000,
+    "max_time_seconds": 80.0
+  },
+  "outputs": {
+    "records_dir": "results/phase9_equal_time_diagnostics/records",
+    "summary_path": "results/phase9_equal_time_diagnostics/summary.json"
+  }
+}
