@@ -27,6 +27,12 @@ COLORS = {
     "green_dark": "#15803d",
     "orange": "#ea580c",
     "orange_light": "#ffedd5",
+    "amber": "#d97706",
+    "amber_light": "#fef3c7",
+    "amber_dark": "#92400e",
+    "purple": "#7c3aed",
+    "purple_light": "#f3e8ff",
+    "purple_dark": "#581c87",
     "red": "#dc2626",
     "red_light": "#fee2e2",
     "slate": "#475569",
@@ -696,7 +702,138 @@ def fig_calibration_breakdown() -> str:
 
 
 # ==============================================================================
-# Main Generation Execution
+# 11. Project Timeline and Status Roadmap
+# ==============================================================================
+def fig_project_timeline_and_status() -> str:
+    width, height = 1680, 620
+    c = []
+
+    navy = COLORS["navy"]
+    white = COLORS["white"]
+    green = COLORS["green"]
+    green_light = COLORS["green_light"]
+    green_dark = COLORS["green_dark"]
+    amber = COLORS["amber"]
+    border = COLORS["border"]
+    slate = COLORS["slate"]
+    slate_light = COLORS["slate_light"]
+    slate_dark = COLORS["slate_dark"]
+    text_muted = COLORS["text_muted"]
+    grid = COLORS["grid"]
+
+    # Simple, clean header banner with just 'Timeline'
+    c.append(f'<rect x="40" y="20" width="1600" height="60" rx="8" fill="{navy}" stroke="#1e293b" stroke-width="1.5"/>')
+    c.append(f'<text x="65" y="57" font-size="24" font-weight="bold" fill="{white}">Timeline</text>')
+
+    # 12 Phases Definition
+    phases = [
+        ("Phase 1", "Reference Cipher", "Ground Truth &amp; Data", ["Verified SPECK32/64 reference", "Deterministic data pipeline"], True, False),
+        ("Phase 2", "Exact XOR-SAT", "Boolean Constraint Model", ["CryptoMiniSat constraint model", "Modular addition carry logic"], True, False),
+        ("Phase 3", "Neural Baseline", "Single-Pair Distinguisher", ["Gohr ResNet architecture", "Differential score training"], True, False),
+        ("Phase 4", "Domain Ranking", "Full 16-Bit Subkey Space", ["Complete-domain ranking", "True-key rank profiling"], True, False),
+        ("Phase 5", "Incremental SAT", "Assumption Key Recovery", ["Incremental solver assumptions", "Full 64-bit key deduction"], True, False),
+        ("Phase 6", "Pair-Group Model", "Deep Sets Distinguisher", ["Permutation-invariant model", "Cascaded fallback design"], True, False),
+        ("Phase 7", "Held-Out Evaluation", "Current Working Phase", ["Evaluating on 64 test keys", "Testing neural guidance with SAT", "Validating cascaded fallback"], False, True),
+        ("Phase 8", "Research Tooling", "Artefacts &amp; CLI", ["Standalone CLI tool", "Automated test suite"], False, False),
+        ("Phase 9", "Fair-Budget Audit", "Baselines &amp; Metrics", ["Common-budget evaluation", "Classical DDT comparator"], False, False),
+        ("Phase 10", "Lazy Fallback", "Verification Routing", ["Lazy secondary ranking", "Runtime reduction"], False, False),
+        ("Phase 11", "Multi-Fidelity &amp; Gate", "Pruning &amp; Scaling", ["Coarse candidate screening", "7-round solver scaling"], False, False),
+        ("Phase 12", "Finalising of Report", "Documentation &amp; Wrap-up", ["Final dissertation report", "Complete results synthesis"], False, False),
+    ]
+
+    y_spine = 330
+    start_x = 130
+    end_x = 1550
+    dx = (end_x - start_x) / (len(phases) - 1)
+
+    # Spine line: Completed (Phases 1 to 6) in Solid Green, Current (Phase 7) in Amber, Upcoming (8 to 12) in Dashed Slate
+    x_p6 = start_x + 5 * dx
+    x_p7 = start_x + 6 * dx
+    c.append(f'<line x1="{start_x}" y1="{y_spine}" x2="{x_p6}" y2="{y_spine}" stroke="{green}" stroke-width="4" stroke-linecap="round"/>')
+    c.append(f'<line x1="{x_p6}" y1="{y_spine}" x2="{x_p7}" y2="{y_spine}" stroke="{amber}" stroke-width="4" stroke-linecap="round"/>')
+    c.append(f'<line x1="{x_p7}" y1="{y_spine}" x2="{end_x}" y2="{y_spine}" stroke="{border}" stroke-width="3" stroke-dasharray="6,5" stroke-linecap="round"/>')
+
+    card_w = 214
+    card_h = 175
+
+    for i, (p_num, title, subtitle, bullets, is_done, is_current) in enumerate(phases):
+        x = start_x + i * dx
+        is_top = (i % 2 == 0)
+        
+        if is_top:
+            card_y = y_spine - 25 - card_h
+            tick_y1 = card_y + card_h
+            tick_y2 = y_spine
+        else:
+            card_y = y_spine + 25
+            tick_y1 = y_spine
+            tick_y2 = card_y
+
+        line_col = amber if is_current else (green if is_done else border)
+        line_w = 2.5 if is_current else (1.8 if is_done else 1.5)
+        dash_str = "none" if (is_done or is_current) else "3,3"
+        c.append(f'<line x1="{x}" y1="{tick_y1}" x2="{x}" y2="{tick_y2}" stroke="{line_col}" stroke-width="{line_w}" stroke-dasharray="{dash_str}"/>')
+
+        card_x = x - card_w / 2
+
+        if is_current:
+            bg_card = "#fffdf7"
+            border_card = amber
+            bw = 2.5
+            badge_bg = amber
+            badge_txt = "#ffffff"
+            status_lbl = "In Progress"
+            status_col = "#b45309"
+        elif is_done:
+            bg_card = slate_light
+            border_card = green
+            bw = 1.8
+            badge_bg = green_light
+            badge_txt = green_dark
+            status_lbl = "✓ Complete"
+            status_col = green
+        else:
+            bg_card = white
+            border_card = border
+            bw = 1.5
+            badge_bg = slate_light
+            badge_txt = slate
+            status_lbl = "Planned"
+            status_col = slate
+
+        dash_style = 'stroke-dasharray="5,4"' if (not is_done and not is_current) else ''
+        c.append(f'<rect x="{card_x:.1f}" y="{card_y}" width="{card_w}" height="{card_h}" rx="8" fill="{bg_card}" stroke="{border_card}" stroke-width="{bw}" {dash_style}/>')
+
+        badge_w = 70 if not is_current else 75
+        c.append(f'<rect x="{card_x+8:.1f}" y="{card_y+8}" width="{badge_w}" height="20" rx="4" fill="{badge_bg}"/>')
+        c.append(f'<text x="{card_x+13:.1f}" y="{card_y+22}" font-size="10.5" font-weight="bold" fill="{badge_txt}">{p_num}</text>')
+        c.append(f'<text x="{card_x+card_w-8:.1f}" y="{card_y+22}" font-size="10" font-weight="bold" fill="{status_col}" text-anchor="end">{status_lbl}</text>')
+
+        c.append(f'<text x="{card_x+8:.1f}" y="{card_y+44}" font-size="13" font-weight="bold" fill="{navy}">{title}</text>')
+        c.append(f'<text x="{card_x+8:.1f}" y="{card_y+59}" font-size="10.5" fill="{text_muted}">{subtitle}</text>')
+        c.append(f'<line x1="{card_x+8:.1f}" y1="{card_y+66}" x2="{card_x+card_w-8:.1f}" y2="{card_y+66}" stroke="{grid}" stroke-width="1"/>')
+
+        for b_idx, bullet in enumerate(bullets):
+            b_y = card_y + 82 + b_idx * 28
+            dot_col = amber if is_current else (green if is_done else slate)
+            font_wt = "bold" if (is_current and b_idx == 0) else "normal"
+            txt_col = navy if is_current else slate_dark
+            
+            c.append(f'<circle cx="{card_x+14:.1f}" cy="{b_y-3}" r="2.5" fill="{dot_col}"/>')
+            c.append(f'<text x="{card_x+22:.1f}" y="{b_y}" font-size="10.5" font-weight="{font_wt}" fill="{txt_col}">{bullet}</text>')
+
+        if is_current:
+            c.append(f'<circle cx="{x:.1f}" cy="{y_spine}" r="14" fill="{amber}" stroke="{white}" stroke-width="3"/>')
+            c.append(f'<circle cx="{x:.1f}" cy="{y_spine}" r="5" fill="#ffffff"/>')
+        elif is_done:
+            c.append(f'<circle cx="{x:.1f}" cy="{y_spine}" r="10" fill="{green}" stroke="{white}" stroke-width="2.5"/>')
+            c.append(f'<text x="{x:.1f}" y="{y_spine+3.5}" font-size="9" font-weight="bold" fill="#ffffff" text-anchor="middle">✓</text>')
+        else:
+            c.append(f'<circle cx="{x:.1f}" cy="{y_spine}" r="8" fill="{white}" stroke="{border}" stroke-width="2"/>')
+
+    return _svg_wrapper(width, height, "\n".join(c))
+
+
 # ==============================================================================
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -714,6 +851,7 @@ def main() -> None:
                 pass
 
     figures: dict[str, str] = {
+        "project_timeline_and_status.svg": fig_project_timeline_and_status(),
         "pair_group_neural_architecture.svg": fig_pair_group_architecture(),
         "end_to_end_attack_pipeline.svg": fig_end_to_end_pipeline(),
         "verification_triggered_fallback_workflow.svg": fig_verification_triggered_fallback(),

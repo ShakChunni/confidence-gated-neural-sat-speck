@@ -1,0 +1,118 @@
+{
+  "schema": "neural_sat_speck.phase10_vtc_validation_config.v1",
+  "phase": 10,
+  "study": "phase10_vtc_validation",
+  "validation_only": true,
+  "dataset": {
+    "dataset_id": "speck32_64_attack_phase10_validation_r6",
+    "manifest_path": "datasets/phase10_validation_r6/manifest.json",
+    "output_dir": "datasets/phase10_validation_r6",
+    "generated_at": "2026-09-01T00:00:00+08:00",
+    "rounds": 6,
+    "pair_count": 64,
+    "instance_count": 64,
+    "seed": 97001,
+    "seed_namespace": "validation_attack_instance_seed",
+    "split_role": "validation",
+    "input_difference": [
+      64,
+      0
+    ],
+    "pair_construction": "plaintext_difference",
+    "key_generation_policy": "one_random_master_key_per_instance"
+  },
+  "seed_exclusions": [
+    1001,
+    2001,
+    3001,
+    4001,
+    5001,
+    6001,
+    51001,
+    52001,
+    53001,
+    61001,
+    62001,
+    63001,
+    64001,
+    65001,
+    72001,
+    73001,
+    81001,
+    82001,
+    83001,
+    91001,
+    92001,
+    93001,
+    96001,
+    98001,
+    99001
+  ],
+  "candidate_domain": {
+    "first": 0,
+    "last": 65535,
+    "count": 65536,
+    "complete_16_bit_domain": true
+  },
+  "models": {
+    "b0": {
+      "model_id": "speck32_64_b0_gohr_baseline",
+      "checkpoint_path": "models/speck32_64_phase3_r5_distinguisher.pt",
+      "checkpoint_sha256": "cb0cbd895acd53f2779b437eb613dcee916007c1111ef39082f1e1236adfc9e8",
+      "score_aggregation": "sum_logits"
+    },
+    "b1": {
+      "model_id": "speck32_64_b1_mean_g64",
+      "checkpoint_path": "models/speck32_64_phase6a_b1_mean_g64.pt",
+      "checkpoint_sha256": "a93d29a76a521b6f3fd0f1dff943df9f74de3857169b9d735c9aa478817954d5",
+      "score_aggregation": "group_logit",
+      "group_size": 64
+    }
+  },
+  "fallback_policy": {
+    "k1_budget": 16,
+    "b0_allowance": 16,
+    "kmax_budget": 32,
+    "routing_mechanism": "exact_master_key_verification_failure",
+    "deduplication": true
+  },
+  "solver": {
+    "solver_name": "CryptoMiniSat",
+    "solver_version": "5.14.7",
+    "known_pairs_used": 4,
+    "independent_verification_pairs_count": 2,
+    "solver_timeout_seconds": 10.0,
+    "max_solutions_per_candidate": 1,
+    "method_solver_isolation": true
+  },
+  "evaluation_methods": [
+    {
+      "method_id": "b0_sat",
+      "display_name": "Independent Baseline (B0) + SAT",
+      "type": "incremental_sat",
+      "candidate_budget": 16
+    },
+    {
+      "method_id": "b1_sat",
+      "display_name": "Pair-Aware Deep Sets (B1) + SAT",
+      "type": "incremental_sat",
+      "candidate_budget": 16
+    },
+    {
+      "method_id": "eager_b1_b0_fallback_sat",
+      "display_name": "Eager Dual-Ranking Diversity Fallback + SAT",
+      "type": "eager_diversity_sat",
+      "candidate_budget": 32
+    },
+    {
+      "method_id": "vtc_b1_b0_sat",
+      "display_name": "Verification-Triggered Cascaded Fallback (VTC) + SAT",
+      "type": "lazy_cascaded_sat",
+      "candidate_budget": 32
+    }
+  ],
+  "outputs": {
+    "records_dir": "results/phase10_vtc_validation/records",
+    "summary_path": "results/phase10_vtc_validation/summary.json"
+  }
+}
