@@ -12,26 +12,26 @@ The repository implements, tests, and evaluates a closed-loop neuro-symbolic cry
 
 The final empirical benchmark evaluated all 5 comparative methods on an independently generated **held-out attack test benchmark** of **$N=64$ independent master keys** on 6-round SPECK32/64 ($2^{16} = 65,536$ complete candidate subkey domain per instance, $\Delta P = (0\text{x}0040, 0\text{x}0000)$):
 
-| Method | Solved Keys / 64 | Exact Success Rate | Mean Attempts | Median Online Time (s) | PAR-2 Score (s) | Key Empirical Finding |
+| Method | Solved Keys / 64 | Exact Success Rate | 95% Wilson CI | Median Online Time (s) | PAR-2 ($T=100\text{s}$) | Key Empirical Finding |
 |---|:---:|:---:|:---:|:---:|:---:|---|
-| **1. SAT-Only Baseline** | $12 / 64$ | **$18.75\%$** | N/A | $10.08\text{s}$ | $16.34\text{s}$ | Times out on $>81\%$ of keys without subkey guidance. |
-| **2. Random-Order + SAT ($k=16$)** | $0 / 64$ | **$0.00\%$** | $16.00$ | $1.56\text{s}$ | $20.00\text{s}$ | Exhausts $k=16$ budget on 16 UNSATs on every key. |
-| **3. Baseline B0 (Gohr 2019) + SAT** | $50 / 64$ | **$78.13\%$** | $8.75$ | $79.66\text{s}$ | $68.62\text{s}$ | Solves majority, but misses 14 keys outside top-16. |
-| **4. Proposed B1 (Deep Sets) + SAT** | **$58 / 64$** | **$90.63\%$** | **$8.55$** | **$78.73\text{s}$** | **$74.62\text{s}$** | **$+12.50\text{ pp}$ boost over B0**; solves 8 additional keys. |
-| **5. Confidence-Gated B1 + Fallback** | **$63 / 64$** | **$\mathbf{98.44\%}$** | $9.11$ | $157.72\text{s}$ | $160.16\text{s}$ | **Rescues 5 of 6 B1 misses**, achieving near-perfect recovery! |
+| **1. SAT-Only Baseline** | $0 / 64$ | **$0.00\%$** | $[0.0\%, 5.7\%]$ | $10.17\text{s}$ | $200.00\text{s}$ | Times out on 100% of keys on isolated solver. |
+| **2. Random-Order + SAT ($k=16$)** | $0 / 64$ | **$0.00\%$** | $[0.0\%, 5.7\%]$ | $3.80\text{s}$ | $200.00\text{s}$ | Exhausts $k=16$ budget on 16 UNSATs on every key. |
+| **3. Baseline B0 (Gohr 2019) + SAT** | $50 / 64$ | **$78.12\%$** | $[66.6\%, 86.5\%]$ | $78.72\text{s}$ | $108.70\text{s}$ | Solves majority, but misses 14 keys outside top-16. |
+| **4. Proposed B1 (Deep Sets) + SAT** | **$58 / 64$** | **$90.62\%$** | $[81.0\%, 95.6\%]$ | **$79.04\text{s}$** | **$92.14\text{s}$** | Observed $+12.50\text{ pp}$ advantage over B0 (exact McNemar $p = 0.0768$). |
+| **5. Historical Eager B1/B0 Fallback** | **$63 / 64$** | **$\mathbf{98.44\%}$** | $[91.7\%, 99.7\%]$ | $156.41\text{s}$ | $200.00\text{s}$ | Rescues 5 of 6 B1 misses using doubled budget ($k=32$) and two neural rankings. |
 
 ---
 
 ## 2. Research Questions & Scientific Findings
 
-### RQ1 — Effectiveness (**CONFIRMED**)
-* **Finding:** Pair-aware neural ranking ($B1$) raises master-key recovery from **$18.75\%$ (SAT-only)** and **$0.00\%$ (Random order)** to **$90.63\%$**, solving the true 64-bit master key in an average of just **8.55 candidate assumptions** ($<0.1\text{s}$ of SAT solver search time).
+### RQ1 — Effectiveness (**RETROSPECTIVE / PROMISING, NOT PROSPECTIVELY CONFIRMED**)
+* **Finding:** On the corrected historical Phase 7 benchmark (seed `98001`, $N=64$), unguided SAT-only and random search solved $0/64$ ($0.00\%$), while pair-aware neural ranking ($B1$) achieved $58/64$ ($90.62\%$) and baseline $B0$ achieved $50/64$ ($78.12\%$). While $B1$ showed an observed $+12.50$ percentage-point advantage over $B0$, the paired difference was not statistically significant at the conventional 0.05 level (exact McNemar $p = 0.0768$). When the true subkey is assumed, clean CryptoMiniSat deduction requires a median of $476.7\text{ ms}$ (mean $605.4\text{ ms}$). Prospective confirmation is required.
 
 ### RQ2 — Reliability (**CALIBRATION BREAKDOWN IDENTIFIED**)
-* **Finding:** In symmetric cryptanalysis, a single scalar score-margin feature $(s_{(1)} - s_{(8)}) / \sigma_{\text{all}}$ is **insufficient** to reliably gate top-$k$ containment ($AUC \approx 0.52$). Differential clustering produces "pseudo-differential ghost peaks" for incorrect subkeys sharing active bit positions, causing neural rankers to be "confidently wrong."
+* **Finding:** In symmetric cryptanalysis, a single scalar score-margin feature $(s_{(1)} - s_{(8)}) / \sigma_{\text{all}}$ is **insufficient** to reliably gate top-$k$ containment ($\text{ROC-AUC} \approx 0.52$). Wrong candidates can receive high neural scores and wide margins. Modular carry clustering in ARX ciphers is hypothesized as an exploratory mechanism ("possible structured false peaks"). All reported master-key recoveries must pass independent fresh-pair verification.
 
-### RQ3 — Fallback Resilience (**CONFIRMED**)
-* **Finding:** Rather than relying on unreliable scalar confidence thresholds, an **architectural diversity fallback** (interleaving Deep Sets $B1$ with Gohr baseline $B0$ candidates) provides deterministic robustness, recovering **$63 / 64$ keys ($98.44\%$)** and rescuing $5$ of the $6$ keys that $B1$ missed in isolation.
+### RQ3 — Fallback Resilience (**RETROSPECTIVE / DIAGNOSTIC**)
+* **Finding:** The historical eager diversity fallback (interleaving Deep Sets $B1$ with Gohr baseline $B0$ candidates up to $k=32$) recovered **$63 / 64$ keys ($98.44\%$)**, rescuing $5$ of the $6$ keys that $B1$ missed in isolation. However, computing two full rankings doubles the offline ranking latency, motivating Phase 10's investigation of ranking stability ($G_1$) and shortlist rescue ($R_1$).
 
 ---
 

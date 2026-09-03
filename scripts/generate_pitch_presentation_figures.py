@@ -153,8 +153,8 @@ def fig_end_to_end_pipeline() -> str:
         ("Step 2: 1-Round Inverse Decryption", "Partial decryption across all 65,536 candidate 16-bit subkeys", "[Domain: 2^16]", COLORS["blue_light"], COLORS["blue_dark"]),
         ("Step 3: Neural Subkey Ranking", "Permutation-invariant group distinguisher ranks full candidate domain", "[Deep Sets]", COLORS["blue_light"], COLORS["blue_dark"]),
         ("Step 4: Incremental XOR-SAT Solver", "CryptoMiniSat conditions on candidate subkey assumptions (k_5 = k*)", "[Incremental SAT]", COLORS["orange_light"], COLORS["orange"]),
-        ("Step 5: Master-Key Deduction", "SAT solves key schedule and cipher constraints to deduce remaining 48 bits (&lt;100ms)", "[&lt;100ms Solve]", COLORS["orange_light"], COLORS["orange"]),
-        ("Step 6: Cryptographic Verification", "Mandatory testing on 2 fresh 32-bit plaintexts (False positive rate &lt;= 2^-64)", "[FP Rate &lt;= 2^-64]", COLORS["green_light"], COLORS["green_dark"]),
+        ("Step 5: Master-Key Deduction", "SAT solves key schedule and cipher constraints to deduce remaining 48 bits (median 477 ms)", "[Exact Solve]", COLORS["orange_light"], COLORS["orange"]),
+        ("Step 6: Cryptographic Verification", "Mandatory testing on independent fresh plaintext-ciphertext pairs", "[Fresh-Pair Check]", COLORS["green_light"], COLORS["green_dark"]),
         ("Step 7: Key Recovery Output", "Verified 64-bit Master Key (l_2, l_1, l_0, k_0) Recovered", "[64-Bit Master Key]", COLORS["green_light"], COLORS["green_dark"]),
     ]
 
@@ -727,7 +727,7 @@ def fig_calibration_breakdown() -> str:
     c.append(f'<line x1="{leg_x + 15}" y1="{leg_y + 75}" x2="{leg_x + 365}" y2="{leg_y + 75}" stroke="{COLORS["grid"]}" stroke-width="1"/>')
     c.append(f'<text x="{leg_x + 15}" y="{leg_y + 95}" font-size="11.5" fill="{COLORS["slate_dark"]}">Finding: Neural self-confidence fails to predict ranking accuracy</text>')
     c.append(f'<rect x="{leg_x + 12}" y="{leg_y + 104}" width="355" height="22" rx="4" fill="{COLORS["red_light"]}"/>')
-    c.append(f'<text x="{leg_x + 18}" y="{leg_y + 119}" font-size="10.5" font-weight="bold" fill="#b91c1c">Reason: False subkeys induce ghost peaks from ARX carry clustering</text>')
+    c.append(f'<text x="{leg_x + 18}" y="{leg_y + 119}" font-size="10.5" font-weight="bold" fill="#b91c1c">Finding: Wrong subkeys produce structured false peaks</text>')
 
     return _svg_wrapper(width, height, "\n".join(c))
 
@@ -763,7 +763,7 @@ def fig_project_timeline_part1() -> str:
         ], "complete"),
         ("Phase 5", "Incremental SAT", "Assumption-Based Recovery", [
             ("Candidate subkey assumptions", "CryptoMiniSat solve assumptions"),
-            ("Independent master-key check", "False positive rate bounded &lt;= 2^-64")
+            ("Independent master-key check", "Mandatory testing on fresh independent pairs")
         ], "complete"),
         ("Phase 6", "Pair-Group Model (B1)", "Permutation-Invariant Deep Sets", [
             ("Permutation-invariant pooling", "Joint evidence across 64 ciphertext pairs"),

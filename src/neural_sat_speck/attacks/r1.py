@@ -11,6 +11,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Final, Protocol
 
+from neural_sat_speck.data.seed_policy import (
+    Phase10DataRole,
+    validate_dataset_role_for_training,
+)
+
 ALL_SUBKEYS_COUNT: Final[int] = 65536
 
 
@@ -24,6 +29,7 @@ class HardNegativeMiningResult:
     shortlist_candidates: tuple[int, ...]
     hard_negatives: tuple[int, ...]
     true_subkey_in_shortlist: bool
+    data_role: str = Phase10DataRole.DEVELOPMENT_CALIBRATION
 
 
 class R1HardNegativeMiner:
@@ -38,8 +44,10 @@ class R1HardNegativeMiner:
         instance_id: str,
         b1_candidate_order: Sequence[int],
         true_subkey: int,
+        data_role: str | Phase10DataRole = Phase10DataRole.DEVELOPMENT_CALIBRATION,
     ) -> HardNegativeMiningResult:
         """Extract shortlist and identify hard negatives that ranked above or near the true subkey."""
+        validate_dataset_role_for_training(data_role)
         if len(b1_candidate_order) < self.shortlist_size:
             raise ValueError(f"b1_candidate_order length must be >= {self.shortlist_size}")
 

@@ -58,6 +58,35 @@ PROTECTED_RESEARCH_SEEDS: Final[frozenset[int]] = frozenset(
 )
 
 
+class Phase10DataRole(StrEnum):
+    """Permitted dataset partition roles for Phase 10 research."""
+
+    DEVELOPMENT_CALIBRATION = "development_calibration"
+    LOCKED_VALIDATION = "locked_validation"
+
+
+def validate_dataset_role_for_training(role: Phase10DataRole | str) -> None:
+    """Enforce strict non-contamination of the locked prospective validation set.
+
+    Raises
+    ------
+    ValueError
+        If locked validation data is supplied to a training, fitting, or threshold selection pipeline.
+    """
+    if isinstance(role, str):
+        try:
+            role = Phase10DataRole(role)
+        except ValueError as err:
+            raise ValueError(f"Unknown Phase 10 data role: {role}") from err
+
+    if role == Phase10DataRole.LOCKED_VALIDATION:
+        raise ValueError(
+            "Locked prospective validation data cannot enter training or calibration pipelines. "
+            "Validation data must remain unopened until all hyperparameters, feature sets, "
+            "R1 weights, and G1 gating thresholds are frozen."
+        )
+
+
 class SeedRole(StrEnum):
     """Permitted experimental roles for random seeds."""
 

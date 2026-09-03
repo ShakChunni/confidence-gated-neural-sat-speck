@@ -66,6 +66,7 @@ def run_adaptive_cascade_recovery(
     reliability_threshold: float = DEFAULT_RELIABILITY_THRESHOLD,
     primary_budget: int = DEFAULT_PRIMARY_BUDGET,
     shortlist_size: int = DEFAULT_SHORTLIST_SIZE,
+    cumulative_budget: int = 32,
     solver_timeout: float = DEFAULT_SOLVER_TIMEOUT,
     verification_pair_count: int = 2,
     verification_seed: int = 999999,
@@ -158,7 +159,13 @@ def run_adaptive_cascade_recovery(
 
         # Fresh isolated solver for escalated B0 run
         b0_sat_model = factory.build_isolated_model("cascade_stage2_lazy_b0")
-        b0_candidates = tuple(b0_order[:primary_budget])
+
+        # Deduplicate against already tested candidates and respect cumulative budget
+        tested_set = {a.candidate for a in total_attempts}
+        remaining_budget = max(0, cumulative_budget - len(tested_set))
+        b0_candidates = tuple(
+            c for c in b0_order if c not in tested_set
+        )[:remaining_budget]
 
         rec_b0: RecoveryResult = run_candidate_recovery(
             b0_sat_model,

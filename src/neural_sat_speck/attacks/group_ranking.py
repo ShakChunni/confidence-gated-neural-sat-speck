@@ -73,8 +73,8 @@ class PairGroupSubkeyRanking:
             raise ValueError("candidate order must contain every candidate once")
         if self.pair_count != self.group_size:
             raise ValueError("pair count must equal the pair-group size")
-        if self.pair_count != 64:
-            raise ValueError("pair-aware ranking requires exactly 64 pairs")
+        if self.pair_count not in (16, 32, 64):
+            raise ValueError(f"pair-aware ranking requires 16, 32, or 64 pairs, got {self.pair_count}")
         if self.candidate_batch_size <= 0:
             raise ValueError("candidate_batch_size must be positive")
         if self.score_aggregation != PAIR_GROUP_SCORE_AGGREGATION:
@@ -302,9 +302,112 @@ def evaluate_pair_group_subkey_ranking(
     }
 
 
+def rank_pair_group_multi_subsets(
+    instance: AttackInstance,
+    model: PairGroupRanker,
+    *,
+    subset_sizes: Sequence[int] = (16, 32, 64),
+    candidate_values: Sequence[int] | None = None,
+    candidate_batch_size: int = 128,
+    device: torch.device | str | None = None,
+) -> dict[int, PairGroupSubkeyRanking]:
+    """Rank candidates across multiple ciphertext pair subsets reusing pair embeddings.
+
+    Mathematical Invariant:
+    Since the B1 pair encoder SharedGohrPairEncoder is applied to each pair
+    independently, slicing embeddings to subset sizes {16, 32, 64} and pooling
+    them through the shallow aggregation head produces outputs bitwise identical
+    to independent multi-pass rankings, but saves (16+32)/64 = 75% extra ResNet
+    forward evaluations.
+    """
+    if not isinstance(instance, AttackInstance):
+        raise TypeError("instance must be an AttackInstance")
+    if len(instance.pairs) != 64:
+        raise ValueError("pair-aware multi-subset ranking requires an instance with 64 pairs")
+    if not isinstance(model, PairGroupRanker):
+        raise TypeError("model must be a PairGroupRanker")
+    for s in subset_sizes:
+        if s not in (16, 32, 64):
+            raise ValueError(f"subset size must be 16, 32, or 64, got {s}")
+    candidates = _validate_candidate_values(candidate_values)
+    resolved_device = _resolve_device(model, device)
+    original_parameter = next(model.parameters(), None)
+    original_device = original_parameter.device if original_parameter is not None else None
+    was_training = model.training
+    total_started = time.perf_counter()
+    partial_seconds = 0.0
+    inference_seconds = 0.0
+    peak_feature_tensor_bytes = 0
+    scores_by_subset: dict[int, list[float]] = {s: [] for s in subset_sizes}
+
+    model.to(resolved_device)
+    model.eval()
+    try:
+        with torch.no_grad():
+            for start in range(0, len(candidates), candidate_batch_size):
+                candidate_batch = candidates[start : start + candidate_batch_size]
+                partial_started = time.perf_counter()
+                feature_array = vectorized_final_round_features(
+                    instance.pairs,
+                    candidate_batch,
+                )
+                features = torch.from_numpy(feature_array).to(resolved_device)
+                partial_seconds += time.perf_counter() - partial_started
+                feature_bytes = feature_array.nbytes
+                peak_feature_tensor_bytes = max(peak_feature_tensor_bytes, feature_bytes)
+
+                inference_started = time.perf_counter()
+                # 1. Compute 64-pair embeddings ONCE for the entire batch
+                embeddings = model.pair_embeddings(features)
+                # 2. Slice and pool for each subset size
+                for s in subset_sizes:
+                    sub_emb = embeddings[:, :s, :]
+                    agg = sub_emb.mean(dim=1)
+                    sub_logits = model.head(agg).reshape(-1)
+                    scores_by_subset[s].extend(float(v) for v in sub_logits.cpu())
+                inference_seconds += time.perf_counter() - inference_started
+
+        total_elapsed = time.perf_counter() - total_started
+        results: dict[int, PairGroupSubkeyRanking] = {}
+        for s in subset_sizes:
+            sub_scores = scores_by_subset[s]
+            sorting_started = time.perf_counter()
+            candidate_order = tuple(
+                candidate
+                for candidate, _ in sorted(
+                    zip(candidates, sub_scores, strict=True),
+                    key=lambda item: (-item[1], item[0]),
+                )
+            )
+            sorting_seconds = time.perf_counter() - sorting_started
+            results[s] = PairGroupSubkeyRanking(
+                candidate_values=candidates,
+                candidate_scores=tuple(sub_scores),
+                candidate_order=candidate_order,
+                pair_count=s,
+                group_size=s,
+                candidate_batch_size=candidate_batch_size,
+                score_aggregation=PAIR_GROUP_SCORE_AGGREGATION,
+                partial_decryption_seconds=partial_seconds,
+                inference_seconds=inference_seconds,
+                sorting_seconds=sorting_seconds,
+                total_seconds=total_elapsed,
+                peak_feature_tensor_bytes=peak_feature_tensor_bytes,
+            )
+        return results
+    finally:
+        if original_device is not None:
+            model.to(original_device)
+        if was_training:
+            model.train()
+        else:
+            model.eval()
+
+
 __all__ = [
     "PAIR_GROUP_SCORE_AGGREGATION",
     "PairGroupSubkeyRanking",
     "evaluate_pair_group_subkey_ranking",
+    "rank_pair_group_multi_subsets",
     "rank_pair_group_subkeys",
 ]

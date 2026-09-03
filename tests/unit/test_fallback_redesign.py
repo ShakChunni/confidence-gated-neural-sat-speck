@@ -21,10 +21,12 @@ import math
 
 import numpy as np
 import pytest
+import torch
 
 from neural_sat_speck.attacks.cascade import (
     run_adaptive_cascade_recovery,
 )
+from neural_sat_speck.attacks.group_ranking import rank_pair_group_multi_subsets
 from neural_sat_speck.attacks.r1 import (
     HeuristicRescueReranker,
     R1HardNegativeMiner,
@@ -33,6 +35,7 @@ from neural_sat_speck.attacks.r1 import (
 )
 from neural_sat_speck.confidence.stability import (
     G1FeatureVector,
+    extract_g1_features_from_rankings,
     normalized_logit_margin,
     score_curvature,
     topk_entropy,
@@ -43,8 +46,11 @@ from neural_sat_speck.data.attack import AttackInstanceConfig, generate_attack_i
 from neural_sat_speck.data.seed_policy import (
     QUARANTINED_PHASE10_SEED,
     RETIRED_BLIND_SEED,
+    Phase10DataRole,
     SeedRole,
 )
+from neural_sat_speck.neural.group_model import PairGroupRanker
+from neural_sat_speck.neural.numpy_inference import vectorized_final_round_features
 
 
 @pytest.fixture
@@ -383,3 +389,127 @@ def test_invariant_12_seed_validation_rejects_quarantined_seeds(sample_attack_in
             verification_seed=RETIRED_BLIND_SEED,
             seed_role=SeedRole.BLIND_CONFIRMATION,
         )
+
+
+def test_invariant_13_locked_validation_role_cannot_enter_training_or_calibration():
+    """Invariant 13: Passing locked validation instances to training or miner raises ValueError."""
+    miner = R1HardNegativeMiner(shortlist_size=32)
+    b1_order = list(range(100))
+
+    # Passing LOCKED_VALIDATION role must immediately fail
+    with pytest.raises(ValueError, match="(?i)locked prospective validation"):
+        miner.mine_instance(
+            instance_id="val_inst_001",
+            b1_candidate_order=b1_order,
+            true_subkey=42,
+            data_role=Phase10DataRole.LOCKED_VALIDATION,
+        )
+
+
+def test_invariant_14_g1_optimized_reference_equivalence():
+    """Invariant 14: Multi-subset ranking via cached embeddings matches independent passes bitwise."""
+    config = AttackInstanceConfig(
+        rounds=6,
+        pair_count=64,
+        instance_count=1,
+        seed=777777,
+        split_role="test",
+    )
+    inst = generate_attack_instances(config).instances[0]
+    model = PairGroupRanker(variant="b1_mean")
+    model.eval()
+
+    cands = [100, 200, 300, 400]
+
+    # Optimized multi-subset call
+    multi_rankings = rank_pair_group_multi_subsets(
+        inst,
+        model,
+        subset_sizes=(16, 32, 64),
+        candidate_values=cands,
+    )
+
+    # Independent reference passes
+    with torch.no_grad():
+        f16 = torch.from_numpy(vectorized_final_round_features(inst.pairs[:16], cands))
+        emb16 = model.encoder(f16.reshape(-1, 4, 16)).reshape(len(cands), 16, -1)
+        ref16 = model.head(emb16.mean(dim=1)).squeeze().numpy()
+
+        f32 = torch.from_numpy(vectorized_final_round_features(inst.pairs[:32], cands))
+        emb32 = model.encoder(f32.reshape(-1, 4, 16)).reshape(len(cands), 32, -1)
+        ref32 = model.head(emb32.mean(dim=1)).squeeze().numpy()
+
+        f64 = torch.from_numpy(vectorized_final_round_features(inst.pairs[:64], cands))
+        emb64 = model.encoder(f64.reshape(-1, 4, 16)).reshape(len(cands), 64, -1)
+        ref64 = model.head(emb64.mean(dim=1)).squeeze().numpy()
+
+    diff16 = np.max(np.abs(np.array(multi_rankings[16].candidate_scores) - ref16))
+    diff32 = np.max(np.abs(np.array(multi_rankings[32].candidate_scores) - ref32))
+    diff64 = np.max(np.abs(np.array(multi_rankings[64].candidate_scores) - ref64))
+
+    assert diff16 == 0.0, f"16-pair diff must be 0.0, got {diff16}"
+    assert diff32 == 0.0, f"32-pair diff must be 0.0, got {diff32}"
+    assert diff64 == 0.0, f"64-pair diff must be 0.0, got {diff64}"
+
+    # Verify G1 feature extraction on multi_rankings runs cleanly and deterministically
+    feat_vec1 = extract_g1_features_from_rankings(
+        multi_rankings[64],
+        multi_rankings[32],
+        multi_rankings[16],
+    )
+    feat_vec2 = extract_g1_features_from_rankings(
+        multi_rankings[64],
+        multi_rankings[32],
+        multi_rankings[16],
+    )
+    np.testing.assert_array_equal(feat_vec1.to_array(), feat_vec2.to_array())
+
+
+def test_invariant_15_r1_shortlist_budget_selection():
+    """Invariant 15: R1 shortlist builder strictly obeys bounded shortlist sizes M in {32, 64, 128}."""
+    order = list(range(200))
+    for m in (32, 64, 128):
+        builder = R1ShortlistBuilder(shortlist_size=m)
+        shortlist = builder.build_shortlist(order)
+        assert len(shortlist) == m
+        assert shortlist == tuple(range(m))
+
+
+def test_invariant_16_terminal_fallback_deduplication_and_cumulative_budget(sample_attack_instance):
+    """Invariant 16: Lazy terminal B0 fallback strictly deduplicates seen candidates and caps cumulative budget."""
+    true_key = sample_attack_instance.final_round_subkey
+
+    # Primary stage tests candidates [10, 11, 12... 25] (16 candidates), all UNSAT
+    primary_cands = list(range(10, 26))
+
+    # B0 contains some overlapping candidates [15, 16, 17... 40]
+    # Plus true_key at position 30
+    b0_cands = list(range(15, 30)) + [true_key] + list(range(31, 50))
+
+    class LowRelEstimator:
+        def predict_reliability(self, f):
+            return 0.1
+
+    features = G1FeatureVector(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7)
+
+    res = run_adaptive_cascade_recovery(
+        instance=sample_attack_instance,
+        b1_candidate_order=primary_cands + list(range(100, 150)),
+        t_b1_ranking=1.0,
+        g1_features=features,
+        reliability_estimator=LowRelEstimator(),
+        r1_reranker=HeuristicRescueReranker(),  # reverses primary_cands[:16]
+        b0_ranking_callback=lambda: (b0_cands, 0.1),
+        primary_budget=16,
+        cumulative_budget=32,
+        solver_timeout=5.0,
+    )
+
+    # Verify that total candidates attempted never exceeds cumulative_budget (32)
+    assert res.total_candidates_attempted <= 32
+
+    # Verify that every attempted candidate is strictly unique (no duplicates tested)
+    attempted_cands = [a.candidate for a in res.attempts]
+    assert len(attempted_cands) == len(set(attempted_cands)), "Duplicate candidate attempted in SAT!"
+    assert res.success is True
+    assert res.winning_candidate == true_key

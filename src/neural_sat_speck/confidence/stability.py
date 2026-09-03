@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Final, Protocol
+from typing import Any, Final, Protocol
 
 import numpy as np
 
@@ -140,29 +140,151 @@ def topk_spearman_correlation(
 
 @dataclass(frozen=True)
 class G1FeatureVector:
-    """Seven-dimensional attack-level reliability feature vector."""
+    """Seven-dimensional attack-level reliability feature vector (Part E frozen set).
 
-    normalized_logit_margin: float
-    top16_entropy: float
-    score_curvature: float
-    subset_jaccard_stability: float
-    subset_spearman_rho: float
-    multifold_rank_dispersion: float
-    cross_model_agreement: float
+    Features
+    --------
+    1. top1_top2_margin : float
+        Difference between 1st and 2nd ranked candidate scores.
+    2. top1_top16_margin : float
+        Normalized logit margin between 1st and 16th ranked candidates.
+    3. normalized_top16_entropy : float
+        Normalized Shannon entropy of softmax over top 16 candidates in [0.0, 1.0].
+    4. top16_jaccard_16_32 : float
+        Jaccard similarity of top-16 candidate sets between 16-pair and 32-pair rankings.
+    5. top16_jaccard_32_64 : float
+        Jaccard similarity of top-16 candidate sets between 32-pair and 64-pair rankings.
+    6. top1_rank_variance : float
+        Empirical variance of the 64-pair top-1 candidate's rank across {16, 32, 64}-pair views.
+    7. dispersion_normalized_margin : float
+        Score margin divided by subset rank dispersion: margin / (std(ranks) + 1.0).
+    """
+
+    top1_top2_margin: float
+    top1_top16_margin: float
+    normalized_top16_entropy: float
+    top16_jaccard_16_32: float
+    top16_jaccard_32_64: float
+    top1_rank_variance: float
+    dispersion_normalized_margin: float
+
+    # Backwards-compatibility properties
+    @property
+    def normalized_logit_margin(self) -> float:
+        return self.top1_top16_margin
+
+    @property
+    def top16_entropy(self) -> float:
+        return self.normalized_top16_entropy
+
+    @property
+    def score_curvature(self) -> float:
+        return self.top1_top2_margin
+
+    @property
+    def subset_jaccard_stability(self) -> float:
+        return self.top16_jaccard_32_64
+
+    @property
+    def subset_spearman_rho(self) -> float:
+        return self.top16_jaccard_16_32
+
+    @property
+    def multifold_rank_dispersion(self) -> float:
+        return self.top1_rank_variance
+
+    @property
+    def cross_model_agreement(self) -> float:
+        return self.dispersion_normalized_margin
 
     def to_array(self) -> np.ndarray:
         return np.array(
             [
-                self.normalized_logit_margin,
-                self.top16_entropy,
-                self.score_curvature,
-                self.subset_jaccard_stability,
-                self.subset_spearman_rho,
-                self.multifold_rank_dispersion,
-                self.cross_model_agreement,
+                self.top1_top2_margin,
+                self.top1_top16_margin,
+                self.normalized_top16_entropy,
+                self.top16_jaccard_16_32,
+                self.top16_jaccard_32_64,
+                self.top1_rank_variance,
+                self.dispersion_normalized_margin,
             ],
             dtype=np.float64,
         )
+
+
+def extract_g1_features_from_rankings(
+    ranking_64: Any,
+    ranking_32: Any,
+    ranking_16: Any,
+) -> G1FeatureVector:
+    """Extract the frozen 7-dimensional G1 reliability feature vector from multi-subset rankings.
+
+    Parameters
+    ----------
+    ranking_64 : PairGroupSubkeyRanking
+        Ranking evaluated on all 64 ciphertext pairs.
+    ranking_32 : PairGroupSubkeyRanking
+        Ranking evaluated on 32 ciphertext pairs.
+    ranking_16 : PairGroupSubkeyRanking
+        Ranking evaluated on 16 ciphertext pairs.
+    """
+    scores_64 = np.asarray(ranking_64.candidate_scores, dtype=np.float64)
+    sorted_64 = np.sort(scores_64)[::-1]
+
+    # 1. top1 - top2 margin
+    top1_top2 = float(sorted_64[0] - sorted_64[1]) if len(sorted_64) >= 2 else 0.0
+
+    # 2. top1 - top16 margin (normalized by L2 norm)
+    k16_idx = min(15, len(sorted_64) - 1)
+    norm = float(np.linalg.norm(scores_64, ord=2))
+    top1_top16 = float((sorted_64[0] - sorted_64[k16_idx]) / (norm + EPSILON))
+
+    # 3. normalized top-16 entropy
+    ent = topk_entropy(scores_64, top_k=16)
+    norm_ent = float(ent / math.log(16.0)) if len(sorted_64) >= 16 else 0.0
+
+    # 4. top-16 Jaccard: 16 vs 32 pairs
+    jacc_16_32 = topk_jaccard_stability(
+        ranking_16.candidate_order,
+        ranking_32.candidate_order,
+        top_k=16,
+    )
+
+    # 5. top-16 Jaccard: 32 vs 64 pairs
+    jacc_32_64 = topk_jaccard_stability(
+        ranking_32.candidate_order,
+        ranking_64.candidate_order,
+        top_k=16,
+    )
+
+    # 6. top-candidate rank variance across {16, 32, 64} views
+    c_top1 = ranking_64.candidate_order[0]
+    r64 = 1
+    r32 = (
+        ranking_32.candidate_order.index(c_top1) + 1
+        if c_top1 in ranking_32.candidate_order
+        else len(ranking_32.candidate_order)
+    )
+    r16 = (
+        ranking_16.candidate_order.index(c_top1) + 1
+        if c_top1 in ranking_16.candidate_order
+        else len(ranking_16.candidate_order)
+    )
+    rank_var = float(np.var([r16, r32, r64]))
+
+    # 7. dispersion-normalized margin: margin / (std(ranks) + 1.0)
+    rank_std = float(np.std([r16, r32, r64]))
+    disp_norm_margin = float((sorted_64[0] - sorted_64[k16_idx]) / (rank_std + 1.0))
+
+    return G1FeatureVector(
+        top1_top2_margin=top1_top2,
+        top1_top16_margin=top1_top16,
+        normalized_top16_entropy=norm_ent,
+        top16_jaccard_16_32=jacc_16_32,
+        top16_jaccard_32_64=jacc_32_64,
+        top1_rank_variance=rank_var,
+        dispersion_normalized_margin=disp_norm_margin,
+    )
 
 
 class ReliabilityEstimator(Protocol):

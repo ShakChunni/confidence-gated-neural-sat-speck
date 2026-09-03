@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Phase 10 G1/R1 Prospective Experiment Configuration Template",
+  "description": "TEMPLATE ONLY — Unpopulated experimental specification for Phase 10 reliability-gated complementary rescue. Seeds and keys remain ungenerated pending author authorization.",
+  "experiment_metadata": {
+    "protocol_document": "docs/PHASE10_G1_R1_PROSPECTIVE_PROTOCOL.md",
+    "phase": "10",
+    "cipher": "SPECK32_64",
+    "rounds": 6,
+    "status": "TEMPLATE_PENDING_AUTHOR_APPROVAL"
+  },
+  "dataset_specification": {
+    "total_keys": 256,
+    "development_calibration_keys": 192,
+    "locked_validation_keys": 64,
+    "pairs_per_instance": 64,
+    "verification_pairs_per_instance": 2,
+    "seed_policy": {
+      "quarantined_seeds_rejected": [98001, 97001, 99001],
+      "prospective_seed": "TBD_PREDECLARED_PRIOR_TO_GENERATION"
+    }
+  },
+  "g1_confidence_specification": {
+    "feature_names": [
+      "top1_top2_margin",
+      "top1_top16_margin",
+      "normalized_top16_entropy",
+      "top16_jaccard_16_32",
+      "top16_jaccard_32_64",
+      "top1_rank_variance",
+      "dispersion_normalized_margin"
+    ],
+    "computation_mode": "cached_embedding_slicing",
+    "target_event": "true_subkey_rank_gt_16",
+    "estimator_type": "l2_regularized_logistic_regression",
+    "threshold_selection_rule": "min_theta_for_risk_le_0.05_on_development_data",
+    "selected_threshold": "TBD_FROZEN_AFTER_DEVELOPMENT_FIT"
+  },
+  "r1_rescue_specification": {
+    "candidate_shortlist_sizes_to_evaluate": [32, 64, 128],
+    "selected_shortlist_size": "TBD_FROZEN_AFTER_DEVELOPMENT_FIT",
+    "loss_function": "pairwise_margin_ranking_loss",
+    "margin_gamma": 0.1,
+    "target_rank_budget": 16,
+    "training_data_role": "development_calibration"
+  },
+  "cascade_execution_specification": {
+    "primary_budget": 16,
+    "cumulative_budget": 32,
+    "solver_timeout_seconds": 10.0,
+    "global_par2_cutoffs_seconds": [100.0, 200.0],
+    "solver_isolation": true,
+    "candidate_deduplication_in_fallback": true,
+    "verification_acceptance_mandatory": true
+  },
+  "comparators": [
+    "b0_sat_k16",
+    "b1_sat_k16",
+    "historical_eager_b1_b0_diversity_fallback_k32",
+    "vtc_b1_to_b0_fallback_k32",
+    "g1_gated_r1_cascade_k16",
+    "g1_gated_r1_cascade_with_lazy_terminal_fallback_k32"
+  ]
+}
