@@ -69,7 +69,7 @@ The repository installs a standalone CLI tool for experimentation and demonstrat
 neural-sat-speck kat
 
 # 2. Generate synthetic chosen-plaintext attack instances
-neural-sat-speck generate-data --instances 10 --pairs 64 --rounds 6 --seed 99001 --output data/demo_instances.json
+neural-sat-speck generate-data --instances 10 --pairs 64 --rounds 6 --seed 999999 --output data/demo_instances.json
 
 # 3. Explain confidence calibration and routing decision
 neural-sat-speck explain-confidence --ranking results/phase7_final_evaluation/records/instance_0000.json
@@ -115,5 +115,5 @@ python scripts/plot_phase6b_proposal_figures.py
 
 * **Cipher:** Reference word-level SPECK32/64 ($16$-bit word, $32$-bit block, $64$-bit key), scalar round functions, key expansion, full encryption/decryption, and 1-round partial decryption inversion.
 * **Neural Models:** Single-pair Gohr ResNet baseline ($B0$) and multi-pair permutation-invariant Deep Sets group model ($B1$).
-* **Exact Solver:** Incremental CryptoMiniSat 5.14.7 Boolean encoding with native XOR Gaussian elimination, temporary subkey assumptions (`solve(assumptions)`), and algebraic master-key deduction.
-* **Verification:** Double cryptographic verification: 4 known attack pairs in solver constraints + 2 fresh independent plaintexts.
+* **Exact Solver:** Incremental CryptoMiniSat 5.14.7 Boolean encoding with native XOR Gaussian elimination, temporary subkey assumptions (`solve(assumptions)`), and algebraic master-key deduction (median ~481ms under clean solver conditions).
+* **Verification:** Cryptographic verification against 4 known attack pairs in solver constraints plus 2 fresh independent plaintexts (bounding the theoretical false positive rate to at most $2^{-32}$ under ideal cipher assumptions; 4 pairs bound to at most $2^{-64}$).

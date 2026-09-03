@@ -213,13 +213,15 @@ class SpeckSatModel:
                 time_limit=time_limit,
             )
         elapsed = perf_counter() - started
-        if satisfiable:
+        if satisfiable is True:
             status = "sat"
             timed_out: bool | None = False
+        elif satisfiable is None:
+            # pycryptosat returns (None, None) when interrupted by its time_limit
+            status = "solver_timeout"
+            timed_out = True
         elif time_limit is not None and elapsed >= time_limit:
-            # pycryptosat returns (False, None) for both a proven UNSAT
-            # result and a solve call interrupted by its time limit. Keep
-            # this outcome explicitly ambiguous rather than mislabelling it.
+            # Wall-clock boundary fallback if solve took longer than time_limit
             status = "unsat_or_timeout"
             timed_out = None
         else:

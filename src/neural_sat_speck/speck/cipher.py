@@ -22,6 +22,11 @@ from .primitives import (
 Block: TypeAlias = tuple[int, int]
 SPECK32_64_BLOCK_WORD_COUNT: Final[int] = 2
 
+# Official Beaulieu et al. (NSA/NIST) Known-Answer Test (KAT) vectors
+SPECK32_64_KAT_KEY: Final[tuple[int, int, int, int]] = (0x1918, 0x1110, 0x0908, 0x0100)
+SPECK32_64_KAT_PLAINTEXT: Final[Block] = (0x6574, 0x694C)
+SPECK32_64_KAT_CIPHERTEXT: Final[Block] = (0xA868, 0x42F2)
+
 
 def _normalise_block(block: Sequence[int]) -> Block:
     """Validate and mask a two-word block."""

@@ -231,7 +231,7 @@ def create_presentation() -> None:
         [
             "The Research Aim: Formulate a closed-loop neuro-symbolic system where AI and SAT complement each other.",
             "1. Neural Network: Evaluates differential ciphertext distributions to rank 16-bit subkey candidates.",
-            "2. CryptoMiniSat: Evaluates top-ranked candidates via temporary assumptions, deducing the 48-bit master key in <100ms.",
+            "2. CryptoMiniSat: Evaluates top-ranked candidates via temporary assumptions, deducing the 48-bit master key in sub-second median time (~481ms).",
             "3. Confidence Gating: Dynamically detects when neural rankings are unreliable and routes to a safe fallback.",
             "4. Independent Verification: Eliminates false positives via fresh plaintext checks."
         ],
@@ -328,7 +328,7 @@ def create_presentation() -> None:
         s5, Inches(6.8), Inches(4.4), Inches(5.9), Inches(2.6),
         "Our Demarcation: Online Closed-Loop Key Deduction",
         [
-            "1. Closed-Loop Online Integration: Neural network heuristic solves the 16-bit subkey; CryptoMiniSat deduces the 48-bit master key in <100ms via temporary assumptions.",
+            "1. Closed-Loop Online Integration: Neural network heuristic solves the 16-bit subkey; CryptoMiniSat deduces the 48-bit master key in sub-second median time (~481ms) via temporary assumptions.",
             "2. Permutation-Invariant Deep Sets (B1): Group-level representation (+12.5 pp boost).",
             "3. Selective Prediction & Calibration Breakdown: First rigorous study of trust calibration in symmetric cryptanalysis."
         ],
@@ -400,8 +400,8 @@ def create_presentation() -> None:
         s10, Inches(7.6), Inches(1.65), Inches(5.1), Inches(5.3),
         "Held-Out Benchmark Summary (N=64)",
         [
-            "1. SAT-Only Baseline:",
-            "   18.75% Solved (12/64) | 10.08s median time (timeouts on >81% of keys).",
+            "1. SAT-Only Baseline (Audited Clean Rerun):",
+            "   0.00% Solved (0/64 at 10s) | Historical unisolated baseline (18.75%) invalidated by solver state reuse.",
             "2. Random Order + SAT (k=16):",
             "   0.00% Solved (0/64) | 16 UNSAT refutations/key.",
             "3. Gohr Baseline (B0) + SAT (k=16):",
@@ -447,8 +447,8 @@ def create_presentation() -> None:
         "1. Algorithmic Synergy",
         [
             "Proved that Deep Sets neural guidance (B1) breaks the 6-round exponential SAT cliff.",
-            "Recovery success jumps from 18.75% (SAT-only) and 0.00% (Random) to 90.62% (B1).",
-            "CryptoMiniSat algebraically deduces remaining 48 bits in <100ms.",
+            "Recovery success jumps from 0.00% (SAT-only / Random) to 90.62% (B1).",
+            "CryptoMiniSat algebraically deduces remaining 48 bits in sub-second median time (~481ms).",
             "100% mathematically sound verification on fresh plaintexts."
         ],
         fill_color=C_WHITE, stroke_color=C_COBALT, title_color=C_NAVY, tag="Synergy Validated"

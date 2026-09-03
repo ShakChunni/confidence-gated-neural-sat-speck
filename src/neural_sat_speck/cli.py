@@ -27,6 +27,7 @@ from neural_sat_speck.data.attack import (
     AttackInstanceConfig,
     generate_attack_instances,
 )
+from neural_sat_speck.data.seed_policy import get_cli_default_seed
 from neural_sat_speck.speck.cipher import (
     SPECK32_64_KAT_CIPHERTEXT,
     SPECK32_64_KAT_KEY,
@@ -168,7 +169,7 @@ def main() -> None:
     gen_parser.add_argument("--instances", type=int, default=10, help="Number of instances")
     gen_parser.add_argument("--pairs", type=int, default=64, help="Pairs per instance")
     gen_parser.add_argument("--rounds", type=int, default=6, help="Cipher rounds")
-    gen_parser.add_argument("--seed", type=int, default=99001, help="Random seed")
+    gen_parser.add_argument("--seed", type=int, default=get_cli_default_seed(), help="Random seed (demo default: 999999)")
     gen_parser.add_argument("--output", type=str, default="data/sample_instances.json", help="Output path")
 
     # Explain Confidence

@@ -61,48 +61,79 @@ def _svg_wrapper(width: int, height: int, content: str) -> str:
 # 1. Pair-Group Neural Architecture Diagram
 # ==============================================================================
 def fig_pair_group_architecture() -> str:
-    width, height = 920, 680
+    width, height = 580, 700
+    box_w = 520
+    box_h = 86
+    box_x = (width - box_w) / 2
+
+    y_starts = [26, 150, 274, 398, 522]
+
     c = []
+    c.append("""<defs>
+  <filter id="subtle-shadow" x="-3%" y="-4%" width="106%" height="112%" filterUnits="userSpaceOnUse">
+    <feDropShadow dx="0" dy="1.5" stdDeviation="2.5" flood-color="#0f172a" flood-opacity="0.06"/>
+  </filter>
+  <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M 1 1 L 9 5 L 1 9 z" fill="#334155"/>
+  </marker>
+</defs>""")
 
-    # Title
-    c.append(f'<text x="{width/2}" y="40" font-size="22" font-weight="bold" fill="{COLORS["navy"]}" text-anchor="middle">Permutation-Invariant Pair-Group Distinguisher Architecture</text>')
-    c.append(f'<text x="{width/2}" y="65" font-size="14" fill="{COLORS["text_muted"]}" text-anchor="middle">Deep Sets Formulation: Jointly Aggregating 64 Ciphertext Pairs for Subkey Scoring</text>')
-
-    # 5 Stages (Standardized h=76px)
-    stages = [
-        ("64 Ciphertext Pairs (Partially Decrypted under Subkey Candidate)",
-         "Input: Set of 64 pairs { (C_{i,0}^{(k)}, C_{i,1}^{(k)}) } decrypted 1 round with candidate word k (4 x 16-bit words per pair)",
-         COLORS["slate_light"], COLORS["slate_dark"]),
-        ("Shared Neural Feature Encoder",
-         "Convolutional Residual Network (Identical weights phi applied independently to each pair)",
-         COLORS["blue_light"], COLORS["blue_dark"]),
-        ("64 Learned High-Dimensional Embeddings",
-         "Set of 64 feature vectors: { h_1, h_2, ..., h_64 } in R^d (d = 64)",
-         COLORS["panel"], COLORS["navy"]),
-        ("Permutation-Invariant Group Aggregation (Mean Pooling)",
-         "Symmetric set pooling: H = (1 / 64) sum_{i=1}^{64} h_i  (Strictly invariant to pair reordering)",
-         COLORS["green_light"], COLORS["green_dark"]),
-        ("Candidate Subkey Score Prediction Head",
-         "Dense layers + Sigmoid: Output scalar distinguishing confidence S(k) in [0, 1]",
-         COLORS["orange_light"], COLORS["orange"]),
+    boxes = [
+        {
+            "y": y_starts[0],
+            "bg": "#f8fafc",
+            "stroke": "#334155",
+            "title": "64 Partially Decrypted Ciphertext Pairs",
+            "sub": "Evaluated under one candidate final-round subkey",
+            "sub_col": "#475569",
+        },
+        {
+            "y": y_starts[1],
+            "bg": "#eff6ff",
+            "stroke": "#2563eb",
+            "title": "Shared Neural Feature Encoder",
+            "sub": "The same encoder processes every pair",
+            "sub_col": "#1e40af",
+        },
+        {
+            "y": y_starts[2],
+            "bg": "#f8fafc",
+            "stroke": "#334155",
+            "title": "64 Learned Pair Representations",
+            "sub": "One learned feature vector per ciphertext pair",
+            "sub_col": "#475569",
+        },
+        {
+            "y": y_starts[3],
+            "bg": "#f0fdf4",
+            "stroke": "#16a34a",
+            "title": "Permutation-Invariant Group Pooling",
+            "sub": "Combines evidence across all 64 pairs without depending on pair order",
+            "sub_col": "#166534",
+        },
+        {
+            "y": y_starts[4],
+            "bg": "#fff7ed",
+            "stroke": "#ea580c",
+            "title": "Candidate Subkey Score",
+            "sub": "One score indicating how strongly this candidate matches the learned 5-round structure",
+            "sub_col": "#9a3412",
+        },
     ]
 
-    box_w = 720
-    box_x = (width - box_w) / 2
-    y_cursor = 100
-    h = 76
+    for b in boxes:
+        y = b["y"]
+        c.append(f'<rect x="{box_x}" y="{y}" width="{box_w}" height="{box_h}" rx="12" ry="12" fill="{b["bg"]}" stroke="{b["stroke"]}" stroke-width="1.75" filter="url(#subtle-shadow)"/>')
+        c.append(f'<text x="{width/2}" y="{y + 36}" font-size="16.5" font-weight="600" fill="#0f2747" text-anchor="middle">{b["title"]}</text>')
+        c.append(f'<text x="{width/2}" y="{y + 61}" font-size="12.5" font-weight="400" fill="{b["sub_col"]}" text-anchor="middle">{b["sub"]}</text>')
 
-    for i, (title, desc, bg_col, border_col) in enumerate(stages):
-        c.append(f'<rect x="{box_x}" y="{y_cursor}" width="{box_w}" height="{h}" rx="8" fill="{bg_col}" stroke="{border_col}" stroke-width="2"/>')
-        c.append(f'<text x="{width/2}" y="{y_cursor + 28}" font-size="15.5" font-weight="bold" fill="{COLORS["navy"]}" text-anchor="middle">{title}</text>')
-        c.append(f'<text x="{width/2}" y="{y_cursor + 52}" font-size="12.5" fill="{COLORS["slate_dark"]}" text-anchor="middle">{desc}</text>')
+    for i in range(4):
+        y_from = y_starts[i] + box_h
+        y_to = y_starts[i+1]
+        c.append(f'<line x1="{width/2}" y1="{y_from + 4}" x2="{width/2}" y2="{y_to - 5}" stroke="#334155" stroke-width="1.75" marker-end="url(#arrow)"/>')
 
-        y_cursor += h
-        if i < len(stages) - 1:
-            arrow_y = y_cursor + 4
-            c.append(f'<line x1="{width/2}" y1="{arrow_y}" x2="{width/2}" y2="{arrow_y + 18}" stroke="{COLORS["navy"]}" stroke-width="2.5"/>')
-            c.append(f'<polygon points="{width/2-6},{arrow_y+16} {width/2+6},{arrow_y+16} {width/2},{arrow_y+24}" fill="{COLORS["navy"]}"/>')
-            y_cursor += 32
+    footer_y = y_starts[4] + box_h + 34
+    c.append(f'<text x="{width/2}" y="{footer_y}" font-size="12" font-style="italic" fill="#64748b" text-anchor="middle">Repeat for all 2¹⁶ = 65,536 candidate final-round subkeys, then rank by score.</text>')
 
     return _svg_wrapper(width, height, "\n".join(c))
 
@@ -702,134 +733,439 @@ def fig_calibration_breakdown() -> str:
 
 
 # ==============================================================================
-# 11. Project Timeline and Status Roadmap
+# 11A. Project Timeline Part 1: Foundations (Phases 1-6)
 # ==============================================================================
-def fig_project_timeline_and_status() -> str:
-    width, height = 1680, 620
+def fig_project_timeline_part1() -> str:
+    width, height = 1920, 1080
     c = []
 
-    navy = COLORS["navy"]
-    white = COLORS["white"]
-    green = COLORS["green"]
-    green_light = COLORS["green_light"]
-    green_dark = COLORS["green_dark"]
-    amber = COLORS["amber"]
-    border = COLORS["border"]
-    slate = COLORS["slate"]
-    slate_light = COLORS["slate_light"]
-    slate_dark = COLORS["slate_dark"]
-    text_muted = COLORS["text_muted"]
-    grid = COLORS["grid"]
+    c.append(f"""
+  <text x="{width/2}" y="70" font-size="30" font-weight="bold" fill="#0f2747" text-anchor="middle">Project Timeline (Part 1): Neuro-Symbolic Foundations</text>
+  <text x="{width/2}" y="105" font-size="16" fill="#64748b" text-anchor="middle">Phases 1–6: Verified Reference Cipher, Exact XOR-SAT Constraints, and Neural Subkey Ranking</text>
+""")
 
-    # Simple, clean header banner with just 'Timeline'
-    c.append(f'<rect x="40" y="20" width="1600" height="60" rx="8" fill="{navy}" stroke="#1e293b" stroke-width="1.5"/>')
-    c.append(f'<text x="65" y="57" font-size="24" font-weight="bold" fill="{white}">Timeline</text>')
-
-    # 12 Phases Definition
     phases = [
-        ("Phase 1", "Reference Cipher", "Ground Truth &amp; Data", ["Verified SPECK32/64 reference", "Deterministic data pipeline"], True, False),
-        ("Phase 2", "Exact XOR-SAT", "Boolean Constraint Model", ["CryptoMiniSat constraint model", "Modular addition carry logic"], True, False),
-        ("Phase 3", "Neural Baseline", "Single-Pair Distinguisher", ["Gohr ResNet architecture", "Differential score training"], True, False),
-        ("Phase 4", "Domain Ranking", "Full 16-Bit Subkey Space", ["Complete-domain ranking", "True-key rank profiling"], True, False),
-        ("Phase 5", "Incremental SAT", "Assumption Key Recovery", ["Incremental solver assumptions", "Full 64-bit key deduction"], True, False),
-        ("Phase 6", "Pair-Group Model", "Deep Sets Distinguisher", ["Permutation-invariant model", "Cascaded fallback design"], True, False),
-        ("Phase 7", "Held-Out Evaluation", "Current Working Phase", ["Evaluating on 64 test keys", "Testing neural guidance with SAT", "Validating cascaded fallback"], False, True),
-        ("Phase 8", "Research Tooling", "Artefacts &amp; CLI", ["Standalone CLI tool", "Automated test suite"], False, False),
-        ("Phase 9", "Fair-Budget Audit", "Baselines &amp; Metrics", ["Common-budget evaluation", "Classical DDT comparator"], False, False),
-        ("Phase 10", "Lazy Fallback", "Verification Routing", ["Lazy secondary ranking", "Runtime reduction"], False, False),
-        ("Phase 11", "Multi-Fidelity &amp; Gate", "Pruning &amp; Scaling", ["Coarse candidate screening", "7-round solver scaling"], False, False),
-        ("Phase 12", "Finalising of Report", "Documentation &amp; Wrap-up", ["Final dissertation report", "Complete results synthesis"], False, False),
+        ("Phase 1", "Reference Cipher", "Ground Truth &amp; Test Vectors", [
+            ("Verified SPECK32/64 scalar cipher", "All round-trip &amp; KAT tests passing"),
+            ("Deterministic data generation", "Clean bitwise representations")
+        ], "complete"),
+        ("Phase 2", "Exact XOR-SAT", "Boolean Constraint Model", [
+            ("CryptoMiniSat constraint model", "Exact ARX modular carry logic"),
+            ("Full key-schedule encoding", "64-bit master-key deduction verified")
+        ], "complete"),
+        ("Phase 3", "Neural Baseline (B0)", "Single-Pair Distinguisher", [
+            ("Gohr-style 10-layer ResNet", "Differential score training on 5-round"),
+            ("Differential candidate scoring", "Baseline subkey ranking foundation")
+        ], "complete"),
+        ("Phase 4", "Full-Domain Ranking", "Complete Subkey Search", [
+            ("All 65,536 candidate subkeys ranked", "Complete 16-bit final-round search"),
+            ("Exact true-subkey rank analysis", "Empirical score distribution logged")
+        ], "complete"),
+        ("Phase 5", "Incremental SAT", "Assumption-Based Recovery", [
+            ("Candidate subkey assumptions", "CryptoMiniSat solve assumptions"),
+            ("Independent master-key check", "False positive rate bounded &lt;= 2^-64")
+        ], "complete"),
+        ("Phase 6", "Pair-Group Model (B1)", "Permutation-Invariant Deep Sets", [
+            ("Permutation-invariant pooling", "Joint evidence across 64 ciphertext pairs"),
+            ("Boosts top-16 rank from 78% to 91%", "Primary neural cryptanalytic ranker")
+        ], "complete"),
     ]
 
-    y_spine = 330
-    start_x = 130
-    end_x = 1550
+    y_spine = 550
+    start_x = 180
+    end_x = 1740
     dx = (end_x - start_x) / (len(phases) - 1)
 
-    # Spine line: Completed (Phases 1 to 6) in Solid Green, Current (Phase 7) in Amber, Upcoming (8 to 12) in Dashed Slate
-    x_p6 = start_x + 5 * dx
-    x_p7 = start_x + 6 * dx
-    c.append(f'<line x1="{start_x}" y1="{y_spine}" x2="{x_p6}" y2="{y_spine}" stroke="{green}" stroke-width="4" stroke-linecap="round"/>')
-    c.append(f'<line x1="{x_p6}" y1="{y_spine}" x2="{x_p7}" y2="{y_spine}" stroke="{amber}" stroke-width="4" stroke-linecap="round"/>')
-    c.append(f'<line x1="{x_p7}" y1="{y_spine}" x2="{end_x}" y2="{y_spine}" stroke="{border}" stroke-width="3" stroke-dasharray="6,5" stroke-linecap="round"/>')
+    c.append(f"""  <line x1="{start_x-30}" y1="{y_spine}" x2="{end_x+30}" y2="{y_spine}" stroke="#f1f5f9" stroke-width="12" stroke-linecap="round"/>""")
+    c.append(f"""  <line x1="{start_x}" y1="{y_spine}" x2="{end_x}" y2="{y_spine}" stroke="#10b981" stroke-width="4.5" stroke-linecap="round"/>""")
 
-    card_w = 214
-    card_h = 175
+    card_w = 264
+    card_h = 250
 
-    for i, (p_num, title, subtitle, bullets, is_done, is_current) in enumerate(phases):
+    for i, (p_num, title, subtitle, bullets, status) in enumerate(phases):
         x = start_x + i * dx
         is_top = (i % 2 == 0)
-        
+
         if is_top:
-            card_y = y_spine - 25 - card_h
+            card_y = y_spine - 55 - card_h
             tick_y1 = card_y + card_h
             tick_y2 = y_spine
         else:
-            card_y = y_spine + 25
+            card_y = y_spine + 55
             tick_y1 = y_spine
             tick_y2 = card_y
 
-        line_col = amber if is_current else (green if is_done else border)
-        line_w = 2.5 if is_current else (1.8 if is_done else 1.5)
-        dash_str = "none" if (is_done or is_current) else "3,3"
-        c.append(f'<line x1="{x}" y1="{tick_y1}" x2="{x}" y2="{tick_y2}" stroke="{line_col}" stroke-width="{line_w}" stroke-dasharray="{dash_str}"/>')
+        card_x = x - card_w / 2
+
+        c.append(f"""  <line x1="{x:.1f}" y1="{tick_y1:.1f}" x2="{x:.1f}" y2="{tick_y2:.1f}" stroke="#10b981" stroke-width="2"/>""")
+
+        c.append(f"""
+  <!-- Card: {p_num} -->
+  <rect x="{card_x:.1f}" y="{card_y:.1f}" width="{card_w}" height="{card_h}" rx="10" fill="#fcfdfd" stroke="#10b981" stroke-width="1.8"/>
+  <rect x="{card_x+12:.1f}" y="{card_y+12:.1f}" width="72" height="24" rx="5" fill="#f1f5f9"/>
+  <text x="{card_x+48:.1f}" y="{card_y+28:.1f}" font-size="12" font-weight="bold" fill="#334155" text-anchor="middle">{p_num}</text>
+  
+  <rect x="{card_x+card_w-92:.1f}" y="{card_y+12:.1f}" width="80" height="24" rx="5" fill="#ecfdf5"/>
+  <text x="{card_x+card_w-52:.1f}" y="{card_y+28:.1f}" font-size="11.5" font-weight="bold" fill="#059669" text-anchor="middle">✓ Complete</text>
+
+  <text x="{card_x+14:.1f}" y="{card_y+62:.1f}" font-size="15" font-weight="bold" fill="#0f2747">{title}</text>
+  <text x="{card_x+14:.1f}" y="{card_y+80:.1f}" font-size="11.5" fill="#64748b">{subtitle}</text>
+  <line x1="{card_x+12:.1f}" y1="{card_y+90:.1f}" x2="{card_x+card_w-12:.1f}" y2="{card_y+90:.1f}" stroke="#f1f5f9" stroke-width="1.5"/>
+""")
+
+        bullet_start_y = card_y + 118
+        for b_idx, (b_line1, b_line2) in enumerate(bullets):
+            by = bullet_start_y + b_idx * 58
+            c.append(f"""  <circle cx="{card_x+20:.1f}" cy="{by-4:.1f}" r="3" fill="#10b981"/>""")
+            c.append(f"""  <text x="{card_x+30:.1f}" y="{by:.1f}" font-size="12" font-weight="500" fill="#1e293b">{b_line1}</text>""")
+            if b_line2:
+                c.append(f"""  <text x="{card_x+30:.1f}" y="{by+18:.1f}" font-size="11.5" fill="#64748b">{b_line2}</text>""")
+
+        c.append(f"""
+  <circle cx="{x:.1f}" cy="{y_spine:.1f}" r="13" fill="#10b981" stroke="#ffffff" stroke-width="2.5"/>
+  <text x="{x:.1f}" y="{y_spine+4.5:.1f}" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">✓</text>
+""")
+
+    c.append("""
+  <rect x="560" y="980" width="800" height="42" rx="21" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+  <circle cx="590" cy="1001" r="7" fill="#10b981"/>
+  <text x="610" y="1006" font-size="13" font-weight="bold" fill="#0f2747">Phases 1–6 Milestone Status: 100% Implemented, Integrated, and Unit-Tested (300/300 Tests)</text>
+""")
+
+    return _svg_wrapper(width, height, "".join(c))
+
+
+# ==============================================================================
+# 11B. Project Timeline Part 2: Roadmap (Phases 7-12)
+# ==============================================================================
+def fig_project_timeline_part2() -> str:
+    width, height = 1920, 1080
+    c = []
+
+    c.append(f"""
+  <text x="{width/2}" y="70" font-size="30" font-weight="bold" fill="#0f2747" text-anchor="middle">Project Timeline (Part 2): Integrated Evaluation &amp; Research Roadmap</text>
+  <text x="{width/2}" y="105" font-size="16" fill="#64748b" text-anchor="middle">Phases 7–12: Held-Out Benchmark, Confidence Failure Analysis, and Reliability Fallback</text>
+""")
+
+    phases = [
+        ("Phase 7", "Integrated Evaluation", "Current Working Stage", [
+            ("Held-out evaluation of full pipeline", "64 test keys under fixed resource budget"),
+            ("Comparative benchmark campaign", "Compare SAT-only, Random, B0, and B1")
+        ], "in_progress"),
+        ("Phase 8", "Confidence &amp; Fallback", "Planned Investigation", [
+            ("Diagnose why confidence gating fails", "Analyse ranking score distributions"),
+            ("Test fallback signals and routing", "Explore dynamic candidate allocation")
+        ], "planned"),
+        ("Phase 9", "Comparative Audit", "Baselines &amp; Metrics", [
+            ("Fair-budget comparison vs baselines", "Standardise wall-clock accounting"),
+            ("Runtime and success-rate audit", "Evaluate global PAR-2 sensitivity")
+        ], "planned"),
+        ("Phase 10", "Fallback Redesign", "Decision Stage", [
+            ("Refine fallback pipeline if promising", "Test complementary ranking signals"),
+            ("Otherwise pivot to stronger design", "Verify escalation decision criteria")
+        ], "planned"),
+        ("Phase 11", "Extended Validation", "Confirmation Experiments", [
+            ("Validate revised method on fresh data", "Test multi-fidelity pair budgets"),
+            ("Check scaling boundary &amp; robustness", "Explore round scaling horizons")
+        ], "planned"),
+        ("Phase 12", "Final Synthesis", "Dissertation &amp; Presentation", [
+            ("Consolidate findings and evidence", "Synthesise research questions"),
+            ("Final dissertation &amp; defense", "Deliver reproducible research artefact")
+        ], "planned"),
+    ]
+
+    y_spine = 550
+    start_x = 180
+    end_x = 1740
+    dx = (end_x - start_x) / (len(phases) - 1)
+
+    c.append(f"""  <line x1="{start_x-30}" y1="{y_spine}" x2="{end_x+30}" y2="{y_spine}" stroke="#f1f5f9" stroke-width="12" stroke-linecap="round"/>""")
+    c.append(f"""  <line x1="{start_x}" y1="{y_spine}" x2="{start_x + dx}" y2="{y_spine}" stroke="#f59e0b" stroke-width="4" stroke-dasharray="8,6" stroke-linecap="round"/>""")
+    c.append(f"""  <line x1="{start_x + dx}" y1="{y_spine}" x2="{end_x}" y2="{y_spine}" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="8,6" stroke-linecap="round"/>""")
+
+    card_w = 264
+    card_h = 250
+
+    for i, (p_num, title, subtitle, bullets, status) in enumerate(phases):
+        x = start_x + i * dx
+        is_top = (i % 2 == 0)
+
+        if is_top:
+            card_y = y_spine - 55 - card_h
+            tick_y1 = card_y + card_h
+            tick_y2 = y_spine
+        else:
+            card_y = y_spine + 55
+            tick_y1 = y_spine
+            tick_y2 = card_y
 
         card_x = x - card_w / 2
 
-        if is_current:
-            bg_card = "#fffdf7"
-            border_card = amber
-            bw = 2.5
-            badge_bg = amber
-            badge_txt = "#ffffff"
-            status_lbl = "In Progress"
-            status_col = "#b45309"
-        elif is_done:
-            bg_card = slate_light
-            border_card = green
-            bw = 1.8
-            badge_bg = green_light
-            badge_txt = green_dark
-            status_lbl = "✓ Complete"
-            status_col = green
+        if status == "in_progress":
+            card_bg = "#fffdf7"
+            card_border = "#f59e0b"
+            bw = 2.4
+            card_dash = ""
+            tick_col = "#f59e0b"
+            tick_w = 2.4
+            tick_dash = ""
+            phase_pill_bg = "#fef3c7"
+            phase_pill_txt = "#b45309"
+            badge_bg = "#fef3c7"
+            badge_txt = "#b45309"
+            badge_lbl = "● In Progress"
+            dot_col = "#f59e0b"
+            body_col = "#0f172a"
         else:
-            bg_card = white
-            border_card = border
+            card_bg = "#fafbfd"
+            card_border = "#cbd5e1"
             bw = 1.5
-            badge_bg = slate_light
-            badge_txt = slate
-            status_lbl = "Planned"
-            status_col = slate
+            card_dash = "stroke-dasharray=\"6,4\""
+            tick_col = "#cbd5e1"
+            tick_w = 1.5
+            tick_dash = "stroke-dasharray=\"4,4\""
+            phase_pill_bg = "#f1f5f9"
+            phase_pill_txt = "#64748b"
+            badge_bg = "#f8fafc"
+            badge_txt = "#64748b"
+            badge_lbl = "Planned"
+            dot_col = "#cbd5e1"
+            body_col = "#64748b"
 
-        dash_style = 'stroke-dasharray="5,4"' if (not is_done and not is_current) else ''
-        c.append(f'<rect x="{card_x:.1f}" y="{card_y}" width="{card_w}" height="{card_h}" rx="8" fill="{bg_card}" stroke="{border_card}" stroke-width="{bw}" {dash_style}/>')
+        c.append(f"""  <line x1="{x:.1f}" y1="{tick_y1:.1f}" x2="{x:.1f}" y2="{tick_y2:.1f}" stroke="{tick_col}" stroke-width="{tick_w}" {tick_dash}/>""")
 
-        badge_w = 70 if not is_current else 75
-        c.append(f'<rect x="{card_x+8:.1f}" y="{card_y+8}" width="{badge_w}" height="20" rx="4" fill="{badge_bg}"/>')
-        c.append(f'<text x="{card_x+13:.1f}" y="{card_y+22}" font-size="10.5" font-weight="bold" fill="{badge_txt}">{p_num}</text>')
-        c.append(f'<text x="{card_x+card_w-8:.1f}" y="{card_y+22}" font-size="10" font-weight="bold" fill="{status_col}" text-anchor="end">{status_lbl}</text>')
+        if status == "in_progress":
+            c.append(f"""  <rect x="{card_x+2:.1f}" y="{card_y+3:.1f}" width="{card_w}" height="{card_h}" rx="10" fill="#000000" opacity="0.05"/>""")
 
-        c.append(f'<text x="{card_x+8:.1f}" y="{card_y+44}" font-size="13" font-weight="bold" fill="{navy}">{title}</text>')
-        c.append(f'<text x="{card_x+8:.1f}" y="{card_y+59}" font-size="10.5" fill="{text_muted}">{subtitle}</text>')
-        c.append(f'<line x1="{card_x+8:.1f}" y1="{card_y+66}" x2="{card_x+card_w-8:.1f}" y2="{card_y+66}" stroke="{grid}" stroke-width="1"/>')
+        badge_w = 88 if status == "in_progress" else 72
+        c.append(f"""
+  <!-- Card: {title} -->
+  <rect x="{card_x:.1f}" y="{card_y:.1f}" width="{card_w}" height="{card_h}" rx="10" fill="{card_bg}" stroke="{card_border}" stroke-width="{bw}" {card_dash}/>
+  <rect x="{card_x+12:.1f}" y="{card_y+12:.1f}" width="72" height="24" rx="5" fill="{phase_pill_bg}"/>
+  <text x="{card_x+48:.1f}" y="{card_y+28:.1f}" font-size="12" font-weight="bold" fill="{phase_pill_txt}" text-anchor="middle">{p_num}</text>
+  
+  <rect x="{card_x+card_w-badge_w-12:.1f}" y="{card_y+12:.1f}" width="{badge_w}" height="24" rx="5" fill="{badge_bg}"/>
+  <text x="{card_x+card_w-12-badge_w/2:.1f}" y="{card_y+28:.1f}" font-size="11.5" font-weight="bold" fill="{badge_txt}" text-anchor="middle">{badge_lbl}</text>
 
-        for b_idx, bullet in enumerate(bullets):
-            b_y = card_y + 82 + b_idx * 28
-            dot_col = amber if is_current else (green if is_done else slate)
-            font_wt = "bold" if (is_current and b_idx == 0) else "normal"
-            txt_col = navy if is_current else slate_dark
-            
-            c.append(f'<circle cx="{card_x+14:.1f}" cy="{b_y-3}" r="2.5" fill="{dot_col}"/>')
-            c.append(f'<text x="{card_x+22:.1f}" y="{b_y}" font-size="10.5" font-weight="{font_wt}" fill="{txt_col}">{bullet}</text>')
+  <text x="{card_x+14:.1f}" y="{card_y+62:.1f}" font-size="15" font-weight="bold" fill="#0f2747">{title}</text>
+  <text x="{card_x+14:.1f}" y="{card_y+80:.1f}" font-size="11.5" fill="#64748b">{subtitle}</text>
+  <line x1="{card_x+12:.1f}" y1="{card_y+90:.1f}" x2="{card_x+card_w-12:.1f}" y2="{card_y+90:.1f}" stroke="#f1f5f9" stroke-width="1.5"/>
+""")
 
-        if is_current:
-            c.append(f'<circle cx="{x:.1f}" cy="{y_spine}" r="14" fill="{amber}" stroke="{white}" stroke-width="3"/>')
-            c.append(f'<circle cx="{x:.1f}" cy="{y_spine}" r="5" fill="#ffffff"/>')
-        elif is_done:
-            c.append(f'<circle cx="{x:.1f}" cy="{y_spine}" r="10" fill="{green}" stroke="{white}" stroke-width="2.5"/>')
-            c.append(f'<text x="{x:.1f}" y="{y_spine+3.5}" font-size="9" font-weight="bold" fill="#ffffff" text-anchor="middle">✓</text>')
+        bullet_start_y = card_y + 118
+        for b_idx, (b_line1, b_line2) in enumerate(bullets):
+            by = bullet_start_y + b_idx * 58
+            c.append(f"""  <circle cx="{card_x+20:.1f}" cy="{by-4:.1f}" r="3" fill="{dot_col}"/>""")
+            c.append(f"""  <text x="{card_x+30:.1f}" y="{by:.1f}" font-size="12" font-weight="500" fill="{body_col}">{b_line1}</text>""")
+            if b_line2:
+                c.append(f"""  <text x="{card_x+30:.1f}" y="{by+18:.1f}" font-size="11.5" fill="#64748b">{b_line2}</text>""")
+
+        if status == "in_progress":
+            c.append(f"""  <circle cx="{x:.1f}" cy="{y_spine:.1f}" r="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5"/>
+  <circle cx="{x:.1f}" cy="{y_spine:.1f}" r="9" fill="#f59e0b"/>
+  <circle cx="{x:.1f}" cy="{y_spine:.1f}" r="3" fill="#ffffff"/>""")
         else:
-            c.append(f'<circle cx="{x:.1f}" cy="{y_spine}" r="8" fill="{white}" stroke="{border}" stroke-width="2"/>')
+            c.append(f"""  <circle cx="{x:.1f}" cy="{y_spine:.1f}" r="9" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <circle cx="{x:.1f}" cy="{y_spine:.1f}" r="2.5" fill="#cbd5e1"/>""")
+
+    c.append("""
+  <rect x="520" y="980" width="880" height="42" rx="21" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+  <circle cx="560" cy="1001" r="7" fill="#f59e0b"/>
+  <text x="575" y="1006" font-size="12.5" font-weight="bold" fill="#b45309">Active Working Milestone (Phase 7: Integrated Evaluation)</text>
+  
+  <circle cx="950" cy="1001" r="6" fill="#cbd5e1"/>
+  <text x="965" y="1006" font-size="12.5" font-weight="bold" fill="#64748b">Planned Roadmap (Phases 8–12: Confidence, Fallback, Scaling &amp; Thesis)</text>
+""")
+
+    return _svg_wrapper(width, height, "".join(c))
+
+
+# ==============================================================================
+# 11C. Project Timeline and Status Roadmap (Consolidated 12-Phase View)
+# ==============================================================================
+def fig_project_timeline_and_status() -> str:
+    width, height = 1920, 1080
+    c = []
+
+    # 12 Phases Definition
+    phases = [
+        ('Phase 1', 'Reference Cipher', 'Ground Truth &amp; Data', [
+            ('Verified SPECK32/64', 'implementation'),
+            ('Deterministic data', 'generation pipeline')
+        ], 'complete'),
+        ('Phase 2', 'Exact XOR-SAT', 'Boolean Constraint Model', [
+            ('CryptoMiniSat-based', 'constraint model'),
+            ('ARX carry logic encoded', 'exactly')
+        ], 'complete'),
+        ('Phase 3', 'Neural Baseline', 'Single-Pair Distinguisher', [
+            ('Gohr-style baseline model', ''),
+            ('Differential score training', '')
+        ], 'complete'),
+        ('Phase 4', 'Domain Ranking', 'Full Subkey Search', [
+            ('Rank all 2^16 final-round', 'subkeys'),
+            ('Measure true-key rank', 'behaviour')
+        ], 'complete'),
+        ('Phase 5', 'Incremental SAT', 'Assumption-Based Recovery', [
+            ('Candidate-key SAT', 'conditioning'),
+            ('Recover full master key', 'from subkey guess')
+        ], 'complete'),
+        ('Phase 6', 'Pair-Group Model', 'Permutation-Invariant Ranking', [
+            ('Deep Sets style group', 'model'),
+            ('Improved multi-pair', 'candidate scoring')
+        ], 'complete'),
+        ('Phase 7', 'Integrated Evaluation', 'Current Working Stage', [
+            ('Held-out evaluation of', 'full pipeline'),
+            ('Analyse ranking, recovery,', 'and failure cases')
+        ], 'in_progress'),
+        ('Phase 8', 'Confidence &amp; Fallback Study', 'Planned Investigation', [
+            ('Diagnose why confidence', 'gating fails'),
+            ('Test better fallback', 'signals or routing')
+        ], 'planned'),
+        ('Phase 9', 'Comparative Audit', 'Baselines &amp; Metrics', [
+            ('Fair-budget comparison', 'against baselines'),
+            ('Runtime and success-rate', 'audit')
+        ], 'planned'),
+        ('Phase 10', 'Fallback Improvement / Pivot', 'Decision Stage', [
+            ('Refine fallback pipeline', 'if promising'),
+            ('Otherwise pivot to', 'stronger alternative')
+        ], 'planned'),
+        ('Phase 11', 'Extended Validation', 'Confirmation Experiments', [
+            ('Validate revised method', 'on fresh data'),
+            ('Check robustness and', 'scalability')
+        ], 'planned'),
+        ('Phase 12', 'Final Report', 'Writing &amp; Synthesis', [
+            ('Consolidate results and', 'discussion'),
+            ('Final dissertation and', 'presentation wrap-up')
+        ], 'planned'),
+    ]
+
+    y_spine = 540
+    start_x = 150
+    end_x = 1770
+    dx = (end_x - start_x) / (len(phases) - 1)
+
+    x_p6 = start_x + 5 * dx
+    x_p7 = start_x + 6 * dx
+
+    # Spine background guide
+    c.append(f'<line x1="{start_x-24}" y1="{y_spine}" x2="{end_x+24}" y2="{y_spine}" stroke="#f1f5f9" stroke-width="10" stroke-linecap="round"/>')
+
+    # Completed segment (Phase 1 to 6)
+    c.append(f'<line x1="{start_x}" y1="{y_spine}" x2="{x_p6}" y2="{y_spine}" stroke="#10b981" stroke-width="4" stroke-linecap="round"/>')
+    
+    # Active transition segment (Phase 6 to 7)
+    c.append(f'<line x1="{x_p6}" y1="{y_spine}" x2="{x_p7}" y2="{y_spine}" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>')
+    
+    # Planned segment (Phase 7 to 12)
+    c.append(f'<line x1="{x_p7}" y1="{y_spine}" x2="{end_x}" y2="{y_spine}" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="7,6" stroke-linecap="round"/>')
+
+    card_w = 260
+    card_h = 246
+
+    for i, (p_num, title, subtitle, bullets, status) in enumerate(phases):
+        x = start_x + i * dx
+        is_top = (i % 2 == 0)
+
+        if is_top:
+            card_y = y_spine - 50 - card_h
+            tick_y1 = card_y + card_h
+            tick_y2 = y_spine
+        else:
+            card_y = y_spine + 50
+            tick_y1 = y_spine
+            tick_y2 = card_y
+
+        card_x = x - card_w / 2
+
+        if status == 'complete':
+            line_col = '#10b981'
+            line_w = 1.8
+            dash_str = 'none'
+            card_bg = '#fcfdfd'
+            card_border = '#10b981'
+            bw = 1.5
+            badge_bg = '#ecfdf5'
+            badge_txt = '#059669'
+            phase_pill_bg = '#f1f5f9'
+            phase_pill_txt = '#334155'
+            status_lbl = 'Complete'
+            dot_col = '#10b981'
+            title_col = '#0f172a'
+            body_col = '#334155'
+            sub_col = '#64748b'
+        elif status == 'in_progress':
+            line_col = '#f59e0b'
+            line_w = 2.4
+            dash_str = 'none'
+            card_bg = '#fffdf7'
+            card_border = '#f59e0b'
+            bw = 2.4
+            badge_bg = '#fef3c7'
+            badge_txt = '#b45309'
+            phase_pill_bg = '#fef3c7'
+            phase_pill_txt = '#b45309'
+            status_lbl = '● In Progress'
+            dot_col = '#f59e0b'
+            title_col = '#0f172a'
+            body_col = '#0f172a'
+            sub_col = '#b45309'
+        else:  # planned
+            line_col = '#cbd5e1'
+            line_w = 1.4
+            dash_str = '4,4'
+            card_bg = '#fafbfd'
+            card_border = '#e2e8f0'
+            bw = 1.4
+            badge_bg = '#f8fafc'
+            badge_txt = '#64748b'
+            phase_pill_bg = '#f1f5f9'
+            phase_pill_txt = '#64748b'
+            status_lbl = 'Planned'
+            dot_col = '#cbd5e1'
+            title_col = '#334155'
+            body_col = '#64748b'
+            sub_col = '#94a3b8'
+
+        c.append(f'<line x1="{x:.1f}" y1="{tick_y1:.1f}" x2="{x:.1f}" y2="{tick_y2:.1f}" stroke="{line_col}" stroke-width="{line_w}" stroke-dasharray="{dash_str}"/>')
+
+        if status == 'in_progress':
+            c.append(f'<rect x="{card_x+2:.1f}" y="{card_y+3:.1f}" width="{card_w}" height="{card_h}" rx="10" fill="#000000" opacity="0.05"/>')
+        
+        card_dash = 'stroke-dasharray="5,4"' if status == 'planned' else ''
+        c.append(f'<rect x="{card_x:.1f}" y="{card_y:.1f}" width="{card_w}" height="{card_h}" rx="10" fill="{card_bg}" stroke="{card_border}" stroke-width="{bw}" {card_dash}/>')
+
+        c.append(f'<rect x="{card_x+12:.1f}" y="{card_y+12:.1f}" width="68" height="22" rx="5" fill="{phase_pill_bg}"/>')
+        c.append(f'<text x="{card_x+46:.1f}" y="{card_y+27:.1f}" font-size="11.5" font-weight="bold" fill="{phase_pill_txt}" text-anchor="middle">{p_num}</text>')
+
+        badge_width = 82 if status == 'in_progress' else 74
+        badge_x = card_x + card_w - 12 - badge_width
+        c.append(f'<rect x="{badge_x:.1f}" y="{card_y+12:.1f}" width="{badge_width}" height="{22}" rx="{5}" fill="{badge_bg}"/>')
+        c.append(f'<text x="{badge_x + badge_width/2:.1f}" y="{card_y+27:.1f}" font-size="11" font-weight="bold" fill="{badge_txt}" text-anchor="middle">{status_lbl}</text>')
+
+        c.append(f'<text x="{card_x+14:.1f}" y="{card_y+58:.1f}" font-size="14" font-weight="bold" fill="{title_col}">{title}</text>')
+        c.append(f'<text x="{card_x+14:.1f}" y="{card_y+76:.1f}" font-size="11.5" fill="{sub_col}">{subtitle}</text>')
+        c.append(f'<line x1="{card_x+12:.1f}" y1="{card_y+86:.1f}" x2="{card_x+card_w-12:.1f}" y2="{card_y+86:.1f}" stroke="#f1f5f9" stroke-width="1.2"/>')
+
+        bullet_start_y = card_y + 112
+        for b_idx, (b_line1, b_line2) in enumerate(bullets):
+            by = bullet_start_y + b_idx * 58
+            c.append(f'<circle cx="{card_x+20:.1f}" cy="{by-4:.1f}" r="3" fill="{dot_col}"/>')
+            
+            font_wt = 'bold' if (status == 'in_progress' and b_idx == 0) else 'normal'
+            c.append(f'<text x="{card_x+30:.1f}" y="{by:.1f}" font-size="12" font-weight="{font_wt}" fill="{body_col}">{b_line1}</text>')
+            if b_line2:
+                c.append(f'<text x="{card_x+30:.1f}" y="{by+18:.1f}" font-size="12" font-weight="{font_wt}" fill="{body_col}">{b_line2}</text>')
+
+        if status == 'complete':
+            c.append(f'<circle cx="{x:.1f}" cy="{y_spine:.1f}" r="12" fill="#10b981" stroke="#ffffff" stroke-width="2.5"/>')
+            c.append(f'<text x="{x:.1f}" y="{y_spine+4:.1f}" font-size="11" font-weight="bold" fill="#ffffff" text-anchor="middle">✓</text>')
+        elif status == 'in_progress':
+            c.append(f'<circle cx="{x:.1f}" cy="{y_spine:.1f}" r="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5"/>')
+            c.append(f'<circle cx="{x:.1f}" cy="{y_spine:.1f}" r="9" fill="#f59e0b"/>')
+            c.append(f'<circle cx="{x:.1f}" cy="{y_spine:.1f}" r="3" fill="#ffffff"/>')
+        else:
+            c.append(f'<circle cx="{x:.1f}" cy="{y_spine:.1f}" r="9" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>')
+            c.append(f'<circle cx="{x:.1f}" cy="{y_spine:.1f}" r="2.5" fill="#cbd5e1"/>')
 
     return _svg_wrapper(width, height, "\n".join(c))
 
@@ -851,6 +1187,8 @@ def main() -> None:
                 pass
 
     figures: dict[str, str] = {
+        "project_timeline_part1_foundations.svg": fig_project_timeline_part1(),
+        "project_timeline_part2_roadmap.svg": fig_project_timeline_part2(),
         "project_timeline_and_status.svg": fig_project_timeline_and_status(),
         "pair_group_neural_architecture.svg": fig_pair_group_architecture(),
         "end_to_end_attack_pipeline.svg": fig_end_to_end_pipeline(),

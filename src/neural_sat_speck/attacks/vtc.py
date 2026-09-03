@@ -187,7 +187,7 @@ def run_vtc_attack(
         sub_res = sat_model.solve_final_round_subkey(candidate, time_limit=timeout)
         solver_seconds += sub_res.elapsed_seconds
 
-        if sub_res.status == "unsat_or_timeout":
+        if sub_res.status in ("unsat_or_timeout", "solver_timeout"):
             attempts.append(
                 CandidateAttempt(
                     candidate_position=candidate_position,
@@ -340,7 +340,7 @@ def run_vtc_attack(
         sub_res = sat_model.solve_final_round_subkey(candidate, time_limit=timeout)
         solver_seconds += sub_res.elapsed_seconds
 
-        if sub_res.status == "unsat_or_timeout":
+        if sub_res.status in ("unsat_or_timeout", "solver_timeout"):
             attempts.append(
                 CandidateAttempt(
                     candidate_position=candidate_position,

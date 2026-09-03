@@ -357,7 +357,7 @@ def run_sat_only_recovery(
     started = perf_counter()
     result = model.solve(time_limit=timeout)
     solver_seconds = result.elapsed_seconds
-    if result.status == "unsat_or_timeout":
+    if result.status in ("unsat_or_timeout", "solver_timeout"):
         return _make_result(
             strategy=strategy,
             status="solver_timeout",
@@ -474,7 +474,7 @@ def run_candidate_recovery(
                 time_limit=timeout,
             )
             solver_seconds += result.elapsed_seconds
-            if result.status == "unsat_or_timeout":
+            if result.status in ("unsat_or_timeout", "solver_timeout"):
                 attempts.append(
                     CandidateAttempt(
                         candidate_position=candidate_position,

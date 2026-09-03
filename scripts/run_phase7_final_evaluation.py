@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import hashlib
 import json
 import os
@@ -48,13 +49,18 @@ from neural_sat_speck.data.attack import (
     load_attack_shard,
     write_attack_shard,
 )
+from neural_sat_speck.evaluation.metrics import (
+    calculate_global_par2,
+    exact_mcnemar_test,
+    wilson_score_interval,
+)
 from neural_sat_speck.neural.group_model import PairGroupRanker
 from neural_sat_speck.neural.model import GohrResNet
 from neural_sat_speck.neural.numpy_inference import (
     NumpyInferenceModule,
     NumpyRankerInference,
 )
-from neural_sat_speck.sat.model import SpeckSatModel
+from neural_sat_speck.sat.isolation import IsolatedSolverFactory
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = (
@@ -232,54 +238,82 @@ def evaluate_single_instance(
         seed=verif_seed,
     )
 
-    # 2. Build SAT Model
-    sat_model = SpeckSatModel.from_known_pairs(known_pairs, rounds=rounds)
+    # 2. Build SAT Model Isolation Factory
+    factory = IsolatedSolverFactory.from_pairs(
+        known_pairs, rounds=rounds, instance_id=instance.instance_id
+    )
 
-    # 3. Pre-run neural rankings for B0 and B1 to record accurate timing
-    # Neural B0 Ranking
-    b0_ranking = rank_final_round_subkeys(instance, b0_infer, candidate_batch_size=4096)
-    t_rank_b0 = b0_ranking.total_seconds
-    b0_order = b0_ranking.candidate_order
-    b0_eval = evaluate_subkey_ranking(b0_ranking, instance.final_round_subkey)
+    # 3. Check ranking cache to avoid redundant neural computation
+    ranking_cache_dir = REPOSITORY_ROOT / "results" / "phase7_final_evaluation" / "ranking_cache"
+    ranking_cache_file = ranking_cache_dir / f"instance_{index:04d}.json"
 
-    # Neural B1 Ranking
-    b1_ranking = rank_pair_group_subkeys(instance, b1_infer, candidate_batch_size=4096)
-    t_rank_b1 = b1_ranking.total_seconds
-    b1_order = b1_ranking.candidate_order
-    b1_eval = evaluate_pair_group_subkey_ranking(b1_ranking, instance.final_round_subkey)
-
-    # Confidence Feature & Calibrated Probability
-    t0 = time.perf_counter()
-    b1_dict = {
-        "ranking": {
-            "candidate_values": list(b1_ranking.candidate_values),
-            "candidate_scores": list(b1_ranking.candidate_scores),
-            "candidate_order": list(b1_ranking.candidate_order),
-        }
-    }
-    conf_feature = top8_score_separation(b1_dict)
-    prob = calibrator.predict(conf_feature)
-    t_conf = time.perf_counter() - t0
-
-    # Decision route & Fallback order composition
-    route = choose_phase6c_route(prob, float(conf_cfg["decision_threshold"] or 0.5))
-    if route == "trusted_top8":
-        gated_order = b1_order[: int(conf_cfg["trusted_budget"])]
-        gated_budget = int(conf_cfg["trusted_budget"])
-        t_gated_rank = t_rank_b1
+    if ranking_cache_file.is_file():
+        cached = _load_json(ranking_cache_file)
+        b0_order = tuple(cached["b0_order"])
+        t_rank_b0 = float(cached["t_rank_b0"])
+        b0_eval = cached["b0_eval"]
+        b1_order = tuple(cached["b1_order"])
+        t_rank_b1 = float(cached["t_rank_b1"])
+        b1_eval = cached["b1_eval"]
+        conf_feature = float(cached["conf_feature"])
+        t_conf = float(cached["t_conf"])
+        prob = calibrator.predict(conf_feature)
+        route = choose_phase6c_route(prob, float(conf_cfg["decision_threshold"] or 0.5))
+        if route == "trusted_top8":
+            gated_order = b1_order[: int(conf_cfg["trusted_budget"])]
+            gated_budget = int(conf_cfg["trusted_budget"])
+            t_gated_rank = t_rank_b1
+        else:
+            gated_order = compose_diversity_fallback(b1_order, b0_order)
+            gated_budget = int(conf_cfg["fallback_budget"])
+            t_gated_rank = t_rank_b1 + t_rank_b0
     else:
-        gated_order = compose_diversity_fallback(b1_order, b0_order)
-        gated_budget = int(conf_cfg["fallback_budget"])
-        t_gated_rank = t_rank_b1 + t_rank_b0
+        # Pre-run neural rankings for B0 and B1
+        b0_ranking = rank_final_round_subkeys(instance, b0_infer, candidate_batch_size=1024)
+        t_rank_b0 = b0_ranking.total_seconds
+        b0_order = b0_ranking.candidate_order
+        b0_eval = evaluate_subkey_ranking(b0_ranking, instance.final_round_subkey)
+
+        b1_ranking = rank_pair_group_subkeys(instance, b1_infer, candidate_batch_size=1024)
+        t_rank_b1 = b1_ranking.total_seconds
+        b1_order = b1_ranking.candidate_order
+        b1_eval = evaluate_pair_group_subkey_ranking(b1_ranking, instance.final_round_subkey)
+
+        t0 = time.perf_counter()
+        b1_dict = {
+            "ranking": {
+                "candidate_values": list(b1_ranking.candidate_values),
+                "candidate_scores": list(b1_ranking.candidate_scores),
+                "candidate_order": list(b1_ranking.candidate_order),
+            }
+        }
+        conf_feature = top8_score_separation(b1_dict)
+        prob = calibrator.predict(conf_feature)
+        t_conf = time.perf_counter() - t0
+
+        route = choose_phase6c_route(prob, float(conf_cfg["decision_threshold"] or 0.5))
+        if route == "trusted_top8":
+            gated_order = b1_order[: int(conf_cfg["trusted_budget"])]
+            gated_budget = int(conf_cfg["trusted_budget"])
+            t_gated_rank = t_rank_b1
+        else:
+            gated_order = compose_diversity_fallback(b1_order, b0_order)
+            gated_budget = int(conf_cfg["fallback_budget"])
+            t_gated_rank = t_rank_b1 + t_rank_b0
 
     # Method order for counterbalancing
     method_order = _counterbalanced_methods_order(index)
     method_results: dict[str, Any] = {}
+    active_models: dict[str, Any] = {}
 
     for method in method_order:
+        method_model = factory.build_isolated_model(method)
+        active_models[method] = method_model
+        solver_obj_id = id(method_model.solver)
+
         if method == "sat_only":
             rec = run_sat_only_recovery(
-                sat_model,
+                method_model,
                 known_pairs,
                 verif_pairs,
                 solver_timeout=timeout,
@@ -296,6 +330,7 @@ def evaluate_single_instance(
                 "t_sat": rec.solver_seconds,
                 "t_ver": rec.verification_seconds,
                 "t_online": t_online,
+                "solver_object_id": solver_obj_id,
             }
 
         elif method == "random_sat":
@@ -303,7 +338,7 @@ def evaluate_single_instance(
                 seed=int(config["dataset"]["seed"]) + 20000 + index,
             )
             rec = run_candidate_recovery(
-                sat_model,
+                method_model,
                 rnd_order,
                 known_pairs,
                 verif_pairs,
@@ -323,11 +358,12 @@ def evaluate_single_instance(
                 "t_sat": rec.solver_seconds,
                 "t_ver": rec.verification_seconds,
                 "t_online": t_online,
+                "solver_object_id": solver_obj_id,
             }
 
         elif method == "b0_sat":
             rec = run_candidate_recovery(
-                sat_model,
+                method_model,
                 b0_order,
                 known_pairs,
                 verif_pairs,
@@ -348,11 +384,12 @@ def evaluate_single_instance(
                 "t_sat": rec.solver_seconds,
                 "t_ver": rec.verification_seconds,
                 "t_online": t_online,
+                "solver_object_id": solver_obj_id,
             }
 
         elif method == "b1_sat":
             rec = run_candidate_recovery(
-                sat_model,
+                method_model,
                 b1_order,
                 known_pairs,
                 verif_pairs,
@@ -373,11 +410,12 @@ def evaluate_single_instance(
                 "t_sat": rec.solver_seconds,
                 "t_ver": rec.verification_seconds,
                 "t_online": t_online,
+                "solver_object_id": solver_obj_id,
             }
 
         elif method == "gated_b1_fallback_sat":
             rec = run_candidate_recovery(
-                sat_model,
+                method_model,
                 gated_order,
                 known_pairs,
                 verif_pairs,
@@ -400,7 +438,34 @@ def evaluate_single_instance(
                 "t_sat": rec.solver_seconds,
                 "t_ver": rec.verification_seconds,
                 "t_online": t_online,
+                "solver_object_id": solver_obj_id,
             }
+
+    # Oracle True Subkey Diagnostic (Fresh Model)
+    oracle_model = factory.build_isolated_model("oracle_true_subkey")
+    active_models["oracle_true_subkey"] = oracle_model
+    rec_oracle = run_candidate_recovery(
+        oracle_model,
+        [instance.final_round_subkey],
+        known_pairs,
+        verif_pairs,
+        candidate_budget=1,
+        solver_timeout=timeout,
+        strategy="oracle_true_subkey",
+    )
+    diagnostics = {
+        "oracle_true_subkey": {
+            "success": rec_oracle.success,
+            "status": rec_oracle.status,
+            "solver_seconds": rec_oracle.solver_seconds,
+            "verification_seconds": rec_oracle.verification_seconds,
+            "total_seconds": rec_oracle.solver_seconds + rec_oracle.verification_seconds,
+            "solver_object_id": id(oracle_model.solver),
+        }
+    }
+
+    # Verify complete object isolation across all allocated models
+    factory.verify_isolation(active_models)
 
     return {
         "schema": RESULT_SCHEMA,
@@ -417,6 +482,8 @@ def evaluate_single_instance(
             "python_version": sys.version,
         },
         "methods": method_results,
+        "diagnostics": diagnostics,
+        "isolation_verified": True,
     }
 
 
@@ -493,6 +560,7 @@ def run_evaluation(
             config_sha256,
         )
         _write_atomic(record_file, result)
+        gc.collect()
         t_elapsed = time.perf_counter() - t_start
         print(f"  ✓ Finished {instance.instance_id} in {t_elapsed:.2f}s")
 
@@ -518,25 +586,80 @@ def summarize_records(
     summary_methods: dict[str, Any] = {}
 
     for method in METHODS:
-        successes = sum(1 for r in records if r["methods"][method]["success"])
-        t_onlines = [r["methods"][method]["t_online"] for r in records]
-        attempts = [r["methods"][method]["candidates_attempted"] for r in records]
+        success_list = [bool(r["methods"][method]["success"]) for r in records]
+        successes = sum(1 for s in success_list if s)
+        t_onlines = [float(r["methods"][method]["t_online"]) for r in records]
+        attempts = [int(r["methods"][method]["candidates_attempted"]) for r in records]
 
-        # PAR-2: 2x timeout for failures
+        # Wilson 95% confidence interval
+        ci_lower, ci_upper = wilson_score_interval(successes, count, confidence=0.95)
+
+        # Global PAR-2 under explicit cutoffs (SAT Competition Standard)
+        par2_80 = calculate_global_par2(t_onlines, success_list, global_cutoff=80.0)
+        par2_100 = calculate_global_par2(t_onlines, success_list, global_cutoff=100.0)
+        par2_160 = calculate_global_par2(t_onlines, success_list, global_cutoff=160.0)
+        par2_200 = calculate_global_par2(t_onlines, success_list, global_cutoff=200.0)
+        par2_300 = calculate_global_par2(t_onlines, success_list, global_cutoff=300.0)
+
+        # Historical local PAR-2 (2x local solver timeout) preserved for reference
         timeout = float(config["solver"]["solver_timeout_seconds"])
-        par2_times = [
-            t if r["methods"][method]["success"] else 2 * timeout
-            for t, r in zip(t_onlines, records, strict=True)
+        par2_local = [
+            t if succ else 2 * timeout
+            for t, succ in zip(t_onlines, success_list, strict=True)
         ]
 
         summary_methods[method] = {
             "success_count": successes,
             "success_rate": successes / count if count > 0 else 0.0,
+            "wilson_ci_95": [ci_lower, ci_upper],
             "mean_online_seconds": float(np.mean(t_onlines)) if t_onlines else 0.0,
             "median_online_seconds": float(np.median(t_onlines)) if t_onlines else 0.0,
             "mean_candidates_attempted": float(np.mean(attempts)) if attempts else 0.0,
             "median_candidates_attempted": float(np.median(attempts)) if attempts else 0.0,
-            "par2_seconds": float(np.mean(par2_times)) if par2_times else 0.0,
+            "par2_seconds": par2_200,
+            "par2_global_200s": par2_200,
+            "par2_by_cutoff": {
+                "80s": par2_80,
+                "100s": par2_100,
+                "160s": par2_160,
+                "200s": par2_200,
+                "300s": par2_300,
+            },
+            "par2_local_timeout_seconds": float(np.mean(par2_local)) if par2_local else 0.0,
+        }
+
+    # McNemar tests
+    b1_succ = [r["methods"]["b1_sat"]["success"] for r in records]
+    b0_succ = [r["methods"]["b0_sat"]["success"] for r in records]
+    gated_succ = [r["methods"]["gated_b1_fallback_sat"]["success"] for r in records]
+    sat_succ = [r["methods"]["sat_only"]["success"] for r in records]
+
+    def _discordant(s1, s2):
+        b = sum(1 for a, b_ in zip(s1, s2, strict=True) if a and not b_)
+        c = sum(1 for a, b_ in zip(s1, s2, strict=True) if not a and b_)
+        return exact_mcnemar_test(b, c)
+
+    mcnemar_tests = {
+        "b1_vs_b0": _discordant(b1_succ, b0_succ),
+        "gated_vs_b1": _discordant(gated_succ, b1_succ),
+        "b1_vs_sat_only": _discordant(b1_succ, sat_succ),
+        "b0_vs_sat_only": _discordant(b0_succ, sat_succ),
+    }
+
+    # Oracle True Subkey Diagnostic Summary
+    oracle_times = [
+        r.get("diagnostics", {}).get("oracle_true_subkey", {}).get("total_seconds", 0.0)
+        for r in records
+        if "diagnostics" in r and "oracle_true_subkey" in r["diagnostics"]
+    ]
+    oracle_summary = {}
+    if oracle_times:
+        oracle_summary = {
+            "mean_seconds": float(np.mean(oracle_times)),
+            "median_seconds": float(np.median(oracle_times)),
+            "min_seconds": float(np.min(oracle_times)),
+            "max_seconds": float(np.max(oracle_times)),
+            "count_under_100ms": sum(1 for t in oracle_times if t < 0.1),
         }
 
     return {
@@ -544,12 +667,18 @@ def summarize_records(
         "phase": 7,
         "study": "phase7_held_out_comparative_evaluation",
         "instance_count": count,
+        "status_notice": (
+            "CORRECTED / AUDITED — Every method evaluated under strict CryptoMiniSat solver isolation. "
+            "Historical sat_only result (12/64 = 18.75%) was contaminated by shared solver state."
+        ),
         "provenance": {
             "config_sha256": config_sha256,
             "manifest_sha256": manifest_sha256,
             "git_commit": _git_commit(),
         },
         "methods": summary_methods,
+        "mcnemar_paired_tests": mcnemar_tests,
+        "oracle_diagnostic": oracle_summary,
     }
 
 

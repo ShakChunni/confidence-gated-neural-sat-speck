@@ -357,7 +357,7 @@ def _generate_markdown_table(summary: dict[str, Any]) -> str:
 
 | Method | Solved / 64 | Success Rate | Mean Attempts | Median Online Time (s) | PAR-2 Score (s) | Key Takeaway |
 |---|:---:|:---:|:---:|:---:|:---:|---|
-| **SAT-Only Baseline** | {m['sat_only']['success_count']} / 64 | **{m['sat_only']['success_rate']*100:.2f}%** | N/A | {m['sat_only']['median_online_seconds']:.2f}s | {m['sat_only']['par2_seconds']:.2f}s | Times out on >81% of instances |
+| **SAT-Only Baseline** | {m['sat_only']['success_count']} / 64 | **{m['sat_only']['success_rate']*100:.2f}%** | N/A | {m['sat_only']['median_online_seconds']:.2f}s | {m['sat_only']['par2_seconds']:.2f}s | Times out on 100% of instances |
 | **Random Order + SAT** | {m['random_sat']['success_count']} / 64 | **{m['random_sat']['success_rate']*100:.2f}%** | {m['random_sat']['mean_candidates_attempted']:.1f} | {m['random_sat']['median_online_seconds']:.2f}s | {m['random_sat']['par2_seconds']:.2f}s | Budget exhausted on 16 UNSATs |
 | **Gohr Baseline (B0) + SAT** | {m['b0_sat']['success_count']} / 64 | **{m['b0_sat']['success_rate']*100:.2f}%** | {m['b0_sat']['mean_candidates_attempted']:.2f} | {m['b0_sat']['median_online_seconds']:.2f}s | {m['b0_sat']['par2_seconds']:.2f}s | Solid baseline, misses 14 keys |
 | **Proposed Pair-Aware (B1) + SAT** | **{m['b1_sat']['success_count']} / 64** | **{m['b1_sat']['success_rate']*100:.2f}%** | **{m['b1_sat']['mean_candidates_attempted']:.2f}** | **{m['b1_sat']['median_online_seconds']:.2f}s** | **{m['b1_sat']['par2_seconds']:.2f}s** | **+12.50 pp boost over B0** |
