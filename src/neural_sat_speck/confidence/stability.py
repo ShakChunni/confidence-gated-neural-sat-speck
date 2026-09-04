@@ -288,10 +288,14 @@ def extract_g1_features_from_rankings(
 
 
 class ReliabilityEstimator(Protocol):
-    """Protocol for ranking reliability estimators."""
+    """Protocol for ranking reliability / failure risk estimators."""
+
+    def predict_failure_risk(self, features: G1FeatureVector | Sequence[float]) -> float:
+        """Predict probability of B1 top-16 failure: P(true subkey rank > 16) in [0.0, 1.0]."""
+        ...
 
     def predict_reliability(self, features: G1FeatureVector | Sequence[float]) -> float:
-        """Predict probability that true subkey is in top-16 (score in [0.0, 1.0])."""
+        """Predict probability that true subkey is in top-16: 1.0 - failure_risk."""
         ...
 
 
@@ -306,6 +310,9 @@ class G0Estimator:
         margin = features.score_curvature if isinstance(features, G1FeatureVector) else features[0]
         z = self.intercept + self.slope * margin
         return float(1.0 / (1.0 + math.exp(-z)))
+
+    def predict_failure_risk(self, features: G1FeatureVector | Sequence[float]) -> float:
+        return 1.0 - self.predict_reliability(features)
 
 
 class GLogitEstimator:
@@ -323,6 +330,9 @@ class GLogitEstimator:
         # Monotonic logistic transform of normalized margin
         z = (norm_margin - self.threshold) * 20.0
         return float(1.0 / (1.0 + math.exp(-z)))
+
+    def predict_failure_risk(self, features: G1FeatureVector | Sequence[float]) -> float:
+        return 1.0 - self.predict_reliability(features)
 
 
 class G1Estimator:
@@ -346,3 +356,6 @@ class G1Estimator:
         z = self.intercept + float(np.dot(self.weights, vec))
         z_clamped = max(-20.0, min(20.0, z))
         return float(1.0 / (1.0 + math.exp(-z_clamped)))
+
+    def predict_failure_risk(self, features: G1FeatureVector | Sequence[float]) -> float:
+        return 1.0 - self.predict_reliability(features)

@@ -64,6 +64,7 @@ def run_adaptive_cascade_recovery(
     r1_reranker: R1RescueRerankerProtocol,
     b0_ranking_callback: Callable[[], tuple[Sequence[int], float]],
     reliability_threshold: float = DEFAULT_RELIABILITY_THRESHOLD,
+    failure_threshold: float | None = None,
     primary_budget: int = DEFAULT_PRIMARY_BUDGET,
     shortlist_size: int = DEFAULT_SHORTLIST_SIZE,
     cumulative_budget: int = 32,
@@ -71,6 +72,8 @@ def run_adaptive_cascade_recovery(
     verification_pair_count: int = 2,
     verification_seed: int = 999999,
     seed_role: SeedRole | str = SeedRole.DEMO,
+    known_pairs_used: int | None = None,
+    enable_augmentation: bool = False,
 ) -> CascadeExecutionResult:
     """Execute the full adaptive cascade state machine on an attack instance.
 
@@ -80,14 +83,21 @@ def run_adaptive_cascade_recovery(
     2. Lazy B0 ranking is never computed unless B1/R1 SAT verification fails.
     3. Seed governance policy is strictly enforced.
     4. Exact wall-clock tracking for all components.
+    5. Routing polarity: low failure risk (< theta) -> B1_DIRECT; high failure risk (>= theta) -> R1_RESCUE.
+    6. If enable_augmentation is True (Phase 10G), B1 top-16 is strictly preserved at positions 0..15.
     """
     # Enforce seed validation
     validate_seed_for_role(verification_seed, seed_role)
 
-    known_pairs = [
+    all_instance_pairs = [
         (p.plaintext0, p.ciphertext0)
         for p in instance.pairs
     ]
+    known_pairs = (
+        all_instance_pairs[:known_pairs_used]
+        if known_pairs_used is not None
+        else all_instance_pairs
+    )
 
     verif_pairs = independent_verification_pairs(
         instance.master_key,
@@ -103,7 +113,13 @@ def run_adaptive_cascade_recovery(
     )
 
     t_gate_start = time.perf_counter()
-    rel_score = reliability_estimator.predict_reliability(g1_features)
+    if hasattr(reliability_estimator, "predict_failure_risk"):
+        failure_risk = reliability_estimator.predict_failure_risk(g1_features)
+    elif hasattr(reliability_estimator, "predict_reliability"):
+        failure_risk = 1.0 - reliability_estimator.predict_reliability(g1_features)
+    else:
+        failure_risk = float(reliability_estimator(g1_features))
+    rel_score = 1.0 - failure_risk
     t_gate = time.perf_counter() - t_gate_start
 
     t_rerank = 0.0
@@ -112,8 +128,16 @@ def run_adaptive_cascade_recovery(
     t_lazy_b0 = 0.0
     total_attempts: list[CandidateAttempt] = []
 
-    # Step 1: Reliability Gating
-    if rel_score >= reliability_threshold:
+    # Step 1: Failure Risk Routing
+    # G1(x) = P(B1 top-16 failure | x)
+    # G1(x) < theta  -> low failure risk -> B1_DIRECT
+    # G1(x) >= theta -> high failure risk -> R1_RESCUE
+    effective_failure_threshold = (
+        failure_threshold
+        if failure_threshold is not None
+        else (1.0 - reliability_threshold if reliability_threshold is not None else 0.50)
+    )
+    if failure_risk < effective_failure_threshold:
         route = "b1_direct"
         candidates_to_test = tuple(b1_candidate_order[:primary_budget])
     else:
@@ -124,7 +148,17 @@ def run_adaptive_cascade_recovery(
         t_rerank_start = time.perf_counter()
         reranked = r1_reranker.rerank_shortlist(shortlist, known_pairs)
         t_rerank = time.perf_counter() - t_rerank_start
-        candidates_to_test = tuple(reranked[:primary_budget])
+
+        if enable_augmentation:
+            # Non-destructive invariant (Phase 10G): B1 top-16 candidates are strictly
+            # preserved at positions 0..15 in their original order.
+            protected_b1 = tuple(b1_candidate_order[:primary_budget])
+            protected_set = set(protected_b1)
+            tail_cands = [c for c in reranked if c not in protected_set]
+            augmentation_budget = max(0, cumulative_budget - len(protected_b1))
+            candidates_to_test = protected_b1 + tuple(tail_cands[:augmentation_budget])
+        else:
+            candidates_to_test = tuple(reranked[:primary_budget])
 
     # Step 2: Primary SAT Solving under isolated model
     sat_model = factory.build_isolated_model(f"cascade_stage1_{route}")
@@ -151,40 +185,51 @@ def run_adaptive_cascade_recovery(
         recovered_key = rec_res.recovered_master_key
         winning_cand = rec_res.winning_candidate
     else:
-        # Escalate to Lazy B0 Fallback
-        escalated = True
-        t_b0_start = time.perf_counter()
-        b0_order, t_b0_calc = b0_ranking_callback()
-        t_lazy_b0 = time.perf_counter() - t_b0_start
-
-        # Fresh isolated solver for escalated B0 run
-        b0_sat_model = factory.build_isolated_model("cascade_stage2_lazy_b0")
-
-        # Deduplicate against already tested candidates and respect cumulative budget
+        # Escalate to Lazy B0 Fallback if callback provided and budget remains
         tested_set = {a.candidate for a in total_attempts}
         remaining_budget = max(0, cumulative_budget - len(tested_set))
-        b0_candidates = tuple(
-            c for c in b0_order if c not in tested_set
-        )[:remaining_budget]
+        if b0_ranking_callback is not None and remaining_budget > 0:
+            escalated = True
+            t_b0_start = time.perf_counter()
+            b0_order, t_b0_calc = b0_ranking_callback()
+            t_lazy_b0 = time.perf_counter() - t_b0_start
 
-        rec_b0: RecoveryResult = run_candidate_recovery(
-            b0_sat_model,
-            b0_candidates,
-            known_pairs,
-            verif_pairs,
-            candidate_budget=len(b0_candidates),
-            solver_timeout=solver_timeout,
-            strategy="cascade_lazy_b0",
-        )
+            # Fresh isolated solver for escalated B0 run
+            b0_sat_model = factory.build_isolated_model("cascade_stage2_lazy_b0")
 
-        t_sat += rec_b0.solver_seconds
-        t_ver += rec_b0.verification_seconds
-        total_attempts.extend(rec_b0.attempts)
+            b0_candidates = tuple(
+                c for c in b0_order if c not in tested_set
+            )[:remaining_budget]
 
-        final_success = rec_b0.success
-        final_status = rec_b0.status
-        recovered_key = rec_b0.recovered_master_key
-        winning_cand = rec_b0.winning_candidate
+            if b0_candidates:
+                rec_b0: RecoveryResult = run_candidate_recovery(
+                    b0_sat_model,
+                    b0_candidates,
+                    known_pairs,
+                    verif_pairs,
+                    candidate_budget=len(b0_candidates),
+                    solver_timeout=solver_timeout,
+                    strategy="cascade_lazy_b0",
+                )
+
+                t_sat += rec_b0.solver_seconds
+                t_ver += rec_b0.verification_seconds
+                total_attempts.extend(rec_b0.attempts)
+
+                final_success = rec_b0.success
+                final_status = rec_b0.status
+                recovered_key = rec_b0.recovered_master_key
+                winning_cand = rec_b0.winning_candidate
+            else:
+                final_success = False
+                final_status = "exhausted_budget"
+                recovered_key = None
+                winning_cand = None
+        else:
+            final_success = False
+            final_status = rec_res.status
+            recovered_key = None
+            winning_cand = None
 
     t_total = (
         t_b1_ranking

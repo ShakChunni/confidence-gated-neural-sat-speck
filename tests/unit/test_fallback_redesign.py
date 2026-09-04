@@ -513,3 +513,59 @@ def test_invariant_16_terminal_fallback_deduplication_and_cumulative_budget(samp
     assert len(attempted_cands) == len(set(attempted_cands)), "Duplicate candidate attempted in SAT!"
     assert res.success is True
     assert res.winning_candidate == true_key
+
+
+def test_invariant_17_g1_failure_risk_routing_polarity(sample_attack_instance):
+    """Invariant 17: G1 failure risk polarity routing regression check.
+
+    Mathematical Invariant:
+    G1(x) = P(B1 top-16 failure | x)
+    low failure risk  (< theta)  -> B1_DIRECT
+    high failure risk (>= theta) -> R1_RESCUE
+    Polarity cannot be inverted.
+    """
+    true_key = sample_attack_instance.final_round_subkey
+    b1_order = [true_key] + list(range(100))
+    features = G1FeatureVector(0.5, 1.0, 2.0, 0.8, 0.7, 0.1, 1.0)
+
+    class LowFailureRiskEstimator:
+        def predict_failure_risk(self, f):
+            return 0.05  # Low failure risk (< 0.50)
+
+    class HighFailureRiskEstimator:
+        def predict_failure_risk(self, f):
+            return 0.95  # High failure risk (>= 0.50)
+
+    # 1. Low failure risk MUST route to b1_direct
+    res_low = run_adaptive_cascade_recovery(
+        instance=sample_attack_instance,
+        b1_candidate_order=b1_order,
+        t_b1_ranking=1.0,
+        g1_features=features,
+        reliability_estimator=LowFailureRiskEstimator(),
+        r1_reranker=HeuristicRescueReranker(),
+        b0_ranking_callback=lambda: ([true_key], 0.0),
+        failure_threshold=0.50,
+        primary_budget=16,
+        solver_timeout=5.0,
+    )
+    assert res_low.route_selected == "b1_direct", (
+        f"Expected 'b1_direct' for low failure risk (0.05 < 0.50), got {res_low.route_selected}"
+    )
+
+    # 2. High failure risk MUST route to r1_rescue
+    res_high = run_adaptive_cascade_recovery(
+        instance=sample_attack_instance,
+        b1_candidate_order=b1_order,
+        t_b1_ranking=1.0,
+        g1_features=features,
+        reliability_estimator=HighFailureRiskEstimator(),
+        r1_reranker=HeuristicRescueReranker(target_subkey=true_key),
+        b0_ranking_callback=lambda: ([true_key], 0.0),
+        failure_threshold=0.50,
+        primary_budget=16,
+        solver_timeout=5.0,
+    )
+    assert res_high.route_selected == "r1_rescue", (
+        f"Expected 'r1_rescue' for high failure risk (0.95 >= 0.50), got {res_high.route_selected}"
+    )

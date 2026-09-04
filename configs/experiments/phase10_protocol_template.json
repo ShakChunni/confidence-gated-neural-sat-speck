@@ -33,11 +33,12 @@
     "computation_mode": "cached_embedding_slicing",
     "target_event": "true_subkey_rank_gt_16",
     "estimator_type": "l2_regularized_logistic_regression",
-    "threshold_selection_rule": "min_theta_for_risk_le_0.05_on_development_data",
+    "threshold_selection_rule": "max_theta_for_false_trust_risk_le_0.05_and_coverage_ge_0.50_oof_dev",
     "selected_threshold": "TBD_FROZEN_AFTER_DEVELOPMENT_FIT"
   },
   "r1_rescue_specification": {
     "candidate_shortlist_sizes_to_evaluate": [32, 64, 128],
+    "shortlist_selection_rule": "maximize_oof_rescue_into_top16_tiebreak_smaller_m",
     "selected_shortlist_size": "TBD_FROZEN_AFTER_DEVELOPMENT_FIT",
     "loss_function": "pairwise_margin_ranking_loss",
     "margin_gamma": 0.1,

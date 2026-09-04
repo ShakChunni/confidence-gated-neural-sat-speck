@@ -51,6 +51,9 @@ RETIRED_BLIND_SEED: Final[int] = 99001
 # Harmless demonstration seed for CLI examples (has no research or experimental role)
 CLI_DEMO_SEED: Final[int] = 999999
 
+# Safe development seed for Phase 10 (N=192 keys)
+PHASE10_DEVELOPMENT_SEED: Final[int] = 100001
+
 # All protected research seeds that must never be used as default CLI arguments
 PROTECTED_RESEARCH_SEEDS: Final[frozenset[int]] = frozenset(
     HISTORICAL_SEEDS
@@ -90,6 +93,7 @@ def validate_dataset_role_for_training(role: Phase10DataRole | str) -> None:
 class SeedRole(StrEnum):
     """Permitted experimental roles for random seeds."""
 
+    PHASE10_DEVELOPMENT = "phase10_development"
     PROSPECTIVE_VALIDATION = "prospective_validation"
     BLIND_CONFIRMATION = "blind_confirmation"
     MODEL_SELECTION = "model_selection"
@@ -112,7 +116,18 @@ def validate_seed_for_role(seed: int, role: SeedRole | str) -> None:
         except ValueError as err:
             raise ValueError(f"Unknown seed role: {role}") from err
 
-    if role == SeedRole.PROSPECTIVE_VALIDATION:
+    if role == SeedRole.PHASE10_DEVELOPMENT:
+        if seed in (HISTORICAL_PHASE7_SEED, QUARANTINED_PHASE10_SEED, RETIRED_BLIND_SEED):
+            raise ValueError(
+                f"Seed {seed} is prohibited from Phase 10 development data generation. "
+                "Seeds 98001, 97001, and 99001 cannot be reused for fresh Phase 10 roles."
+            )
+        if seed in HISTORICAL_SEEDS or seed in PROTECTED_RESEARCH_SEEDS:
+            raise ValueError(
+                f"Seed {seed} has already been used in historical research and cannot serve as Phase 10 development data."
+            )
+
+    elif role == SeedRole.PROSPECTIVE_VALIDATION:
         if seed == QUARANTINED_PHASE10_SEED:
             raise ValueError(
                 f"Seed {seed} is QUARANTINED and prohibited from prospective validation. "
