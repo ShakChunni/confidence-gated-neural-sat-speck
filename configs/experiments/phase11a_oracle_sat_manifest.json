@@ -1,0 +1,61 @@
+{
+  "protocol_id": "phase11a_oracle_sat_feasibility_gate",
+  "version": "1.0.0",
+  "cipher": "SPECK32/64",
+  "rounds": 7,
+  "dataset": {
+    "instance_count": 64,
+    "seed": 300001,
+    "seed_role": "phase11a_oracle_evaluation",
+    "status": "PRE_REGISTERED_FROZEN",
+    "pairs_per_instance": 64,
+    "input_difference": [64, 0],
+    "known_pairs_for_sat": 4,
+    "independent_verification_pairs": 2,
+    "verification_seed": 999999
+  },
+  "sat_configuration": {
+    "backend": "CryptoMiniSat 5.14.7 (pycryptosat)",
+    "threads": 1,
+    "verbose": 0,
+    "timeout_seconds": 10.0,
+    "assumptions_mode": "true_final_round_subkey_k6_direct",
+    "neural_ranking_applied": false,
+    "g1_g2_applied": false,
+    "solver_isolation": "IsolatedSolverFactory",
+    "solver_reuse_between_instances": false
+  },
+  "go_no_go_rule": {
+    "rule_description": "Immutable Pre-Declared Phase 11A Engineering Gate",
+    "condition_1_recovery_threshold": ">= 58 / 64 (>= 90.625%)",
+    "condition_2_median_time_threshold": "<= 5.0 seconds among verified successful instances",
+    "outcome_logic": "Proceed to Phase 11B neural ranking iff (condition_1 AND condition_2); otherwise block Phase 11B and record backend scaling boundary."
+  },
+  "metrics_plan": {
+    "par2_cutoffs": [20.0, 100.0, 200.0],
+    "wilson_ci_confidence": 0.95,
+    "time_percentiles": ["median", "mean", "p90", "p95"]
+  },
+  "governance": {
+    "prohibited_seeds": [
+      98001,
+      97001,
+      99001,
+      100001,
+      101001,
+      200001,
+      201001
+    ],
+    "phase11b_opened": false
+  },
+  "code_hashes": {
+    "src/neural_sat_speck/sat/model.py": "f9678b143e8f05d0dcec869b733f01d775a0af46a73d3a587129db3feca6ba79",
+    "src/neural_sat_speck/sat/isolation.py": "86ea158b5a51c6e20804416ffac053ec20b0429ae5fae52c1fe1d75aa763ce3f",
+    "src/neural_sat_speck/sat/encoding.py": "f035a7938ea7e64642410f6d82c25c16032bea378e9b54bd005420d5f6d1c4e5",
+    "src/neural_sat_speck/speck/cipher.py": "99d594e00d5149d967a027b786a3afebeb5b377f05744d73e59913aba50e7f43",
+    "src/neural_sat_speck/speck/key_schedule.py": "fcb3a847f514af3a06721463d03ba75f2c4b75fd575b77dcb9720d7e766ab8d9",
+    "src/neural_sat_speck/attacks/recovery.py": "d60861fb161f45c9f0df8001fd1768cac0d222f2a4fab198c682f881d64edf4d",
+    "src/neural_sat_speck/data/seed_policy.py": "531a0b49f8bf24823770d9177adc8a60b6790ae29c02064a3556e05450f6a68c",
+    "src/neural_sat_speck/data/attack.py": "c37535e1798e17d35037ae66c0fc4da45f4fe902958ca40f8e5e8a8c2ab53e3f"
+  }
+}

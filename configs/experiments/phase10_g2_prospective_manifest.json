@@ -1,0 +1,80 @@
+{
+  "protocol_id": "phase10_g2_prospective_validation",
+  "version": "1.0.0",
+  "cipher": "SPECK32/64",
+  "rounds": 6,
+  "dataset": {
+    "target_sample_size": 256,
+    "seed": 201001,
+    "seed_role": "phase10_g2_prospective_validation",
+    "status": "UNOPENED_UNGENERATED",
+    "pairs_per_instance": 64
+  },
+  "models": {
+    "b1_ranker": {
+      "path": "models/speck32_64_phase6a_b1_mean_g64.pt",
+      "sha256": "a93d29a76a521b6f3fd0f1dff943df9f74de3857169b9d735c9aa478817954d5",
+      "candidate_batch_size": 1024
+    },
+    "frozen_g1_baseline": {
+      "path": "models/phase10_promotional_g1_estimator.json",
+      "sha256": "432f997f56d7c6fbcfe5b9c0e9dff4918ab73dd265c4d514bf0c56c30ff8872c",
+      "model_type": "LogisticRegression_7feat"
+    },
+    "promoted_g2_estimator": {
+      "path": "models/phase10_promotional_g2_estimator.json",
+      "sha256": "14c258abc664bc90390aa31f1ad2b3a153db3539954ae3668dad04a18ed388f6",
+      "model_type": "G2_AUCRanker",
+      "feature_schema": "14_approved_features (D1..D7, S1..S7)",
+      "partition_mask_seed": 200030,
+      "l2_lambda": 0.1,
+      "training_dataset_seed": 200001,
+      "training_sample_size": 512
+    }
+  },
+  "operating_thresholds": {
+    "theta_budget_2pct": {
+      "theta": 0.0758,
+      "dev_target_risk": "<= 2.0%",
+      "dev_oof_coverage": "76.56% (392/512)",
+      "role": "primary_conservative_routing"
+    },
+    "theta_budget_5pct": {
+      "theta": 0.3119,
+      "dev_target_risk": "<= 5.0%",
+      "dev_oof_coverage": "95.51% (489/512)",
+      "role": "secondary_balanced_routing"
+    }
+  },
+  "statistical_inference_plan": {
+    "roc_auc": {
+      "estimator": "exact_rank_sum_with_average_ties",
+      "h0_test": "label_permutation_fixed_classes",
+      "n_permutations": 100000,
+      "seed": 200050
+    },
+    "bootstrap_ci": {
+      "method": "stratified_key_level_bootstrap",
+      "n_replicates": 10000,
+      "seed": 200040,
+      "confidence_level": 0.95
+    },
+    "paired_delta": {
+      "method": "paired_score_swap_permutation_test",
+      "n_permutations": 100000,
+      "seed": 200050
+    }
+  },
+  "governance": {
+    "phase11_opened": false,
+    "validation_seed_opened": false,
+    "quarantined_seeds_prohibited": [
+      98001,
+      97001,
+      99001,
+      100001,
+      101001,
+      200001
+    ]
+  }
+}

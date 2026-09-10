@@ -54,10 +54,28 @@ CLI_DEMO_SEED: Final[int] = 999999
 # Safe development seed for Phase 10 (N=192 keys)
 PHASE10_DEVELOPMENT_SEED: Final[int] = 100001
 
+# Safe fresh development seed for Phase 10-G2 (N=512 keys)
+PHASE10_G2_DEVELOPMENT_SEED: Final[int] = 200001
+
+# Retired prospective validation seed for Phase 10-G2 (N=256 keys, permanently opened)
+PHASE10_G2_PROSPECTIVE_SEED: Final[int] = 201001
+
+# Authoritative Oracle-SAT development/evaluation seed for Phase 11A (N=64 keys, 7 rounds)
+PHASE11A_ORACLE_SEED: Final[int] = 300001
+
 # All protected research seeds that must never be used as default CLI arguments
 PROTECTED_RESEARCH_SEEDS: Final[frozenset[int]] = frozenset(
     HISTORICAL_SEEDS
-    | {HISTORICAL_PHASE7_SEED, QUARANTINED_PHASE10_SEED, RETIRED_BLIND_SEED}
+    | {
+        HISTORICAL_PHASE7_SEED,
+        QUARANTINED_PHASE10_SEED,
+        RETIRED_BLIND_SEED,
+        PHASE10_DEVELOPMENT_SEED,
+        101001,
+        PHASE10_G2_DEVELOPMENT_SEED,
+        PHASE10_G2_PROSPECTIVE_SEED,
+        PHASE11A_ORACLE_SEED,
+    }
 )
 
 
@@ -94,7 +112,10 @@ class SeedRole(StrEnum):
     """Permitted experimental roles for random seeds."""
 
     PHASE10_DEVELOPMENT = "phase10_development"
+    PHASE10_G2_DEVELOPMENT = "phase10_g2_development"
     PROSPECTIVE_VALIDATION = "prospective_validation"
+    PHASE10_G2_PROSPECTIVE_VALIDATION = "phase10_g2_prospective_validation"
+    PHASE11A_ORACLE_EVALUATION = "phase11a_oracle_evaluation"
     BLIND_CONFIRMATION = "blind_confirmation"
     MODEL_SELECTION = "model_selection"
     HISTORICAL_DIAGNOSTIC = "historical_diagnostic"
@@ -125,6 +146,36 @@ def validate_seed_for_role(seed: int, role: SeedRole | str) -> None:
         if seed in HISTORICAL_SEEDS or seed in PROTECTED_RESEARCH_SEEDS:
             raise ValueError(
                 f"Seed {seed} has already been used in historical research and cannot serve as Phase 10 development data."
+            )
+
+    elif role == SeedRole.PHASE10_G2_DEVELOPMENT:
+        if seed in PROTECTED_RESEARCH_SEEDS or seed in (HISTORICAL_PHASE7_SEED, QUARANTINED_PHASE10_SEED, RETIRED_BLIND_SEED, 100001, 101001):
+            raise ValueError(
+                f"Seed {seed} is prohibited from Phase 10-G2 development data generation. "
+                "Historical, Phase 10 development (100001), and Phase 10 prospective validation (101001) seeds cannot be reused."
+            )
+
+    elif role == SeedRole.PHASE10_G2_PROSPECTIVE_VALIDATION:
+        if seed in (HISTORICAL_PHASE7_SEED, QUARANTINED_PHASE10_SEED, RETIRED_BLIND_SEED, 100001, 101001, 200001) or (seed in PROTECTED_RESEARCH_SEEDS and seed != PHASE10_G2_PROSPECTIVE_SEED):
+            raise ValueError(
+                f"Seed {seed} is prohibited from Phase 10-G2 prospective validation. "
+                "Cannot reuse past seeds or the G2 development seed (200001)."
+            )
+
+    elif role == SeedRole.PHASE11A_ORACLE_EVALUATION:
+        prohibited_seeds = (
+            HISTORICAL_PHASE7_SEED,    # 98001
+            QUARANTINED_PHASE10_SEED,  # 97001
+            RETIRED_BLIND_SEED,        # 99001
+            PHASE10_DEVELOPMENT_SEED,  # 100001
+            101001,                    # Phase 10 prospective
+            PHASE10_G2_DEVELOPMENT_SEED,   # 200001
+            PHASE10_G2_PROSPECTIVE_SEED,   # 201001
+        )
+        if seed in prohibited_seeds or seed in HISTORICAL_SEEDS or (seed in PROTECTED_RESEARCH_SEEDS and seed != PHASE11A_ORACLE_SEED):
+            raise ValueError(
+                f"Seed {seed} is prohibited from Phase 11A Oracle-SAT evaluation. "
+                "Historical, quarantined, retired, Phase 10, and Phase 10-G2 seeds cannot be reused."
             )
 
     elif role == SeedRole.PROSPECTIVE_VALIDATION:
