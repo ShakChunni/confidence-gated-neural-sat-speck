@@ -14,7 +14,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, ClassVar, Final
 
 import numpy as np
 
@@ -40,6 +40,24 @@ PAIR_GROUP_MANIFEST_SCHEMA: Final[str] = (
 PAIR_GROUP_GENERATOR_VERSION: Final[str] = "0.1.0"
 PAIR_GROUP_SIZE: Final[int] = 64
 PAIR_GROUP_ROUNDS: Final[int] = 5
+
+# Six-round stage-1 development family for the unfrozen Phase 11B' hierarchical
+# ranking protocol.  This is deliberately a separate constant: the frozen
+# five-round dataset id, checksums, and verification path are unchanged, and the
+# six-round family is reachable only through an explicit opt-in.
+PAIR_GROUP_ROUNDS_SIX: Final[int] = 6
+PAIR_GROUP_SIX_ROUND_DATASET_ID: Final[str] = (
+    "speck32_64_pair_group_phase11b_prime_r6_g64"
+)
+
+#: Round count owned by each known pair-group dataset id.  Loaders use this to
+#: resolve their round expectation when a dataset id is supplied; ids outside
+#: this registry keep the frozen five-round expectation.
+PAIR_GROUP_DATASET_ROUNDS: Final[dict[str, int]] = {
+    PAIR_GROUP_DATASET_ID: PAIR_GROUP_ROUNDS,
+    PAIR_GROUP_SIX_ROUND_DATASET_ID: PAIR_GROUP_ROUNDS_SIX,
+}
+
 PAIR_GROUP_SPLIT_ROLES: tuple[str, str] = ("train", "validation")
 PAIR_GROUP_KEY_POLICY: Final[str] = "one_random_master_key_per_group"
 PAIR_GROUP_FEATURE_DTYPE: Final[str] = "uint8"
@@ -47,6 +65,24 @@ PAIR_GROUP_MASTER_KEY_DTYPE: Final[str] = "uint16"
 PAIR_GROUP_PAIR_CONSTRUCTION: Final[str] = (
     "positive_difference_or_independent_random_second_plaintext"
 )
+
+
+def _resolve_expected_rounds(
+    expected_dataset_id: str | None,
+    expected_rounds: int | None,
+) -> int:
+    """Resolve the round expectation, falling back to the frozen five rounds.
+
+    An explicit ``expected_rounds`` always wins.  Otherwise the dataset id
+    selects its registered round count; unknown or unspecified ids keep the
+    frozen five-round expectation, so five-round behaviour is unchanged.
+    """
+
+    if expected_rounds is not None:
+        return expected_rounds
+    if expected_dataset_id is None:
+        return PAIR_GROUP_ROUNDS
+    return PAIR_GROUP_DATASET_ROUNDS.get(expected_dataset_id, PAIR_GROUP_ROUNDS)
 
 
 def _validate_word_pair(value: Sequence[int]) -> WordPair:
@@ -67,7 +103,21 @@ def _validate_word_pair(value: Sequence[int]) -> WordPair:
 
 @dataclass(frozen=True)
 class PairGroupConfig:
-    """Configuration for one Phase 6 pair-group split."""
+    """Configuration for one Phase 6 pair-group split.
+
+    This class is frozen at :data:`PAIR_GROUP_ROUNDS` rounds.  Six-round
+    configurations must use :class:`SixRoundPairGroupConfig`, which shares the
+    same fields, validation, and generator entry point.
+    """
+
+    #: Round count this configuration accepts.  Declared as a ``ClassVar`` so
+    #: the dataclass fields and the constructor signature are unchanged, and
+    #: overridden by :class:`SixRoundPairGroupConfig`.
+    required_rounds: ClassVar[int] = PAIR_GROUP_ROUNDS
+
+    #: Dataset id recorded by :func:`generate_pair_groups`; writers may still
+    #: override it explicitly.
+    default_dataset_id: ClassVar[str] = PAIR_GROUP_DATASET_ID
 
     group_count: int
     group_size: int
@@ -91,8 +141,8 @@ class PairGroupConfig:
             raise ValueError("seed must be non-negative")
         if self.group_size != PAIR_GROUP_SIZE:
             raise ValueError(f"group_size must be exactly {PAIR_GROUP_SIZE}")
-        if self.rounds != PAIR_GROUP_ROUNDS:
-            raise ValueError(f"rounds must be exactly {PAIR_GROUP_ROUNDS}")
+        if self.rounds != self.required_rounds:
+            raise ValueError(f"rounds must be exactly {self.required_rounds}")
         if self.split_role not in PAIR_GROUP_SPLIT_ROLES:
             raise ValueError(
                 f"split_role must be one of {sorted(PAIR_GROUP_SPLIT_ROLES)}"
@@ -104,6 +154,20 @@ class PairGroupConfig:
                 "(0x0040, 0x0000)"
             )
         object.__setattr__(self, "input_difference", difference)
+
+
+@dataclass(frozen=True)
+class SixRoundPairGroupConfig(PairGroupConfig):
+    """Configuration for the six-round stage-1 pair-group development family.
+
+    Identical to :class:`PairGroupConfig` in fields, validation, and generator
+    entry point, except that the round count must be exactly
+    :data:`PAIR_GROUP_ROUNDS_SIX`.  The frozen five-round configuration and its
+    verification path are unaffected.
+    """
+
+    required_rounds: ClassVar[int] = PAIR_GROUP_ROUNDS_SIX
+    default_dataset_id: ClassVar[str] = PAIR_GROUP_SIX_ROUND_DATASET_ID
 
 
 @dataclass(frozen=True)
@@ -234,7 +298,7 @@ def generate_pair_groups(
         },
         "data_checksum": _content_checksum(features, labels, master_keys),
         "dataset_format_version": DATASET_FORMAT_VERSION,
-        "dataset_id": PAIR_GROUP_DATASET_ID,
+        "dataset_id": config.default_dataset_id,
         "feature_dtype": str(features.dtype),
         "feature_shape": list(features.shape),
         "generated_at": timestamp,
@@ -431,8 +495,14 @@ def load_pair_group_shard(
     path: Path,
     *,
     expected_dataset_id: str | None = PAIR_GROUP_DATASET_ID,
+    expected_rounds: int | None = None,
 ) -> GeneratedPairGroups:
-    """Load and validate one architecture-neutral group shard."""
+    """Load and validate one architecture-neutral group shard.
+
+    ``expected_rounds`` is resolved from ``expected_dataset_id`` when it is not
+    given; ids outside :data:`PAIR_GROUP_DATASET_ROUNDS` keep the frozen
+    five-round expectation.
+    """
 
     features, labels, master_keys, metadata = _load_npz(path)
     if metadata.get("schema") not in (None, PAIR_GROUP_SHARD_SCHEMA):
@@ -478,7 +548,11 @@ def load_pair_group_shard(
         raise ValueError("pair-group generator version is unsupported")
     if metadata["bit_order"] != BIT_ORDER or metadata["word_order"] != WORD_ORDER:
         raise ValueError("pair-group word or bit order is unsupported")
-    if metadata["group_size"] != PAIR_GROUP_SIZE or metadata["rounds"] != PAIR_GROUP_ROUNDS:
+    if (
+        metadata["group_size"] != PAIR_GROUP_SIZE
+        or metadata["rounds"]
+        != _resolve_expected_rounds(expected_dataset_id, expected_rounds)
+    ):
         raise ValueError("pair-group size or rounds are unsupported")
     if metadata["split_role"] not in PAIR_GROUP_SPLIT_ROLES:
         raise ValueError("pair-group split role is invalid")
@@ -498,12 +572,14 @@ def verify_pair_group_shard(
     *,
     expected_dataset_id: str | None = PAIR_GROUP_DATASET_ID,
     expected_manifest_record: Mapping[str, object] | None = None,
+    expected_rounds: int | None = None,
 ) -> GeneratedPairGroups:
     """Verify a shard and its optional manifest record."""
 
     dataset = load_pair_group_shard(
         path,
         expected_dataset_id=expected_dataset_id,
+        expected_rounds=expected_rounds,
     )
     if expected_manifest_record is not None:
         record = expected_manifest_record
@@ -521,8 +597,14 @@ def load_pair_group_manifest(
     path: Path,
     *,
     expected_dataset_id: str | None = PAIR_GROUP_DATASET_ID,
+    expected_rounds: int | None = None,
 ) -> dict[str, Any]:
-    """Load and validate the two-split group manifest."""
+    """Load and validate the two-split group manifest.
+
+    ``expected_rounds`` is resolved from ``expected_dataset_id`` when it is not
+    given; ids outside :data:`PAIR_GROUP_DATASET_ROUNDS` keep the frozen
+    five-round expectation.
+    """
 
     try:
         payload = path.read_bytes()
@@ -543,7 +625,9 @@ def load_pair_group_manifest(
         raise ValueError("pair-group manifest licence is not MIT")
     if document.get("generator_version") != PAIR_GROUP_GENERATOR_VERSION:
         raise ValueError("pair-group manifest generator version is unsupported")
-    if document.get("rounds") != PAIR_GROUP_ROUNDS:
+    if document.get("rounds") != _resolve_expected_rounds(
+        expected_dataset_id, expected_rounds
+    ):
         raise ValueError("pair-group manifest rounds are unsupported")
     if document.get("group_size") != PAIR_GROUP_SIZE:
         raise ValueError("pair-group manifest group size is unsupported")
@@ -590,12 +674,19 @@ def verify_pair_group_benchmark(
     manifest_path: Path,
     *,
     expected_dataset_id: str | None = PAIR_GROUP_DATASET_ID,
+    expected_rounds: int | None = None,
 ) -> dict[str, Any]:
-    """Verify both group shards and disjoint master-key provenance."""
+    """Verify both group shards and disjoint master-key provenance.
 
+    The round expectation is resolved once from ``expected_dataset_id`` (or the
+    explicit ``expected_rounds``) and applied to the manifest and both shards.
+    """
+
+    resolved_rounds = _resolve_expected_rounds(expected_dataset_id, expected_rounds)
     manifest = load_pair_group_manifest(
         manifest_path,
         expected_dataset_id=expected_dataset_id,
+        expected_rounds=resolved_rounds,
     )
     root = manifest_path.parent
     split_records = manifest["splits"]
@@ -607,6 +698,7 @@ def verify_pair_group_benchmark(
                 root / str(record["path"]),
                 expected_dataset_id=str(manifest["dataset_id"]),
                 expected_manifest_record=record,
+                expected_rounds=resolved_rounds,
             )
         )
     assert_disjoint_pair_group_keys(datasets)
@@ -620,9 +712,24 @@ def export_pair_group_benchmark(
     dataset_id: str = PAIR_GROUP_DATASET_ID,
     generated_at: str,
     repository_commit: str | None = None,
+    rounds: int | None = None,
 ) -> dict[str, object]:
-    """Generate, write, and manifest the fixed train/validation group data."""
+    """Generate, write, and manifest the fixed train/validation group data.
 
+    ``rounds`` is resolved from ``dataset_id`` when it is not given (the frozen
+    five-round id keeps five rounds); every supplied configuration must match
+    the resolved value, so the six-round family is written only on explicit
+    opt-in with :data:`PAIR_GROUP_ROUNDS_SIX` or
+    :data:`PAIR_GROUP_SIX_ROUND_DATASET_ID`.
+    """
+
+    resolved_rounds = _resolve_expected_rounds(dataset_id, rounds)
+    for config in configs:
+        if config.rounds != resolved_rounds:
+            raise ValueError(
+                "pair-group configurations must use "
+                f"{resolved_rounds} rounds for this export"
+            )
     validate_pair_group_split_configs(configs)
     generated = [
         generate_pair_groups(
@@ -655,7 +762,7 @@ def export_pair_group_benchmark(
         "license": DATASET_LICENSE,
         "pair_construction": PAIR_GROUP_PAIR_CONSTRUCTION,
         "repository_commit": repository_commit,
-        "rounds": PAIR_GROUP_ROUNDS,
+        "rounds": resolved_rounds,
         "schema": PAIR_GROUP_MANIFEST_SCHEMA,
         "splits": split_records,
         "task": PAIR_GROUP_TASK,
@@ -669,15 +776,19 @@ def export_pair_group_benchmark(
 
 __all__ = [
     "PAIR_GROUP_DATASET_ID",
+    "PAIR_GROUP_DATASET_ROUNDS",
     "PAIR_GROUP_GENERATOR_VERSION",
     "PAIR_GROUP_MANIFEST_SCHEMA",
     "PAIR_GROUP_ROUNDS",
+    "PAIR_GROUP_ROUNDS_SIX",
     "PAIR_GROUP_SHARD_SCHEMA",
+    "PAIR_GROUP_SIX_ROUND_DATASET_ID",
     "PAIR_GROUP_SIZE",
     "PAIR_GROUP_SPLIT_ROLES",
     "PAIR_GROUP_TASK",
     "GeneratedPairGroups",
     "PairGroupConfig",
+    "SixRoundPairGroupConfig",
     "assert_disjoint_pair_group_keys",
     "export_pair_group_benchmark",
     "generate_pair_groups",

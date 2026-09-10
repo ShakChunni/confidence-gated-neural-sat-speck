@@ -13,6 +13,12 @@ from .group_ranking import (
     evaluate_pair_group_subkey_ranking,
     rank_pair_group_subkeys,
 )
+from .hierarchical_multi_round import (
+    HierarchicalAttackResult,
+    HierarchicalStage,
+    StageDiagnostic,
+    run_hierarchical_multi_round_attack,
+)
 from .hierarchical_ranking import (
     HIERARCHICAL_METHOD_ID,
     HIERARCHICAL_PAIR_COUNT,
@@ -20,6 +26,12 @@ from .hierarchical_ranking import (
     HIERARCHICAL_WINDOW_SIZE,
     HierarchicalSubkeyRanking,
     rank_hierarchical_subkeys,
+)
+from .multi_round_instance import partial_decrypt_instance
+from .multi_round_recovery import (
+    MultiRoundAttempt,
+    MultiRoundRecoveryResult,
+    run_multi_round_key_recovery,
 )
 from .ranking import (
     ALL_FINAL_ROUND_SUBKEYS,
@@ -51,13 +63,21 @@ __all__ = [
     "HIERARCHICAL_TIE_RULE",
     "HIERARCHICAL_WINDOW_SIZE",
     "HierarchicalSubkeyRanking",
+    "HierarchicalAttackResult",
+    "HierarchicalStage",
+    "MultiRoundAttempt",
+    "MultiRoundRecoveryResult",
     "PairSubsetStability",
     "RecoveryResult",
+    "StageDiagnostic",
     "SubkeyRanking",
     "VerificationResult",
     "evaluate_subkey_ranking",
     "choose_phase6c_route",
     "compose_diversity_fallback",
+    "partial_decrypt_instance",
+    "run_hierarchical_multi_round_attack",
+    "run_multi_round_key_recovery",
     "independent_verification_pairs",
     "known_pairs_for_attack_instance",
     "rank_final_round_subkeys",

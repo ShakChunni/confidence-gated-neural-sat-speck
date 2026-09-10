@@ -63,6 +63,13 @@ PHASE10_G2_PROSPECTIVE_SEED: Final[int] = 201001
 # Authoritative Oracle-SAT development/evaluation seed for Phase 11A (N=64 keys, 7 rounds)
 PHASE11A_ORACLE_SEED: Final[int] = 300001
 
+# Authoritative six-round stage-1 development-family seeds for the unfrozen
+# Phase 11B' hierarchical ranking protocol (train 4096 groups / validation 1024
+# groups, 64 pairs per group).  Development-family data only: they are not
+# prospective validation and not blind confirmation.
+PHASE11B_PRIME_SIX_ROUND_TRAIN_SEED: Final[int] = 400001
+PHASE11B_PRIME_SIX_ROUND_VALIDATION_SEED: Final[int] = 400002
+
 # All protected research seeds that must never be used as default CLI arguments
 PROTECTED_RESEARCH_SEEDS: Final[frozenset[int]] = frozenset(
     HISTORICAL_SEEDS
@@ -75,6 +82,8 @@ PROTECTED_RESEARCH_SEEDS: Final[frozenset[int]] = frozenset(
         PHASE10_G2_DEVELOPMENT_SEED,
         PHASE10_G2_PROSPECTIVE_SEED,
         PHASE11A_ORACLE_SEED,
+        PHASE11B_PRIME_SIX_ROUND_TRAIN_SEED,
+        PHASE11B_PRIME_SIX_ROUND_VALIDATION_SEED,
     }
 )
 
@@ -116,6 +125,7 @@ class SeedRole(StrEnum):
     PROSPECTIVE_VALIDATION = "prospective_validation"
     PHASE10_G2_PROSPECTIVE_VALIDATION = "phase10_g2_prospective_validation"
     PHASE11A_ORACLE_EVALUATION = "phase11a_oracle_evaluation"
+    PHASE11B_PRIME_STAGE1_DEVELOPMENT = "phase11b_prime_stage1_development"
     BLIND_CONFIRMATION = "blind_confirmation"
     MODEL_SELECTION = "model_selection"
     HISTORICAL_DIAGNOSTIC = "historical_diagnostic"
@@ -176,6 +186,31 @@ def validate_seed_for_role(seed: int, role: SeedRole | str) -> None:
             raise ValueError(
                 f"Seed {seed} is prohibited from Phase 11A Oracle-SAT evaluation. "
                 "Historical, quarantined, retired, Phase 10, and Phase 10-G2 seeds cannot be reused."
+            )
+
+    elif role == SeedRole.PHASE11B_PRIME_STAGE1_DEVELOPMENT:
+        # This role owns exactly two seeds: the six-round stage-1 development
+        # family's train split and its internal validation split.  The owned
+        # allow-list is checked first, so the role never self-blocks its own
+        # seeds through the blanket PROTECTED_RESEARCH_SEEDS predicate; every
+        # other seed, protected or historical, is rejected.
+        owned_seeds = (
+            PHASE11B_PRIME_SIX_ROUND_TRAIN_SEED,
+            PHASE11B_PRIME_SIX_ROUND_VALIDATION_SEED,
+        )
+        if seed not in owned_seeds:
+            raise ValueError(
+                f"Seed {seed} is not authorised for the Phase 11B' six-round stage-1 "
+                f"development family (owned seeds: {owned_seeds})."
+            )
+        if seed in HISTORICAL_SEEDS or seed in (
+            HISTORICAL_PHASE7_SEED,
+            QUARANTINED_PHASE10_SEED,
+            RETIRED_BLIND_SEED,
+        ):
+            raise ValueError(
+                f"Seed {seed} is historical, quarantined, or retired and cannot "
+                "serve the Phase 11B' six-round stage-1 development family."
             )
 
     elif role == SeedRole.PROSPECTIVE_VALIDATION:
