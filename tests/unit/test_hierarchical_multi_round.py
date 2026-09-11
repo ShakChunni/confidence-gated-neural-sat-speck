@@ -686,3 +686,67 @@ def test_screened_hierarchical_stage_validation_and_execution() -> None:
     assert stage.screen_pairs == 16
     assert stage.screen_top_k == 512
 
+
+def test_stage_cache_and_excluded_paths_cascade(
+    instance: AttackInstance,
+    known_pairs: tuple,
+    verification_pairs: tuple,
+) -> None:
+    """Cascade reusing stage_cache and excluded_paths avoids duplicate work."""
+
+    schedule = expand_key(instance.master_key, rounds=ROUNDS)
+    true_final, true_second = schedule[-1], schedule[-2]
+    wrong_second = (true_second + 1) & 0xFFFF
+    descended = partial_decrypt_instance(
+        instance,
+        true_final,
+        expected_next_subkey=true_second,
+        label=f"{instance.instance_id}-descended",
+    )
+    stage0 = HierarchicalStage(
+        round_index=ROUNDS - 1,
+        model=_nearest_stub(instance, true_final),
+        beam_width=1,
+    )
+    stage1_narrow = HierarchicalStage(
+        round_index=ROUNDS - 2,
+        model=_nearest_stub(descended, true_second, wrong_second),
+        beam_width=1,
+    )
+    stage1_wide = HierarchicalStage(
+        round_index=ROUNDS - 2,
+        model=_nearest_stub(descended, true_second, wrong_second),
+        beam_width=2,
+    )
+
+    stage_cache: dict = {}
+    res_narrow = run_hierarchical_multi_round_attack(
+        instance,
+        rounds=ROUNDS,
+        stages=[stage0, stage1_narrow],
+        known_pairs=known_pairs,
+        verification_pairs=verification_pairs,
+        solver_timeout=30.0,
+        stage_cache=stage_cache,
+    )
+    assert res_narrow.success is False
+    assert res_narrow.candidates_attempted == 1
+    assert len(res_narrow.attempted_paths) == 1
+    assert () in stage_cache
+    assert (true_final,) in stage_cache
+
+    res_wide = run_hierarchical_multi_round_attack(
+        instance,
+        rounds=ROUNDS,
+        stages=[stage0, stage1_wide],
+        known_pairs=known_pairs,
+        verification_pairs=verification_pairs,
+        solver_timeout=30.0,
+        stage_cache=stage_cache,
+        excluded_paths=set(res_narrow.attempted_paths),
+    )
+    assert res_wide.success is True
+    assert res_wide.candidates_attempted == 1
+    assert tuple(res_wide.recovered_master_key) == tuple(instance.master_key)
+
+

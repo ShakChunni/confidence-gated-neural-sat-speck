@@ -262,6 +262,7 @@ class HierarchicalAttackResult:
     verification_seconds: float
     total_seconds: float
     failure_cause: str | None
+    attempted_paths: tuple[tuple[int, ...], ...] = ()
 
     def __post_init__(self) -> None:
         """Enforce the result's accounting and outcome invariants."""
@@ -284,6 +285,8 @@ class HierarchicalAttackResult:
         _validate_seconds(self.solver_seconds, "solver_seconds")
         _validate_seconds(self.verification_seconds, "verification_seconds")
         _validate_seconds(self.total_seconds, "total_seconds")
+        if not isinstance(self.attempted_paths, tuple):
+            raise TypeError("attempted_paths must be a tuple of path tuples")
         if self.failure_cause not in (
             None,
             FAILURE_CAUSE_RANKING,
@@ -309,6 +312,7 @@ class HierarchicalAttackResult:
             "failure_cause": self.failure_cause,
             "stages": [stage.to_dict() for stage in self.stages],
             "candidates_attempted": self.candidates_attempted,
+            "attempted_paths": [list(path) for path in self.attempted_paths],
             "recovered_master_key": (
                 list(self.recovered_master_key)
                 if self.recovered_master_key is not None
@@ -463,6 +467,8 @@ def run_hierarchical_multi_round_attack(
     solver_timeout: float | None = None,
     candidate_batch_size: int = 1024,
     device: torch.device | str | None = None,
+    stage_cache: dict[tuple[int, ...], Any] | None = None,
+    excluded_paths: set[tuple[int, ...]] | None = None,
 ) -> HierarchicalAttackResult:
     """Attack ``rounds`` rounds by ranking its trailing round keys in a beam.
 
@@ -518,7 +524,9 @@ def run_hierarchical_multi_round_attack(
         candidates_ranked = 0
 
         for prefix, rank_sum, current in frontier:
-            if stage.screened:
+            if stage_cache is not None and prefix in stage_cache:
+                ranking = stage_cache[prefix]
+            elif stage.screened:
                 ranking = rank_pair_group_subkeys_screened(
                     current,
                     stage.model,
@@ -527,6 +535,8 @@ def run_hierarchical_multi_round_attack(
                     candidate_batch_size=candidate_batch_size,
                     device=device,
                 )
+                if stage_cache is not None:
+                    stage_cache[prefix] = ranking
             else:
                 ranking = rank_pair_group_subkeys(
                     current,
@@ -534,6 +544,8 @@ def run_hierarchical_multi_round_attack(
                     candidate_batch_size=candidate_batch_size,
                     device=device,
                 )
+                if stage_cache is not None:
+                    stage_cache[prefix] = ranking
             ranking_seconds += float(ranking.total_seconds)
             candidates_ranked += len(ranking.candidate_values)
             orders[prefix] = ranking.candidate_order
@@ -581,32 +593,46 @@ def run_hierarchical_multi_round_attack(
     verification_seconds = 0.0
     candidates_attempted = 0
     recovered: MasterKey | None = None
+    attempted_tuples: tuple[tuple[int, ...], ...] = ()
     if ordered_paths:
-        round_indices = tuple(stage.round_index for stage in stage_tuple)
-        candidate_round_keys = [
-            dict(zip(round_indices, prefix, strict=True)) for prefix, _ in ordered_paths
-        ]
-        factory = IsolatedSolverFactory.from_pairs(
-            known,
-            rounds=rounds,
-            instance_id=instance.instance_id,
+        effective_paths = (
+            [entry for entry in ordered_paths if entry[0] not in excluded_paths]
+            if excluded_paths
+            else ordered_paths
         )
-        model = factory.build_isolated_model(HIERARCHICAL_SOLVER_NAME)
-        recovery = run_multi_round_key_recovery(
-            model,
-            candidate_round_keys,
-            known,
-            verification,
-            rounds=rounds,
-            solver_timeout=timeout,
-            strategy=HIERARCHICAL_ATTACK_STRATEGY,
-        )
-        success = recovery.success
-        status = recovery.status
-        candidates_attempted = recovery.candidates_attempted
-        recovered = recovery.recovered_master_key
-        solver_seconds = float(recovery.solver_seconds)
-        verification_seconds = float(recovery.verification_seconds)
+        if effective_paths:
+            round_indices = tuple(stage.round_index for stage in stage_tuple)
+            candidate_round_keys = [
+                dict(zip(round_indices, prefix, strict=True))
+                for prefix, _ in effective_paths
+            ]
+            factory = IsolatedSolverFactory.from_pairs(
+                known,
+                rounds=rounds,
+                instance_id=instance.instance_id,
+            )
+            model = factory.build_isolated_model(HIERARCHICAL_SOLVER_NAME)
+            recovery = run_multi_round_key_recovery(
+                model,
+                candidate_round_keys,
+                known,
+                verification,
+                rounds=rounds,
+                solver_timeout=timeout,
+                strategy=HIERARCHICAL_ATTACK_STRATEGY,
+            )
+            success = recovery.success
+            status = recovery.status
+            candidates_attempted = recovery.candidates_attempted
+            recovered = recovery.recovered_master_key
+            solver_seconds = float(recovery.solver_seconds)
+            verification_seconds = float(recovery.verification_seconds)
+            attempted_tuples = tuple(
+                prefix for prefix, _ in effective_paths[:candidates_attempted]
+            )
+        else:
+            success = False
+            status = STATUS_NO_RANKED_CANDIDATES
     else:
         success = False
         status = STATUS_NO_RANKED_CANDIDATES
@@ -636,6 +662,7 @@ def run_hierarchical_multi_round_attack(
         verification_seconds=verification_seconds,
         total_seconds=time.perf_counter() - started,
         failure_cause=failure_cause,
+        attempted_paths=attempted_tuples,
     )
 
 
