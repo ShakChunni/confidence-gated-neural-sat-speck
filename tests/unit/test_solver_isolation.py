@@ -27,6 +27,10 @@ from neural_sat_speck.data.attack import AttackInstanceConfig, generate_attack_i
 from neural_sat_speck.data.seed_policy import (
     CLI_DEMO_SEED,
     HISTORICAL_PHASE7_SEED,
+    PHASE10_DEVELOPMENT_SEED,
+    PHASE10_G2_DEVELOPMENT_SEED,
+    PHASE10_G2_PROSPECTIVE_SEED,
+    PHASE10_PROSPECTIVE_SEED,
     PROTECTED_RESEARCH_SEEDS,
     QUARANTINED_PHASE10_SEED,
     RETIRED_BLIND_SEED,
@@ -228,3 +232,36 @@ def test_historical_seed_98001_rejected_for_model_selection():
 
     with pytest.raises(ValueError, match="opened historical evaluation seed"):
         validate_seed_for_role(HISTORICAL_PHASE7_SEED, SeedRole.PROSPECTIVE_VALIDATION)
+
+
+def test_seed_role_validation_accepts_owner_seeds_for_their_roles():
+    """Test 10: Roles accept their own designated seeds without self-blocking."""
+    # Phase 10 development accepts 100001
+    validate_seed_for_role(PHASE10_DEVELOPMENT_SEED, SeedRole.PHASE10_DEVELOPMENT)
+
+    # Phase 10 prospective validation accepts 101001
+    validate_seed_for_role(PHASE10_PROSPECTIVE_SEED, SeedRole.PROSPECTIVE_VALIDATION)
+
+    # Phase 10-G2 development accepts 200001
+    validate_seed_for_role(PHASE10_G2_DEVELOPMENT_SEED, SeedRole.PHASE10_G2_DEVELOPMENT)
+
+    # Phase 10-G2 prospective validation accepts 201001
+    validate_seed_for_role(PHASE10_G2_PROSPECTIVE_SEED, SeedRole.PHASE10_G2_PROSPECTIVE_VALIDATION)
+
+
+def test_seed_role_validation_rejects_cross_role_contamination():
+    """Test 11: Designated seeds are blocked from cross-role contamination."""
+    # 100001 cannot serve as G2 development or prospective validation
+    with pytest.raises(ValueError, match="prohibited"):
+        validate_seed_for_role(PHASE10_DEVELOPMENT_SEED, SeedRole.PHASE10_G2_DEVELOPMENT)
+
+    with pytest.raises(ValueError, match="already been used"):
+        validate_seed_for_role(PHASE10_DEVELOPMENT_SEED, SeedRole.PROSPECTIVE_VALIDATION)
+
+    # 200001 cannot serve as Phase 10 development
+    with pytest.raises(ValueError, match="already been used"):
+        validate_seed_for_role(PHASE10_G2_DEVELOPMENT_SEED, SeedRole.PHASE10_DEVELOPMENT)
+
+    # 101001 cannot serve as G2 development
+    with pytest.raises(ValueError, match="prohibited"):
+        validate_seed_for_role(PHASE10_PROSPECTIVE_SEED, SeedRole.PHASE10_G2_DEVELOPMENT)

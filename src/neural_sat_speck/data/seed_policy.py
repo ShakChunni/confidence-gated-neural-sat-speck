@@ -54,6 +54,9 @@ CLI_DEMO_SEED: Final[int] = 999999
 # Safe development seed for Phase 10 (N=192 keys)
 PHASE10_DEVELOPMENT_SEED: Final[int] = 100001
 
+# Retired prospective validation seed for Phase 10 (N=64 keys, permanently opened)
+PHASE10_PROSPECTIVE_SEED: Final[int] = 101001
+
 # Safe fresh development seed for Phase 10-G2 (N=512 keys)
 PHASE10_G2_DEVELOPMENT_SEED: Final[int] = 200001
 
@@ -78,7 +81,7 @@ PROTECTED_RESEARCH_SEEDS: Final[frozenset[int]] = frozenset(
         QUARANTINED_PHASE10_SEED,
         RETIRED_BLIND_SEED,
         PHASE10_DEVELOPMENT_SEED,
-        101001,
+        PHASE10_PROSPECTIVE_SEED,
         PHASE10_G2_DEVELOPMENT_SEED,
         PHASE10_G2_PROSPECTIVE_SEED,
         PHASE11A_ORACLE_SEED,
@@ -153,13 +156,19 @@ def validate_seed_for_role(seed: int, role: SeedRole | str) -> None:
                 f"Seed {seed} is prohibited from Phase 10 development data generation. "
                 "Seeds 98001, 97001, and 99001 cannot be reused for fresh Phase 10 roles."
             )
-        if seed in HISTORICAL_SEEDS or seed in PROTECTED_RESEARCH_SEEDS:
+        if seed in HISTORICAL_SEEDS or (seed in PROTECTED_RESEARCH_SEEDS and seed != PHASE10_DEVELOPMENT_SEED):
             raise ValueError(
                 f"Seed {seed} has already been used in historical research and cannot serve as Phase 10 development data."
             )
 
     elif role == SeedRole.PHASE10_G2_DEVELOPMENT:
-        if seed in PROTECTED_RESEARCH_SEEDS or seed in (HISTORICAL_PHASE7_SEED, QUARANTINED_PHASE10_SEED, RETIRED_BLIND_SEED, 100001, 101001):
+        if (seed in PROTECTED_RESEARCH_SEEDS and seed != PHASE10_G2_DEVELOPMENT_SEED) or seed in (
+            HISTORICAL_PHASE7_SEED,
+            QUARANTINED_PHASE10_SEED,
+            RETIRED_BLIND_SEED,
+            PHASE10_DEVELOPMENT_SEED,
+            PHASE10_PROSPECTIVE_SEED,
+        ):
             raise ValueError(
                 f"Seed {seed} is prohibited from Phase 10-G2 development data generation. "
                 "Historical, Phase 10 development (100001), and Phase 10 prospective validation (101001) seeds cannot be reused."
@@ -229,7 +238,7 @@ def validate_seed_for_role(seed: int, role: SeedRole | str) -> None:
             raise ValueError(
                 f"Seed {seed} is an opened historical evaluation seed and cannot serve as prospective validation."
             )
-        if seed in HISTORICAL_SEEDS or seed in PROTECTED_RESEARCH_SEEDS:
+        if seed in HISTORICAL_SEEDS or (seed in PROTECTED_RESEARCH_SEEDS and seed != PHASE10_PROSPECTIVE_SEED):
             raise ValueError(
                 f"Seed {seed} has already been used in historical training/validation and cannot serve as prospective validation."
             )
