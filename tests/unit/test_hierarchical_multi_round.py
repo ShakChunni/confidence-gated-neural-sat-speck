@@ -649,3 +649,40 @@ def test_frozen_b1_checkpoint_satisfies_the_stage_interface() -> None:
     assert HierarchicalStage(round_index=5, model=model, beam_width=16).beam_width == 16
     wrapped = NumpyInferenceModule(NumpyRankerInference(model))
     assert HierarchicalStage(round_index=5, model=wrapped, beam_width=16).beam_width == 16
+
+
+def test_screened_hierarchical_stage_validation_and_execution() -> None:
+    """HierarchicalStage validates screened parameters and executes screened ranking."""
+    model = PairGroupRanker(variant="b1_mean")
+
+    # Validation checks
+    with pytest.raises(ValueError, match="screen_pairs must be 8, 16, or 32"):
+        HierarchicalStage(
+            round_index=5,
+            model=model,
+            beam_width=16,
+            screened=True,
+            screen_pairs=10,
+        )
+
+    with pytest.raises(ValueError, match="screen_top_k must be between 1 and 65536"):
+        HierarchicalStage(
+            round_index=5,
+            model=model,
+            beam_width=16,
+            screened=True,
+            screen_top_k=0,
+        )
+
+    stage = HierarchicalStage(
+        round_index=5,
+        model=model,
+        beam_width=16,
+        screened=True,
+        screen_pairs=16,
+        screen_top_k=512,
+    )
+    assert stage.screened is True
+    assert stage.screen_pairs == 16
+    assert stage.screen_top_k == 512
+

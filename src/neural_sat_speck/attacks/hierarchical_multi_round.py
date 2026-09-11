@@ -39,6 +39,9 @@ from typing import Any
 import torch
 
 from neural_sat_speck.attacks.group_ranking import rank_pair_group_subkeys
+from neural_sat_speck.attacks.screened_group_ranking import (
+    rank_pair_group_subkeys_screened,
+)
 from neural_sat_speck.attacks.multi_round_instance import partial_decrypt_instance
 from neural_sat_speck.attacks.multi_round_recovery import (
     run_multi_round_key_recovery,
@@ -165,6 +168,9 @@ class HierarchicalStage:
     round_index: int
     model: Any
     beam_width: int
+    screened: bool = False
+    screen_pairs: int = 16
+    screen_top_k: int = 512
 
     def __post_init__(self) -> None:
         """Validate the stage's index, ranker interface, and beam width."""
@@ -172,6 +178,13 @@ class HierarchicalStage:
         _validate_integer(self.round_index, "stages round_index", minimum=0)
         _validate_integer(self.beam_width, "stages beam_width", minimum=1)
         _validate_stage_model(self.model, "stages model")
+        if self.screened:
+            if self.screen_pairs not in (8, 16, 32):
+                raise ValueError(f"screen_pairs must be 8, 16, or 32, got {self.screen_pairs}")
+            if self.screen_top_k <= 0 or self.screen_top_k > 65536:
+                raise ValueError(f"screen_top_k must be between 1 and 65536, got {self.screen_top_k}")
+            if not isinstance(self.model, PairGroupRanker):
+                raise TypeError("screened stage requires a PairGroupRanker model")
 
 
 @dataclass(frozen=True)
@@ -505,12 +518,22 @@ def run_hierarchical_multi_round_attack(
         candidates_ranked = 0
 
         for prefix, rank_sum, current in frontier:
-            ranking = rank_pair_group_subkeys(
-                current,
-                stage.model,
-                candidate_batch_size=candidate_batch_size,
-                device=device,
-            )
+            if stage.screened:
+                ranking = rank_pair_group_subkeys_screened(
+                    current,
+                    stage.model,
+                    screen_pairs=stage.screen_pairs,
+                    screen_top_k=stage.screen_top_k,
+                    candidate_batch_size=candidate_batch_size,
+                    device=device,
+                )
+            else:
+                ranking = rank_pair_group_subkeys(
+                    current,
+                    stage.model,
+                    candidate_batch_size=candidate_batch_size,
+                    device=device,
+                )
             ranking_seconds += float(ranking.total_seconds)
             candidates_ranked += len(ranking.candidate_values)
             orders[prefix] = ranking.candidate_order

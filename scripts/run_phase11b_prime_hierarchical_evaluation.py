@@ -68,6 +68,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--timeout", type=float, default=10.0)
     parser.add_argument("--batch-size", type=int, default=1024)
     parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument("--screened-stage2", action="store_true", help="Enable Phase 11F multi-fidelity screened ranking for Stage 2")
+    parser.add_argument("--device", type=str, default="mps", help="PyTorch device (e.g. mps, cpu, cuda)")
     return parser.parse_args(argv)
 
 
@@ -84,14 +86,43 @@ def load_ranker(path: Path) -> NumpyInferenceModule:
     return NumpyInferenceModule(NumpyRankerInference(model))
 
 
+def load_pytorch_ranker(path: Path, device: torch.device) -> PairGroupRanker:
+    if not path.exists():
+        raise SystemExit(f"checkpoint not found at {path}")
+    payload = torch.load(path, map_location="cpu", weights_only=False)
+    variant = payload.get("variant", "b1_mean")
+    model = PairGroupRanker(variant=variant)
+    state = payload["state_dict"] if "state_dict" in payload else payload
+    model.load_state_dict(state)
+    model.to(device)
+    model.eval()
+    return model
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    stage1_model = load_ranker(args.stage1_model)
-    stage2_model = load_ranker(args.stage2_model)
-    stages = (
-        HierarchicalStage(round_index=ROUNDS - 1, model=stage1_model, beam_width=args.m1),
-        HierarchicalStage(round_index=ROUNDS - 2, model=stage2_model, beam_width=args.m2),
-    )
+    device_obj = torch.device(args.device if torch.backends.mps.is_available() or torch.cuda.is_available() else "cpu")
+    if args.screened_stage2:
+        stage1_model = load_pytorch_ranker(args.stage1_model, device=device_obj)
+        stage2_model = load_pytorch_ranker(args.stage2_model, device=device_obj)
+        stages = (
+            HierarchicalStage(round_index=ROUNDS - 1, model=stage1_model, beam_width=args.m1),
+            HierarchicalStage(
+                round_index=ROUNDS - 2,
+                model=stage2_model,
+                beam_width=args.m2,
+                screened=True,
+                screen_pairs=16,
+                screen_top_k=512,
+            ),
+        )
+    else:
+        stage1_model = load_ranker(args.stage1_model)
+        stage2_model = load_ranker(args.stage2_model)
+        stages = (
+            HierarchicalStage(round_index=ROUNDS - 1, model=stage1_model, beam_width=args.m1),
+            HierarchicalStage(round_index=ROUNDS - 2, model=stage2_model, beam_width=args.m2),
+        )
     shard = load_attack_shard(DATASET_PATH, expected_dataset_id=DATASET_ID)
     instances = shard.instances[args.start : args.start + args.instances]
     if not instances:

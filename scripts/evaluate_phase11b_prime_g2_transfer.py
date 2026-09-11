@@ -295,6 +295,7 @@ def main(argv: list[str] | None = None) -> int:
             "mean": float(np.mean(ranks)),
             "min": int(np.min(ranks)),
             "max": int(np.max(ranks)),
+            "top_1_containment": int(np.sum(ranks <= 1)),
             "top_8_containment": int(np.sum(ranks <= 8)),
             "top_16_containment": int(np.sum(ranks <= 16)),
             "top_32_containment": int(np.sum(ranks <= 32)),
