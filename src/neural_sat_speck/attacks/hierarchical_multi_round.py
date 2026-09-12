@@ -39,14 +39,14 @@ from typing import Any
 import torch
 
 from neural_sat_speck.attacks.group_ranking import rank_pair_group_subkeys
-from neural_sat_speck.attacks.screened_group_ranking import (
-    rank_pair_group_subkeys_screened,
-)
 from neural_sat_speck.attacks.multi_round_instance import partial_decrypt_instance
 from neural_sat_speck.attacks.multi_round_recovery import (
     run_multi_round_key_recovery,
 )
 from neural_sat_speck.attacks.recovery import MasterKey
+from neural_sat_speck.attacks.screened_group_ranking import (
+    rank_pair_group_subkeys_screened,
+)
 from neural_sat_speck.data.attack import AttackInstance
 from neural_sat_speck.neural.group_model import PairGroupRanker
 from neural_sat_speck.neural.numpy_inference import NumpyInferenceModule

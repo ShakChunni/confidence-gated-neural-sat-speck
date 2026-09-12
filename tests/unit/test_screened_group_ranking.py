@@ -1,9 +1,10 @@
 """Unit tests for screened multi-fidelity pair-group subkey ranking."""
 
 import pytest
-import torch
 
-from neural_sat_speck.attacks.screened_group_ranking import rank_pair_group_subkeys_screened
+from neural_sat_speck.attacks.screened_group_ranking import (
+    rank_pair_group_subkeys_screened,
+)
 from neural_sat_speck.data.attack import AttackInstanceConfig, generate_attack_instances
 from neural_sat_speck.neural.group_model import build_pair_group_model
 from neural_sat_speck.neural.model import GohrResNet

@@ -266,6 +266,27 @@ def validate_seed_for_role(seed: int, role: SeedRole | str) -> None:
                 f"Seed {seed} is quarantined and cannot be used for model selection or tuning."
             )
 
+    elif role == SeedRole.HISTORICAL_DIAGNOSTIC:
+        if seed == QUARANTINED_PHASE10_SEED:
+            raise ValueError(
+                f"Seed {seed} is quarantined and cannot serve as historical diagnostic."
+            )
+        if seed == RETIRED_BLIND_SEED:
+            raise ValueError(
+                f"Seed {seed} is retired and cannot serve as historical diagnostic."
+            )
+        if seed not in (HISTORICAL_SEEDS | {HISTORICAL_PHASE7_SEED}):
+            raise ValueError(
+                f"Seed {seed} is not an authorized historical diagnostic seed. "
+                f"Role requires opened historical seed {HISTORICAL_PHASE7_SEED} or historical phase seeds."
+            )
+
+    elif role == SeedRole.DEBUG_SMOKE:
+        if seed in (HISTORICAL_PHASE7_SEED, RETIRED_BLIND_SEED):
+            raise ValueError(
+                f"Seed {seed} cannot be used for debug/smoke."
+            )
+
     elif role == SeedRole.DEMO:
         if seed in PROTECTED_RESEARCH_SEEDS:
             raise ValueError(

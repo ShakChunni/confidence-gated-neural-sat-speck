@@ -1,119 +1,74 @@
-# Confidence-Gated Neural-SAT SPECK
+# Neural-Guided Exact Key Recovery for Reduced-Round SPECK32/64
 
-This repository contains the complete research artefact for the scientific study:
+Research artefact for:
 
 **Learning When to Trust Neural Guidance: Confidence-Gated Incremental XOR-SAT Key Recovery for Reduced-Round SPECK32/64**
 
-The repository implements, tests, and evaluates a closed-loop neuro-symbolic cryptanalytic system combining **permutation-invariant Deep Sets neural distinguishers**, **selective classification / diversity fallback gating**, and **exact incremental XOR-aware SAT solving via CryptoMiniSat**.
+The repository studies whether neural ranking can reduce the cost of exact incremental SAT key recovery, when its guidance can be trusted, and when a bounded fallback helps. It is a reduced-round scientific study—not a claim to break deployed, full-round SPECK.
 
----
+## Current scientific state
 
-## 1. Final Experimental Results (Phase 7 Held-Out Evaluation)
+| Evidence | Result | Interpretation |
+|---|---|---|
+| Corrected Phase 7, seed `98001`, `N=64` | B1 `58/64`; B0 `50/64`; paired exact McNemar `p=0.0768`; isolated SAT-only `0/64` at 10 s | `RETROSPECTIVE`: B1 is promising, not confirmed superior. |
+| Phase 10 prospective validation, seed `101001`, `N=64` | G1 failure-risk AUC `0.7759`; Sequential-32 `64/64`; adaptive policy `63/64` | `PROSPECTIVE_VALIDATION`: useful discrimination, no operational advantage over the static policy. |
+| Phase 10-G2 prospective validation, seed `201001`, `N=256` | G2 AUC `0.8513` versus G1 `0.7194`; paired delta `0.1319`, `p=0.02688`; frozen trusted-region target missed | `PROSPECTIVE_VALIDATION`: improved discrimination, negative threshold transport. Six-round model search is closed. |
+| Phase 11A frozen seven-round oracle gate, seed `300001`, `N=64` | `0/64`, all 64 timed out at 10 s | Frozen `NEGATIVE`/RED result for the specified backend and envelope. Phase 11B/11C remain blocked. |
+| Phase 11B′ hierarchical evaluation on opened seed `300001` | `13/16` verified, Wilson 95% CI approximately `[0.570, 0.934]` | `DEVELOPMENT` only. It does not overturn the frozen RED gate or authorize protected work. |
 
-The final empirical benchmark evaluated all 5 comparative methods on an independently generated **held-out attack test benchmark** of **$N=64$ independent master keys** on 6-round SPECK32/64 ($2^{16} = 65,536$ complete candidate subkey domain per instance, $\Delta P = (0\text{x}0040, 0\text{x}0000)$):
+Every reported recovered master key must pass independent fresh-pair verification. Neural models order final-round subkey candidates; they neither prove a candidate nor directly recover the full 64-bit key.
 
-| Method | Solved Keys / 64 | Exact Success Rate | 95% Wilson CI | Median Online Time (s) | PAR-2 ($T=100\text{s}$) | Key Empirical Finding |
-|---|:---:|:---:|:---:|:---:|:---:|---|
-| **1. SAT-Only Baseline** | $0 / 64$ | **$0.00\%$** | $[0.0\%, 5.7\%]$ | $10.17\text{s}$ | $200.00\text{s}$ | Times out on 100% of keys on isolated solver. |
-| **2. Random-Order + SAT ($k=16$)** | $0 / 64$ | **$0.00\%$** | $[0.0\%, 5.7\%]$ | $3.80\text{s}$ | $200.00\text{s}$ | Exhausts $k=16$ budget on 16 UNSATs on every key. |
-| **3. Baseline B0 (Gohr 2019) + SAT** | $50 / 64$ | **$78.12\%$** | $[66.6\%, 86.5\%]$ | $78.72\text{s}$ | $108.70\text{s}$ | Solves majority, but misses 14 keys outside top-16. |
-| **4. Proposed B1 (Deep Sets) + SAT** | **$58 / 64$** | **$90.62\%$** | $[81.0\%, 95.6\%]$ | **$79.04\text{s}$** | **$92.14\text{s}$** | Observed $+12.50\text{ pp}$ advantage over B0 (exact McNemar $p = 0.0768$). |
-| **5. Historical Eager B1/B0 Fallback** | **$63 / 64$** | **$\mathbf{98.44\%}$** | $[91.7\%, 99.7\%]$ | $156.41\text{s}$ | $200.00\text{s}$ | Rescues 5 of 6 B1 misses using doubled budget ($k=32$) and two neural rankings. |
+## Governance and stop boundary
 
----
+- Seeds `98001`, `101001`, `201001`, and `300001` are opened/retired for their recorded roles; `97001` and `99001` remain quarantined or retired.
+- Do not generate or open a Phase 12 blind seed without an entirely frozen protocol and explicit author approval.
+- Do not run a protected seven-round campaign from the current Phase 11B′ document. A September 2026 audit found a conflict between D-026 and higher-priority `AGENTS.md`/`PLAN.md`; D-027 places the proposed freeze and authorization on hold.
+- The hierarchical evaluation used the ordinary Python `pycryptosat` wrapper path. A separate engineering diagnostic used the native CryptoMiniSat binary with explicit Gaussian-elimination settings. Those results and causal claims must remain separate.
 
-## 2. Research Questions & Scientific Findings
+Start with:
 
-### RQ1 — Effectiveness (**RETROSPECTIVE / PROMISING, NOT PROSPECTIVELY CONFIRMED**)
-* **Finding:** On the corrected historical Phase 7 benchmark (seed `98001`, $N=64$), unguided SAT-only and random search solved $0/64$ ($0.00\%$), while pair-aware neural ranking ($B1$) achieved $58/64$ ($90.62\%$) and baseline $B0$ achieved $50/64$ ($78.12\%$). While $B1$ showed an observed $+12.50$ percentage-point advantage over $B0$, the paired difference was not statistically significant at the conventional 0.05 level (exact McNemar $p = 0.0768$). When the true subkey is assumed, clean CryptoMiniSat deduction requires a median of $476.7\text{ ms}$ (mean $605.4\text{ ms}$). Prospective confirmation is required.
+- [`PLAN.md`](PLAN.md) for the governing phase boundary;
+- [`docs/PUBLICATION_ROADMAP_2026.md`](docs/PUBLICATION_ROADMAP_2026.md) for the publication-readiness audit and next steps;
+- [`docs/PUBLICATION_EXPERIMENT_DESIGN.md`](docs/PUBLICATION_EXPERIMENT_DESIGN.md) for the proposed—not authorized—experiment design;
+- [`docs/EXPANSION_LITERATURE_2026.md`](docs/EXPANSION_LITERATURE_2026.md) for the primary-source claim boundary;
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) and [`docs/EXPERIMENT_LOG.md`](docs/EXPERIMENT_LOG.md) for the audit trail.
 
-### RQ2 — Reliability (**CALIBRATION BREAKDOWN IDENTIFIED**)
-* **Finding:** In symmetric cryptanalysis, a single scalar score-margin feature $(s_{(1)} - s_{(8)}) / \sigma_{\text{all}}$ is **insufficient** to reliably gate top-$k$ containment ($\text{ROC-AUC} \approx 0.52$). Wrong candidates can receive high neural scores and wide margins. Modular carry clustering in ARX ciphers is hypothesized as an exploratory mechanism ("possible structured false peaks"). All reported master-key recoveries must pass independent fresh-pair verification.
+## Implemented system
 
-### RQ3 — Fallback Resilience (**RETROSPECTIVE / DIAGNOSTIC**)
-* **Finding:** The historical eager diversity fallback (interleaving Deep Sets $B1$ with Gohr baseline $B0$ candidates up to $k=32$) recovered **$63 / 64$ keys ($98.44\%$)**, rescuing $5$ of the $6$ keys that $B1$ missed in isolation. However, computing two full rankings doubles the offline ranking latency, motivating Phase 10's investigation of ranking stability ($G_1$) and shortlist rescue ($R_1$).
+- Tested scalar and vectorized SPECK32/64 implementations with known-answer checks.
+- Deterministic synthetic training and attack-instance generation with seed governance.
+- B0 single-pair and B1 permutation-invariant multi-pair complete-domain rankers.
+- Exact incremental SAT recovery with per-method solver isolation.
+- Fresh-pair master-key verification and explicit outcome records.
+- G1/G2 reliability analysis, shortlist/cascade tooling, and preserved negative results.
+- Hierarchical seven-round and solver-configuration diagnostics on opened development data.
 
----
+## Installation and validation
 
-## 3. Publication Figures & LaTeX Tables Suite
-
-### Publication Figures Suite
-All figures are generated in vector SVG, 300 DPI PNG, and vector PDF formats:
-
-* **Evaluation Results (`results/figures/evaluation/`):**
-  1. `final_success_rates_6round.pdf`: Comparative success rate bar chart across all 5 methods.
-  2. `ecdf_solved_vs_attempts.pdf`: Empirical cumulative distribution (ECDF) of solved keys vs candidate budget ($k=1 \dots 32$).
-  3. `runtime_and_par2_comparison.pdf`: Median online runtime and PAR-2 penalized runtime benchmark.
-* **Methodology & Architecture (`results/figures/proposal/`):**
-  1. `methodology_pipeline.pdf`: End-to-end neuro-symbolic attack workflow.
-  2. `b1_pair_aware_architecture.pdf`: Permutation-invariant Deep Sets ResNet encoder.
-  3. `b0_b1_prospective_results.pdf`: Prospective validation distribution comparison.
-  4. `validation_protocol.pdf`: Zero-contamination seed isolation protocol across 24 seeds.
-  5. `exact_recovery_verification.pdf`: Algebraic master-key completion and 2-pair verification.
-  6. `confidence_fallback_mechanism.pdf`: Selective gating and diversity fallback routing.
-  7. `research_positioning.pdf`: Positioning against Gohr (2019), Soos (2009), and Chen (2023).
-  8. `evaluation_matrix.pdf`: Five-method comparative evaluation matrix.
-
-### LaTeX Tables (`results/tables/`)
-* `results/tables/phase7_results_table.tex`: Ready-to-embed LaTeX `table` environment.
-* `results/tables/phase7_results_table.md`: Markdown summary table.
-
----
-
-## 4. Command-Line Interface (`neural-sat-speck`)
-
-The repository installs a standalone CLI tool for experimentation and demonstration:
-
-```bash
-# 1. Verify official Known-Answer Test (KAT)
-neural-sat-speck kat
-
-# 2. Generate synthetic chosen-plaintext attack instances
-neural-sat-speck generate-data --instances 10 --pairs 64 --rounds 6 --seed 999999 --output data/demo_instances.json
-
-# 3. Explain confidence calibration and routing decision
-neural-sat-speck explain-confidence --ranking results/phase7_final_evaluation/records/instance_0000.json
-
-# 4. Verify candidate master key against fresh independent plaintexts
-neural-sat-speck verify-key --key 0x1918 0x1110 0x0908 0x0100 --rounds 6 --pairs 4 --seed 12345
-```
-
----
-
-## 5. Development & Reproduction
-
-### Installation
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-pip install -e .
-```
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install -e .
 
-### Running Tests & Quality Checks
-```bash
-pytest
+python -m pytest -q
 ruff check .
 ```
 
-### Reproducing Phase 7 Evaluation & Figures
+The demo seed is `999999`. Do not substitute a protected, quarantined, or unregistered seed.
+
 ```bash
-# Run Phase 7 comparative evaluation
-python scripts/run_phase7_final_evaluation.py
-
-# Generate Phase 7 evaluation figures and LaTeX tables
-python scripts/plot_phase7_evaluation_figures.py
-
-# Generate Proposal & Architecture figures
-python scripts/plot_phase6b_proposal_figures.py
+neural-sat-speck kat
+neural-sat-speck generate-data \
+  --instances 10 --pairs 64 --rounds 6 --seed 999999 \
+  --output data/demo_instances.json
 ```
 
----
+Historical result scripts are retained for auditability. Before executing an experiment script, check its protocol, seed role, backend, solver lifetime, timeout, candidate budget, hardware record, and evidence classification. A successful script run is not by itself a scientific confirmation.
 
-## 6. Implementation Summary
+## Publication direction
 
-* **Cipher:** Reference word-level SPECK32/64 ($16$-bit word, $32$-bit block, $64$-bit key), scalar round functions, key expansion, full encryption/decryption, and 1-round partial decryption inversion.
-* **Neural Models:** Single-pair Gohr ResNet baseline ($B0$) and multi-pair permutation-invariant Deep Sets group model ($B1$).
-* **Exact Solver:** Incremental CryptoMiniSat 5.14.7 Boolean encoding with native XOR Gaussian elimination, temporary subkey assumptions (`solve(assumptions)`), and algebraic master-key deduction (median ~481ms under clean solver conditions).
-* **Verification:** Cryptographic verification against 4 known attack pairs in solver constraints plus 2 fresh independent plaintexts (bounding the theoretical false positive rate to at most $2^{-32}$ under ideal cipher assumptions; 4 pairs bound to at most $2^{-64}$).
+The recommended paper is an empirical methods/reliability paper: neural guidance helps candidate ordering, but discrimination, calibration, and operational utility are different properties; exact-solver configuration and accounting can change the apparent boundary. The minimum credible extension is a strong full-distribution classical comparator, controlled same-device solver/screening ablations, a frozen simple seven-round method, and one genuinely unseen prospective evaluation—only after explicit authorization.
+
+The current preferred realistic target is ACNS 2027, subject to the official call and supervisor approval. The project is not presently positioned as a general SAT-solver contribution or a full-round cryptanalytic break.
