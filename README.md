@@ -1,10 +1,14 @@
-# Neural-Guided Exact Key Recovery for Reduced-Round SPECK32/64
+# From Neural Ranking to Verified Key Recovery
 
 Research artefact for:
 
 **Learning When to Trust Neural Guidance: Confidence-Gated Incremental XOR-SAT Key Recovery for Reduced-Round SPECK32/64**
 
-The repository studies whether neural ranking can reduce the cost of exact incremental SAT key recovery, when its guidance can be trusted, and when a bounded fallback helps. It is a reduced-round scientific study—not a claim to break deployed, full-round SPECK.
+The repository compares neural, classical, hybrid, random-order, and SAT-only
+guidance for exact reduced-round SPECK32/64 key recovery. The central question is
+whether an apparent neural ranking or reliability improvement survives complete
+online-cost accounting and fresh-pair-verified master-key recovery. It is a
+reduced-round scientific study, not a claim to break deployed full-round SPECK.
 
 ## Current scientific state
 
@@ -15,6 +19,8 @@ The repository studies whether neural ranking can reduce the cost of exact incre
 | Phase 10-G2 prospective validation, seed `201001`, `N=256` | G2 AUC `0.8513` versus G1 `0.7194`; paired delta `0.1319`, `p=0.02688`; frozen trusted-region target missed | `PROSPECTIVE_VALIDATION`: improved discrimination, negative threshold transport. Six-round model search is closed. |
 | Phase 11A frozen seven-round oracle gate, seed `300001`, `N=64` | `0/64`, all 64 timed out at 10 s | Frozen `NEGATIVE`/RED result for the specified backend and envelope. Phase 11B/11C remain blocked. |
 | Phase 11B′ hierarchical evaluation on opened seed `300001` | `13/16` verified, Wilson 95% CI approximately `[0.570, 0.934]` | `DEVELOPMENT` only. It does not overturn the frozen RED gate or authorize protected work. |
+| Six-round sparse statistical comparator on opened seed `98001` | Top-4 containment `64/64`, mean sorted rank `1.75`, mean ranking time approximately `0.545 s` | `RETROSPECTIVE`: the observed result is stronger than B0/B1 on this family and rules out a six-round neural-superiority narrative. |
+| Matched screening and controlled solver audits | Screening retained the recorded top-32 ordering in `4/4` true-prefix cases with mean paired speedup `30.60x`; revised native matrix settings solved `2/3` opened diagnostics within 60 s versus `0/3` for each default treatment | `ENGINEERING/DIAGNOSTIC`: useful controls, not prospective recovery claims or universal causal conclusions. |
 
 Every reported recovered master key must pass independent fresh-pair verification. Neural models order final-round subkey candidates; they neither prove a candidate nor directly recover the full 64-bit key.
 
@@ -69,6 +75,34 @@ Historical result scripts are retained for auditability. Before executing an exp
 
 ## Publication direction
 
-The recommended paper is an empirical methods/reliability paper: neural guidance helps candidate ordering, but discrimination, calibration, and operational utility are different properties; exact-solver configuration and accounting can change the apparent boundary. The minimum credible extension is a strong full-distribution classical comparator, controlled same-device solver/screening ablations, a frozen simple seven-round method, and one genuinely unseen prospective evaluation—only after explicit authorization.
+The recommended paper is a prospective empirical comparison rather than a new-attack
+claim. Its contribution is to separate classifier quality, full-domain key rank,
+top-k failure discrimination, threshold transport, and verified recovery under one
+resource envelope. The completed evidence already shows that improved reliability
+discrimination did not yield a better fixed policy, a credible classical ranker can
+reverse the apparent neural advantage, and solver configuration can move the
+observed seven-round boundary.
 
-The current preferred realistic target is ACNS 2027, subject to the official call and supervisor approval. The project is not presently positioned as a general SAT-solver contribution or a full-round cryptanalytic break.
+The remaining publication-critical experiment is one frozen, unseen seven-round
+comparison. The planned methods are neural-neural hierarchical ranking,
+neural-classical hybrid ranking, the strongest feasible fully classical hierarchy,
+random tuple order, and SAT-only recovery. The existing method named
+`hierarchical_classical` is scientifically a hybrid because Stage 1 is neural; paper
+text and future records must label it accordingly. The experiment must use one
+global cutoff, isolated solvers, complete timing, and no post-open tuning.
+
+The working paper title is **From Neural Ranking to Verified Key Recovery: A
+Controlled Study of Classical, Neural, and XOR-SAT Guidance on Reduced-Round
+SPECK32/64**. The current primary target is ACNS 2027 Cycle 2, subject to the
+evidence gate and supervisor approval. The project is not positioned as a new
+neural architecture, a general SAT-solver contribution, a round-record attack, or a
+full-round cryptanalytic break.
+
+The approved course-time expansion keeps that SPECK study first and then tests
+external validity on SIMON32/64. It adds a predeclared empirical map of residual
+depth and solver configuration, a controlled native-XOR/wrapper/XOR-to-CNF backend
+comparison, and a reproducible SPECK/SIMON formula artifact. This planning approval
+does not open protected data: SIMON must first pass specification, known-answer,
+reference-implementation, classical/neural-baseline, and exact-solver feasibility
+gates, and every outcome-bearing study needs its own frozen protocol and approval.
+See `PLAN.md`, Decision D-029, and `docs/PUBLICATION_ROADMAP_2026.md`.

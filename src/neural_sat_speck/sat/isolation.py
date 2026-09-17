@@ -95,6 +95,23 @@ class IsolatedSolverFactory:
         self._issued_solvers.add(solver_id)
         return model
 
+    def rebuild_isolated_model(self, method_name: str) -> SpeckSatModel:
+        """Construct a guaranteed fresh SpeckSatModel replacing an invalidated model for a method.
+
+        Used when a candidate solve times out or raises an exception, ensuring pycryptosat
+        internal state is completely purged before evaluating subsequent candidates.
+        """
+        if not method_name or not isinstance(method_name, str):
+            raise ValueError("method_name must be a non-empty string")
+
+        model = SpeckSatModel.from_known_pairs(self.known_pairs, rounds=self.rounds)
+        model_id = id(model)
+        solver_id = id(model.solver)
+
+        self._issued_models[method_name] = model_id
+        self._issued_solvers.add(solver_id)
+        return model
+
     def verify_isolation(self, active_models: Mapping[str, SpeckSatModel]) -> None:
         """Verify that all active models have distinct model and solver object identities.
 

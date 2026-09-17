@@ -44,6 +44,9 @@ from neural_sat_speck.attacks.hierarchical_multi_round import (
     run_hierarchical_multi_round_attack,
 )
 from neural_sat_speck.attacks.multi_round_instance import partial_decrypt_instance
+from neural_sat_speck.attacks.multi_round_recovery import (
+    STATUS_EXHAUSTED_WITHOUT_UNRESOLVED,
+)
 from neural_sat_speck.attacks.recovery import (
     independent_verification_pairs,
     known_pairs_for_attack_instance,
@@ -532,7 +535,7 @@ def test_pruned_first_stage_candidate_reports_ranking_failure(
     assert pruned_result.success is False
     assert pruned_result.recovered_master_key is None
     assert pruned_result.failure_cause == "ranking"
-    assert pruned_result.status == "exhausted_candidates"
+    assert pruned_result.status == STATUS_EXHAUSTED_WITHOUT_UNRESOLVED
     assert pruned_result.stages[0].true_round_key_rank is not None
     assert pruned_result.stages[0].true_round_key_rank > (
         pruned_result.stages[0].beam_width

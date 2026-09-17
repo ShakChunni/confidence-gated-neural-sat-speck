@@ -5,7 +5,10 @@ from __future__ import annotations
 import pytest
 
 from neural_sat_speck.attacks.multi_round_instance import partial_decrypt_instance
-from neural_sat_speck.attacks.multi_round_recovery import run_multi_round_key_recovery
+from neural_sat_speck.attacks.multi_round_recovery import (
+    STATUS_EXHAUSTED_WITHOUT_UNRESOLVED,
+    run_multi_round_key_recovery,
+)
 from neural_sat_speck.attacks.recovery import (
     independent_verification_pairs,
     known_pairs_for_attack_instance,
@@ -189,7 +192,7 @@ def test_multi_round_recovery_reports_exhausted_candidates() -> None:
     )
 
     assert result.success is False
-    assert result.status == "exhausted_candidates"
+    assert result.status == STATUS_EXHAUSTED_WITHOUT_UNRESOLVED
     assert result.attempts[0].solver_status == "unsat"
     assert result.recovered_master_key is None
 

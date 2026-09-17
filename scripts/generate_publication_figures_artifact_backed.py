@@ -1184,7 +1184,7 @@ def make_hierarchical_stack(_: dict[str, Any]) -> plt.Figure:
     ax.text(
         0.31,
         stage1_y + 0.033,
-        "Pair-aware B1 scoring",
+        "Pair-aware neural scoring",
         ha="left",
         va="center",
         fontsize=5.8,
@@ -1378,8 +1378,8 @@ def make_rank_ecdf(data: dict[str, Any]) -> plt.Figure:
             "-",
             "o",
         ),
-        (ranks["b1_ranks"], "B1 pair-aware neural", BLUE, "-", "s"),
-        (ranks["b0_ranks"], "B0 independent-pair neural", ORANGE, "--", "^"),
+        (ranks["b1_ranks"], "Pair-aware neural", BLUE, "-", "s"),
+        (ranks["b0_ranks"], "Independent-pair neural", ORANGE, "--", "^"),
     ]
     for values, label, color, linestyle, marker in curves:
         y = ecdf_at(values, x)
@@ -1413,7 +1413,7 @@ def make_rank_ecdf(data: dict[str, Any]) -> plt.Figure:
     ax.text(
         0.015,
         0.97,
-        "At rank 16: classical 64/64, B1 58/64, B0 50/64",
+        "Top-16: classical 64/64; pair-aware 58/64; independent-pair 50/64",
         transform=ax.transAxes,
         va="top",
         fontsize=7.5,
@@ -1426,7 +1426,7 @@ def make_rank_ecdf(data: dict[str, Any]) -> plt.Figure:
     fig.text(
         0.5,
         0.012,
-        "RETROSPECTIVE - opened Seed 98001 - N=64 - ranking containment, not end-to-end recovery",
+        "Retrospective six-round evaluation (N=64): ranking containment, not end-to-end recovery",
         ha="center",
         fontsize=7,
         color=RED,
@@ -1472,17 +1472,17 @@ def make_reliability_roc(data: dict[str, Any]) -> plt.Figure:
         axes[0],
         derived["phase10_y"],
         [
-            (derived["phase10_g1"], "G1 stability", BLUE, "-"),
-            (derived["phase10_g0"], "G0 scalar", ORANGE, "--"),
+            (derived["phase10_g1"], "Stability-based", BLUE, "-"),
+            (derived["phase10_g0"], "Scalar baseline", ORANGE, "--"),
         ],
     )
     axes[0].set_title(
-        "(a) Phase 10 prospective (N=64; 6 failures)", fontsize=8.5, pad=5
+        "(a) Unseen validation cohort\nN=64; 6 top-16 failures", fontsize=8.5, pad=5
     )
     axes[0].text(
         0.03,
         0.96,
-        "G1 95% CI: "
+        "Stability AUC 95% CI: "
         f"[{summary10['g1_stability']['roc_auc_95_ci'][0]:.3f}, "
         f"{summary10['g1_stability']['roc_auc_95_ci'][1]:.3f}]",
         transform=axes[0].transAxes,
@@ -1501,12 +1501,12 @@ def make_reliability_roc(data: dict[str, Any]) -> plt.Figure:
         axes[1],
         derived["g2_y"],
         [
-            (derived["g2_g2"], "G2 geometry", PURPLE, "-"),
-            (derived["g2_g1"], "Frozen G1", BLUE, "--"),
+            (derived["g2_g2"], "Geometry-based", PURPLE, "-"),
+            (derived["g2_g1"], "Stability-based", BLUE, "--"),
         ],
     )
     axes[1].set_title(
-        "(b) Phase 10-G2 prospective (N=256; 21 failures)", fontsize=8.5, pad=5
+        "(b) Separate unseen validation cohort\nN=256; 21 top-16 failures", fontsize=8.5, pad=5
     )
     paired = summary_g2["paired_comparison"]
     axes[1].text(
@@ -1529,12 +1529,12 @@ def make_reliability_roc(data: dict[str, Any]) -> plt.Figure:
     )
 
     fig.suptitle(
-        "Failure-risk discrimination for B1 top-16 failure", y=0.985, fontsize=9.8
+        "Six-round prospective reliability evaluation", y=0.985, fontsize=9.8
     )
     fig.text(
         0.5,
         0.01,
-        "PROSPECTIVE VALIDATION - empirical step curves - panels are separate cohorts",
+        "Positive event: true subkey outside the pair-aware neural top-16; empirical ROC curves",
         ha="center",
         fontsize=7,
         color=RED,
@@ -1665,14 +1665,14 @@ def make_engineering_diagnostics(data: dict[str, Any]) -> plt.Figure:
     add_panel_label(ax, "(b)")
 
     fig.suptitle(
-        "Controlled engineering diagnostics on opened Seed 300001",
+        "Seven-round screening and solver-configuration diagnostics",
         y=0.995,
         fontsize=10.2,
     )
     fig.text(
         0.5,
         0.008,
-        "ENGINEERING / DIAGNOSTIC - small opened cohorts - config. 3 changes a setting bundle; no mechanism claim",
+        "Small diagnostic cohorts; configuration 3 changes two settings, not an isolated mechanism",
         ha="center",
         fontsize=7,
         color=RED,
@@ -1810,7 +1810,7 @@ def make_seven_round_development_results(data: dict[str, Any]) -> plt.Figure:
     ax.set_xlim(0.5, 16.5)
     ax.set_ylim(90, 145)
     ax.set_xticks([1, 4, 8, 12, 16])
-    ax.set_xlabel("Opened development instance")
+    ax.set_xlabel("Development instance")
     ax.set_ylabel("End-to-end wall time (s)")
     ax.set_title("Measured runtime by outcome", pad=5)
     ax.grid(axis="y", color=LIGHT_GREY, linestyle=":", linewidth=0.65)
@@ -1879,7 +1879,7 @@ def make_seven_round_development_results(data: dict[str, Any]) -> plt.Figure:
     add_panel_label(ax, "(d)")
 
     fig.suptitle(
-        "Latest hierarchical seven-round recovery results",
+        "Hierarchical seven-round development evaluation",
         y=0.992,
         fontsize=10.2,
         fontweight="bold",
@@ -1887,7 +1887,7 @@ def make_seven_round_development_results(data: dict[str, Any]) -> plt.Figure:
     fig.text(
         0.5,
         0.945,
-        "13/16 independently verified master-key recoveries on opened Seed 300001",
+        "13/16 independently verified master-key recoveries in the development cohort",
         ha="center",
         fontsize=7.3,
         color=GREEN,
@@ -1895,7 +1895,7 @@ def make_seven_round_development_results(data: dict[str, Any]) -> plt.Figure:
     fig.text(
         0.5,
         0.008,
-        "DEVELOPMENT / DIAGNOSTIC (N=16). The earlier frozen oracle gate was 0/64 at 10 s under a different protocol and remains recorded separately.",
+        "Development evidence (N=16). A separate oracle-SAT feasibility experiment recovered 0/64 at a 10 s cutoff under a different protocol.",
         ha="center",
         fontsize=6.8,
         color=CHARCOAL,
@@ -1958,7 +1958,7 @@ def make_xor_gaussian_solver_ablation(data: dict[str, Any]) -> plt.Figure:
     ax.text(
         0.97,
         0.94,
-        "single thread\n60 s cutoff\nN=3 opened instances",
+        "single thread\n60 s cutoff\nN=3 diagnostic instances",
         transform=ax.transAxes,
         ha="right",
         va="top",
@@ -2040,7 +2040,7 @@ def make_xor_gaussian_solver_ablation(data: dict[str, Any]) -> plt.Figure:
     add_panel_label(ax, "(b)")
 
     fig.suptitle(
-        "Seven-round XOR-aware solver configuration audit",
+        "Seven-round XOR-aware solver-configuration diagnostics",
         y=0.995,
         fontsize=10.0,
         fontweight="bold",
@@ -2048,7 +2048,7 @@ def make_xor_gaussian_solver_ablation(data: dict[str, Any]) -> plt.Figure:
     fig.text(
         0.5,
         0.012,
-        "ENGINEERING / DIAGNOSTIC. The successful treatment jointly raises the matrix-column limit and disables automatic Gauss shutdown.",
+        "Diagnostic evidence. The successful treatment jointly raises the matrix-column limit and disables automatic Gauss shutdown.",
         ha="center",
         fontsize=6.7,
         color=CHARCOAL,

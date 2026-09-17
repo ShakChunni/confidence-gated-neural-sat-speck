@@ -14,6 +14,8 @@ from .group_ranking import (
     rank_pair_group_subkeys,
 )
 from .hierarchical_multi_round import (
+    FAILURE_CAUSE_GLOBAL_TIMEOUT,
+    STATUS_GLOBAL_TIMEOUT,
     HierarchicalAttackResult,
     HierarchicalStage,
     StageDiagnostic,
@@ -29,9 +31,16 @@ from .hierarchical_ranking import (
 )
 from .multi_round_instance import partial_decrypt_instance
 from .multi_round_recovery import (
+    STATUS_EXHAUSTED_CANDIDATES,
+    STATUS_SOLVER_TIMEOUT,
+    STATUS_UNSAT_OR_TIMEOUT,
+    STATUS_VERIFIED_RECOVERY,
     MultiRoundAttempt,
     MultiRoundRecoveryResult,
+    random_multi_round_candidates,
     run_multi_round_key_recovery,
+    run_multi_round_sat_only_recovery,
+    run_random_multi_round_recovery,
 )
 from .ranking import (
     ALL_FINAL_ROUND_SUBKEYS,
@@ -54,9 +63,15 @@ from .recovery import (
 
 __all__ = [
     "ALL_FINAL_ROUND_SUBKEYS",
+    "FAILURE_CAUSE_GLOBAL_TIMEOUT",
     "PHASE6C_FALLBACK_BUDGET",
     "PHASE6C_FALLBACK_HEAD_SIZE",
     "PHASE6C_TRUSTED_BUDGET",
+    "STATUS_EXHAUSTED_CANDIDATES",
+    "STATUS_GLOBAL_TIMEOUT",
+    "STATUS_SOLVER_TIMEOUT",
+    "STATUS_UNSAT_OR_TIMEOUT",
+    "STATUS_VERIFIED_RECOVERY",
     "CandidateAttempt",
     "HIERARCHICAL_METHOD_ID",
     "HIERARCHICAL_PAIR_COUNT",
@@ -76,8 +91,11 @@ __all__ = [
     "choose_phase6c_route",
     "compose_diversity_fallback",
     "partial_decrypt_instance",
+    "random_multi_round_candidates",
     "run_hierarchical_multi_round_attack",
     "run_multi_round_key_recovery",
+    "run_multi_round_sat_only_recovery",
+    "run_random_multi_round_recovery",
     "independent_verification_pairs",
     "known_pairs_for_attack_instance",
     "rank_final_round_subkeys",

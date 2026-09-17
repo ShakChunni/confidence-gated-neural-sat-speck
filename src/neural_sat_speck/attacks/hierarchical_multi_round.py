@@ -38,11 +38,13 @@ from typing import Any
 
 import torch
 
+from neural_sat_speck.attacks.classical_ranking import (
+    ClassicalDistributionTable,
+    rank_classical_subkeys,
+)
 from neural_sat_speck.attacks.group_ranking import rank_pair_group_subkeys
 from neural_sat_speck.attacks.multi_round_instance import partial_decrypt_instance
-from neural_sat_speck.attacks.multi_round_recovery import (
-    run_multi_round_key_recovery,
-)
+from neural_sat_speck.attacks.multi_round_recovery import run_multi_round_key_recovery
 from neural_sat_speck.attacks.recovery import MasterKey
 from neural_sat_speck.attacks.screened_group_ranking import (
     rank_pair_group_subkeys_screened,
@@ -59,8 +61,10 @@ HIERARCHICAL_ATTACK_STRATEGY = "hierarchical_multi_round_beam"
 HIERARCHICAL_SOLVER_NAME = "hierarchical_multi_round_exact"
 MAX_CANDIDATE_BATCH_SIZE = 1024
 DESCENT_SUBKEY_PLACEHOLDER = 0
+FAILURE_CAUSE_GLOBAL_TIMEOUT = "global_timeout"
 FAILURE_CAUSE_RANKING = "ranking"
 FAILURE_CAUSE_SAT_BACKEND = "sat_backend"
+STATUS_GLOBAL_TIMEOUT = "global_timeout"
 STATUS_NO_RANKED_CANDIDATES = "no_ranked_candidates"
 
 
@@ -96,23 +100,27 @@ def _validate_word(value: object, name: str) -> int:
 
 
 def _validate_stage_model(model: object, name: str) -> None:
-    """Reject anything the pair-group ranking entry point cannot score."""
+    """Reject anything the stage ranking entry points cannot score."""
 
-    if not isinstance(model, (PairGroupRanker, NumpyInferenceModule)):
-        raise TypeError(f"{name} must be a PairGroupRanker or NumpyInferenceModule")
+    if not isinstance(
+        model, (PairGroupRanker, NumpyInferenceModule, ClassicalDistributionTable)
+    ):
+        raise TypeError(
+            f"{name} must be a PairGroupRanker, NumpyInferenceModule, or ClassicalDistributionTable"
+        )
     if isinstance(model, NumpyInferenceModule) and not model.is_group_model:
         raise TypeError(f"{name} NumPy model must wrap a PairGroupRanker")
 
 
-def _validate_timeout(timeout: object) -> float | None:
-    """Validate the optional per-candidate solver budget."""
+def _validate_timeout(timeout: object, name: str = "solver_timeout") -> float | None:
+    """Validate an optional timeout budget."""
 
     if timeout is None:
         return None
     if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
-        raise TypeError("solver_timeout must be a number or None")
+        raise TypeError(f"{name} must be a number or None")
     if timeout <= 0:
-        raise ValueError("solver_timeout must be positive")
+        raise ValueError(f"{name} must be positive")
     return float(timeout)
 
 
@@ -160,8 +168,9 @@ class HierarchicalStage:
     ``model`` the pair-group ranker that scores it, and ``beam_width`` the
     number of top-ranked candidates kept from each complete-domain ranking.
     ``model`` is typed ``Any`` because the stage accepts either a
-    :class:`~neural_sat_speck.neural.group_model.PairGroupRanker` or a
-    group-model :class:`~neural_sat_speck.neural.numpy_inference.NumpyInferenceModule`;
+    :class:`~neural_sat_speck.neural.group_model.PairGroupRanker`, a
+    group-model :class:`~neural_sat_speck.neural.numpy_inference.NumpyInferenceModule`,
+    or a :class:`~neural_sat_speck.attacks.classical_ranking.ClassicalDistributionTable`;
     the concrete type is enforced at construction.
     """
 
@@ -179,6 +188,8 @@ class HierarchicalStage:
         _validate_integer(self.beam_width, "stages beam_width", minimum=1)
         _validate_stage_model(self.model, "stages model")
         if self.screened:
+            if isinstance(self.model, ClassicalDistributionTable):
+                raise TypeError("screened stage requires a PairGroupRanker model")
             if self.screen_pairs not in (8, 16, 32):
                 raise ValueError(f"screen_pairs must be 8, 16, or 32, got {self.screen_pairs}")
             if self.screen_top_k <= 0 or self.screen_top_k > 65536:
@@ -291,9 +302,10 @@ class HierarchicalAttackResult:
             None,
             FAILURE_CAUSE_RANKING,
             FAILURE_CAUSE_SAT_BACKEND,
+            FAILURE_CAUSE_GLOBAL_TIMEOUT,
         ):
             raise ValueError(
-                "failure_cause must be 'ranking', 'sat_backend', or None"
+                "failure_cause must be 'ranking', 'sat_backend', 'global_timeout', or None"
             )
         if self.success != (self.failure_cause is None):
             raise ValueError("failure_cause is None exactly when success is True")
@@ -332,6 +344,7 @@ def _validate_attack_inputs(
     rounds: int,
     stages: Sequence[HierarchicalStage],
     solver_timeout: float | None,
+    global_timeout: float | None,
     candidate_batch_size: int,
     device: torch.device | str | None,
 ) -> tuple[HierarchicalStage, ...]:
@@ -364,7 +377,8 @@ def _validate_attack_inputs(
             raise ValueError(
                 "stage round indices must descend by exactly one round"
             )
-    _validate_timeout(solver_timeout)
+    _validate_timeout(solver_timeout, "solver_timeout")
+    _validate_timeout(global_timeout, "global_timeout")
     batch_size = _validate_integer(
         candidate_batch_size,
         "candidate_batch_size",
@@ -409,6 +423,7 @@ def _diagnose_stages(
     stage_ranking_seconds: list[float],
     ordered_paths: list[tuple[tuple[int, ...], int]],
     success: bool,
+    failure_cause: str | None = None,
 ) -> tuple[tuple[StageDiagnostic, ...], str | None]:
     """Build the stage diagnostics and classify a failure, after the search.
 
@@ -425,7 +440,7 @@ def _diagnose_stages(
     true_prefix: list[int] = []
     truth_available = schedule is not None
 
-    for stage_index, stage in enumerate(stages):
+    for stage_index, stage in enumerate(stages[: len(candidates_ranked)]):
         true_rank: int | None = None
         if truth_available and 0 <= stage.round_index < len(schedule):
             true_prefix.append(schedule[stage.round_index])
@@ -448,6 +463,8 @@ def _diagnose_stages(
 
     if success:
         return tuple(diagnostics), None
+    if failure_cause is not None:
+        return tuple(diagnostics), failure_cause
     true_path = tuple(true_prefix) if truth_available else None
     assembled = true_path is not None and any(
         prefix == true_path for prefix, _ in ordered_paths
@@ -465,6 +482,7 @@ def run_hierarchical_multi_round_attack(
     known_pairs: Sequence[KnownPair],
     verification_pairs: Sequence[KnownPair],
     solver_timeout: float | None = None,
+    global_timeout: float | None = None,
     candidate_batch_size: int = 1024,
     device: torch.device | str | None = None,
     stage_cache: dict[tuple[int, ...], Any] | None = None,
@@ -483,8 +501,9 @@ def run_hierarchical_multi_round_attack(
     stopping at the first independently verified recovery.
 
     Ranking is delegated to
-    :func:`~neural_sat_speck.attacks.group_ranking.rank_pair_group_subkeys`,
-    which performs the one-round partial decryption of the stage's own instance
+    :func:`~neural_sat_speck.attacks.group_ranking.rank_pair_group_subkeys` or
+    :func:`~neural_sat_speck.attacks.classical_ranking.rank_classical_subkeys`,
+    which perform the one-round partial decryption of the stage's own instance
     internally; the descent applied between stages is therefore applied exactly
     once per assumed round key. See the module docstring for the leakage rule.
     """
@@ -494,6 +513,7 @@ def run_hierarchical_multi_round_attack(
         rounds,
         stages,
         solver_timeout,
+        global_timeout,
         candidate_batch_size,
         device,
     )
@@ -502,9 +522,12 @@ def run_hierarchical_multi_round_attack(
         verification_pairs,
         "verification_pairs",
     )
-    timeout = _validate_timeout(solver_timeout)
+    timeout = _validate_timeout(solver_timeout, "solver_timeout")
+    g_timeout = _validate_timeout(global_timeout, "global_timeout")
     started = time.perf_counter()
+    deadline = (started + g_timeout) if g_timeout is not None else None
     ranking_seconds = 0.0
+    timed_out_globally = False
 
     # Search state: (assumed values in stage order, cumulative rank sum, the
     # instance this stage ranks on). No entry carries key material.
@@ -518,14 +541,26 @@ def run_hierarchical_multi_round_attack(
     ordered_paths: list[tuple[tuple[int, ...], int]] = []
 
     for stage_index, stage in enumerate(stage_tuple):
+        if deadline is not None and time.perf_counter() >= deadline:
+            timed_out_globally = True
+            break
+
         ranking_seconds_before_stage = ranking_seconds
         orders: dict[tuple[int, ...], tuple[int, ...]] = {}
         survivors: list[tuple[tuple[int, ...], int, int, AttackInstance]] = []
         candidates_ranked = 0
 
         for prefix, rank_sum, current in frontier:
+            if deadline is not None and time.perf_counter() >= deadline:
+                timed_out_globally = True
+                break
+
             if stage_cache is not None and prefix in stage_cache:
                 ranking = stage_cache[prefix]
+            elif isinstance(stage.model, ClassicalDistributionTable):
+                ranking = rank_classical_subkeys(current, stage.model)
+                if stage_cache is not None:
+                    stage_cache[prefix] = ranking
             elif stage.screened:
                 ranking = rank_pair_group_subkeys_screened(
                     current,
@@ -555,11 +590,18 @@ def run_hierarchical_multi_round_attack(
             ):
                 survivors.append((prefix + (value,), rank_sum + rank, value, current))
 
+        if timed_out_globally and not survivors:
+            break
+
         stage_candidates_ranked.append(candidates_ranked)
         stage_top_candidates.append(
             min(survivors, key=lambda entry: (entry[1], entry[0]))[2]
         )
         retained_orders.append(orders)
+
+        if timed_out_globally:
+            stage_ranking_seconds.append(ranking_seconds - ranking_seconds_before_stage)
+            break
 
         if stage_index + 1 < len(stage_tuple):
             # Descend one round for the next stage. The descended instance's
@@ -594,45 +636,63 @@ def run_hierarchical_multi_round_attack(
     candidates_attempted = 0
     recovered: MasterKey | None = None
     attempted_tuples: tuple[tuple[int, ...], ...] = ()
-    if ordered_paths:
-        effective_paths = (
-            [entry for entry in ordered_paths if entry[0] not in excluded_paths]
-            if excluded_paths
-            else ordered_paths
-        )
-        if effective_paths:
-            round_indices = tuple(stage.round_index for stage in stage_tuple)
-            candidate_round_keys = [
-                dict(zip(round_indices, prefix, strict=True))
-                for prefix, _ in effective_paths
-            ]
-            factory = IsolatedSolverFactory.from_pairs(
-                known,
-                rounds=rounds,
-                instance_id=instance.instance_id,
-            )
-            model = factory.build_isolated_model(HIERARCHICAL_SOLVER_NAME)
-            recovery = run_multi_round_key_recovery(
-                model,
-                candidate_round_keys,
-                known,
-                verification,
-                rounds=rounds,
-                solver_timeout=timeout,
-                strategy=HIERARCHICAL_ATTACK_STRATEGY,
-            )
-            success = recovery.success
-            status = recovery.status
-            candidates_attempted = recovery.candidates_attempted
-            recovered = recovery.recovered_master_key
-            solver_seconds = float(recovery.solver_seconds)
-            verification_seconds = float(recovery.verification_seconds)
-            attempted_tuples = tuple(
-                prefix for prefix, _ in effective_paths[:candidates_attempted]
-            )
-        else:
+    if timed_out_globally:
+        success = False
+        status = STATUS_GLOBAL_TIMEOUT
+    elif ordered_paths:
+        if deadline is not None and time.perf_counter() >= deadline:
+            timed_out_globally = True
             success = False
-            status = STATUS_NO_RANKED_CANDIDATES
+            status = STATUS_GLOBAL_TIMEOUT
+        else:
+            effective_paths = (
+                [entry for entry in ordered_paths if entry[0] not in excluded_paths]
+                if excluded_paths
+                else ordered_paths
+            )
+            if effective_paths:
+                round_indices = tuple(stage.round_index for stage in stage_tuple)
+                candidate_round_keys = [
+                    dict(zip(round_indices, prefix, strict=True))
+                    for prefix, _ in effective_paths
+                ]
+                factory = IsolatedSolverFactory.from_pairs(
+                    known,
+                    rounds=rounds,
+                    instance_id=instance.instance_id,
+                )
+                model = factory.build_isolated_model(HIERARCHICAL_SOLVER_NAME)
+                remaining_global = (
+                    max(0.0, deadline - time.perf_counter())
+                    if deadline is not None
+                    else None
+                )
+                recovery = run_multi_round_key_recovery(
+                    model,
+                    candidate_round_keys,
+                    known,
+                    verification,
+                    rounds=rounds,
+                    solver_timeout=timeout,
+                    global_timeout=remaining_global,
+                    strategy=HIERARCHICAL_ATTACK_STRATEGY,
+                    solver_factory=factory,
+                )
+                success = recovery.success
+                status = recovery.status
+                if status == STATUS_GLOBAL_TIMEOUT:
+                    timed_out_globally = True
+                    status = STATUS_GLOBAL_TIMEOUT
+                candidates_attempted = recovery.candidates_attempted
+                recovered = recovery.recovered_master_key
+                solver_seconds = float(recovery.solver_seconds)
+                verification_seconds = float(recovery.verification_seconds)
+                attempted_tuples = tuple(
+                    prefix for prefix, _ in effective_paths[:candidates_attempted]
+                )
+            else:
+                success = False
+                status = STATUS_NO_RANKED_CANDIDATES
     else:
         success = False
         status = STATUS_NO_RANKED_CANDIDATES
@@ -648,6 +708,7 @@ def run_hierarchical_multi_round_attack(
         stage_ranking_seconds=stage_ranking_seconds,
         ordered_paths=ordered_paths,
         success=success,
+        failure_cause=FAILURE_CAUSE_GLOBAL_TIMEOUT if timed_out_globally else None,
     )
 
     return HierarchicalAttackResult(
@@ -668,11 +729,13 @@ def run_hierarchical_multi_round_attack(
 
 __all__ = [
     "DESCENT_SUBKEY_PLACEHOLDER",
+    "FAILURE_CAUSE_GLOBAL_TIMEOUT",
     "FAILURE_CAUSE_RANKING",
     "FAILURE_CAUSE_SAT_BACKEND",
     "HIERARCHICAL_ATTACK_STRATEGY",
     "HIERARCHICAL_SOLVER_NAME",
     "MAX_CANDIDATE_BATCH_SIZE",
+    "STATUS_GLOBAL_TIMEOUT",
     "STATUS_NO_RANKED_CANDIDATES",
     "HierarchicalAttackResult",
     "HierarchicalStage",
