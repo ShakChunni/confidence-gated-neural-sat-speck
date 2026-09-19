@@ -1,0 +1,436 @@
+{
+  "manifest_version": "1.0.0",
+  "protocol_id": "speck32_64_seven_round_comparative_protocol_v1",
+  "protocol_status": "PROPOSED_NOT_AUTHORIZED",
+  "created_at": "2026-09-17T17:38:00Z",
+  "updated_at": "2026-09-19T14:00:00Z",
+  "governing_decisions": [
+    "D-025",
+    "D-027",
+    "D-028",
+    "D-029"
+  ],
+  "target_publication": {
+    "venue": "ACNS 2027 Cycle 2",
+    "working_title": "From Neural Ranking to Verified Key Recovery: A Controlled Study of Classical, Neural, and XOR-SAT Guidance on Reduced-Round SPECK32/64",
+    "primary_research_question": "Under a common global resource envelope, when does neural subkey guidance provide an operational advantage in verified exact recovery over classical, hybrid, random-order, and SAT-only alternatives, and when is the apparent advantage instead explained by ranking truncation, threshold transport, or exact-backend configuration?"
+  },
+  "seed_governance": {
+    "protected_dataset_seed": null,
+    "sample_size_n": 128,
+    "evaluation_role": "PROSPECTIVE_EVALUATION",
+    "authorization_requirement": "Explicit author and supervisor sign-off before numerical seed assignment",
+    "historical_opened_seed_300001_role": "DEVELOPMENT_DIAGNOSTIC_ONLY",
+    "quarantined_seeds": [
+      97001,
+      99001
+    ],
+    "opened_historical_seeds": [
+      98001,
+      101001,
+      201001,
+      300001
+    ]
+  },
+  "protected_dataset": {
+    "dataset_path": null,
+    "dataset_id": null,
+    "sha256": null,
+    "seed": null,
+    "sample_size_n": 128,
+    "role": "PROSPECTIVE_EVALUATION",
+    "rounds": 7,
+    "ranking_differential_pairs": 64,
+    "generation_config_hash": null,
+    "schema": null
+  },
+  "cryptographic_parameters": {
+    "cipher": "SPECK32/64",
+    "rounds": 7,
+    "word_size_bits": 16,
+    "key_size_bits": 64,
+    "block_size_bits": 32,
+    "ranking_differential_pairs": 64,
+    "ranking_total_observations": 128,
+    "verification_pairs": 2,
+    "verification_seed": 999999,
+    "verification_rounds": 7
+  },
+  "search_and_resource_envelope": {
+    "m1_stage1_beam_width": 32,
+    "m2_stage2_beam_width": 32,
+    "screen_pairs": 16,
+    "screen_top_k": 512,
+    "candidate_budget_max_tuples": 1024,
+    "per_candidate_solver_timeout_seconds": 10.0,
+    "global_method_cutoff_seconds": 300.0,
+    "batch_size": 1024,
+    "threads": 1,
+    "thread_policy": "threads=1"
+  },
+  "backend_specification": {
+    "primary_backend": "pycryptosat",
+    "primary_backend_version": "5.14.7",
+    "primary_backend_threads": 1,
+    "primary_backend_interface": "in-memory solver.solve(assumptions=[...])",
+    "solver_isolation": "IsolatedSolverFactory per instance-method",
+    "rebuild_on_timeout": true,
+    "secondary_sensitivity_backend": "cryptominisat5",
+    "secondary_sensitivity_backend_version": "5.14.7",
+    "secondary_sensitivity_backend_path": "/opt/homebrew/bin/cryptominisat5",
+    "secondary_sensitivity_backend_sha256": "a3f85c3709b5e2a040bf82a4a604d1c7b9f10219bbf180a9e0f72319a2e892ac",
+    "secondary_sensitivity_flags": [
+      "--maxmatrixcols",
+      "2500",
+      "--autodisablegauss",
+      "0",
+      "--threads",
+      "1"
+    ],
+    "verified_default_flags": [
+      "--maxmatrixcols",
+      "1000",
+      "--autodisablegauss",
+      "1"
+    ],
+    "backend_separation_rule": "Primary comparators must all use pycryptosat; native Gauss CLI is evaluated strictly as a separately labelled engineering ablation and never mixed inside the primary contrast"
+  },
+  "artifacts": {
+    "stage1_model": {
+      "path": "models/speck32_64_phase11b_prime_stage1_r6_b1_mean.pt",
+      "sha256": "0a5afc9fc6f1d78bc218a157ef2680ba257aa8230c716d410e868be7bf0ec351",
+      "architecture": "PairGroupRanker(variant='b1_mean')",
+      "target_round": 6
+    },
+    "stage2_neural_model": {
+      "path": "models/speck32_64_phase6a_b1_mean_g64.pt",
+      "sha256": "a93d29a76a521b6f3fd0f1dff943df9f74de3857169b9d735c9aa478817954d5",
+      "architecture": "PairGroupRanker(variant='b1_mean')",
+      "target_round": 5
+    },
+    "stage2_classical_table": {
+      "path": "models/classical_dist_r5_sparse_v2.json",
+      "sha256": "7a1002c3213226cc8543608f262e9984e8c7a7a57d49e3302828ae5a69a699df",
+      "table_type": "SparseEmpiricalDistribution",
+      "target_round": 5
+    },
+    "native_cli_overhead_artifact": {
+      "path": "results/phase11_scaling_diagnostics/native_cli_overhead_benchmark.json",
+      "sha256": "be36bb28b284a2d9892b565f071209a1125104675ee581a2da04f5995bedf1c1",
+      "description": "Empirical benchmark of native CLI fork/exec and DIMACS parse overhead on 7-round formula"
+    },
+    "native_gauss_sensitivity_opened_smoke_artifact": {
+      "path": "results/phase11_scaling_diagnostics/native_gauss_sensitivity_opened_smoke.json",
+      "sha256": "499879ec751040a4f153a325b7e113ff4177f0b4f281a74f44ef4b181a923f30",
+      "description": "Opened smoke diagnostic artifact for native Gauss sensitivity baselines on Seed 300001 instance 0"
+    }
+  },
+  "code_manifest": {
+    "runner_script": {
+      "path": "scripts/evaluate_seven_round_comparators.py",
+      "sha256": "2214f6893fdf93b599efd31001d53cfbd210bb76352ce3a5e9b26f1e05e24110"
+    },
+    "hierarchical_multi_round": {
+      "path": "src/neural_sat_speck/attacks/hierarchical_multi_round.py",
+      "sha256": "e4f873e99203ccd7a65e36091ca56350fdb083c6827a5c6490d59aab430692fd"
+    },
+    "multi_round_recovery": {
+      "path": "src/neural_sat_speck/attacks/multi_round_recovery.py",
+      "sha256": "74ceac9a1ba4a27f4a04086b159e5a20f0020a95df619a9108266c5fa7c207ac"
+    },
+    "solver_isolation": {
+      "path": "src/neural_sat_speck/sat/isolation.py",
+      "sha256": "15cd556f68befacbc4e4065a8e8ced4927a37efb97a3ee196295436d4c529aac"
+    },
+    "classical_ranking": {
+      "path": "src/neural_sat_speck/attacks/classical_ranking.py",
+      "sha256": "23ca85d15d836b44bc0a29325c89119162f03b3a0cb7cf050f7ae85c7bd253a4"
+    },
+    "recovery": {
+      "path": "src/neural_sat_speck/attacks/recovery.py",
+      "sha256": "d60861fb161f45c9f0df8001fd1768cac0d222f2a4fab198c682f881d64edf4d"
+    },
+    "group_model": {
+      "path": "src/neural_sat_speck/neural/group_model.py",
+      "sha256": "1d2227d4b1885d5a39cb3edd92574e258f463ce76b04718e395dea1f2c4e3cb8"
+    },
+    "dimacs": {
+      "path": "src/neural_sat_speck/sat/dimacs.py",
+      "sha256": "3c54f68921092b5690aba357205a6170c833caf8d4866d776e7d02f282d422b3"
+    },
+    "native_cli_benchmark": {
+      "path": "scripts/benchmark_native_cli_overhead.py",
+      "sha256": "7645aeaf32bbc514c1e1de4642be99fdc3bfc6df11db7d01187b30062d768220"
+    },
+    "audit_solver_controlled": {
+      "path": "scripts/audit_solver_controlled.py",
+      "sha256": "ce19a03aead8177f71d217e0740b229f76a8b4fb3e279d4adc3db3785457d572"
+    },
+    "manifest_validator": {
+      "path": "src/neural_sat_speck/protocol/manifest_validator.py",
+      "sha256": "5027378b62741b70cf11a78de3583cda12037d6af88dc9b52b55fbb1bf4b2dcb"
+    },
+    "native_sensitivity": {
+      "path": "src/neural_sat_speck/sat/native_sensitivity.py",
+      "sha256": "9d37f6491a6e82b951a6010ef32b0c493c6f53dc769db563c2ddfddd77b1c96d"
+    },
+    "evaluate_native_gauss_sensitivity": {
+      "path": "scripts/evaluate_native_gauss_sensitivity.py",
+      "sha256": "654e71179674aa256a727fc1cbe0b9817a0ae515864088dc78b2cbf488c3a63d"
+    },
+    "analyze_seven_round_results": {
+      "path": "scripts/analyze_seven_round_results.py",
+      "sha256": "7962e46f1b35b3b6de7c4059ed4568fd7532c02545a7d4a82b0fec1e0b299699"
+    }
+  },
+  "formula_metrics": {
+    "sat_4obs": {
+      "observations": 4,
+      "differential_pairs_equivalent": 2,
+      "variables": 2368,
+      "cnf_clauses_unpinned": 3350,
+      "cnf_clauses_pinned_k6": 3366,
+      "xor_clauses": 1632,
+      "total_clauses_unpinned": 4982,
+      "provenance": "export_speck_to_dimacs on 4 observations (2 diff pairs)"
+    },
+    "sat_128obs": {
+      "observations": 128,
+      "differential_pairs_equivalent": 64,
+      "variables": 61888,
+      "cnf_clauses_unpinned": 90274,
+      "xor_clauses": 43296,
+      "total_clauses_unpinned": 133570,
+      "provenance": "export_speck_to_dimacs on 128 observations (64 diff pairs)"
+    }
+  },
+  "comparator_methods": [
+    {
+      "method_id": "hierarchical_neural_screened",
+      "display_name": "Neural Screened (M1=32, M2=32)",
+      "method_type": "neural_hierarchical",
+      "sat_observations": 4,
+      "stage1_beam_m1": 32,
+      "stage2_beam_m2": 32,
+      "screening_rule": {
+        "screen_pairs": 16,
+        "screen_top_k": 512
+      },
+      "candidate_budget_max_tuples": 1024,
+      "role": "primary_proposed_method",
+      "backend": "pycryptosat"
+    },
+    {
+      "method_id": "hierarchical_neural_full",
+      "display_name": "Neural Full (M1=32, M2=32)",
+      "method_type": "neural_hierarchical",
+      "sat_observations": 4,
+      "stage1_beam_m1": 32,
+      "stage2_beam_m2": 32,
+      "screening_rule": null,
+      "candidate_budget_max_tuples": 1024,
+      "role": "screening_efficiency_ablation",
+      "backend": "pycryptosat"
+    },
+    {
+      "method_id": "hierarchical_neural_classical",
+      "display_name": "Neural-Classical Hybrid (M1=32, M2=32)",
+      "method_type": "hybrid_hierarchical",
+      "sat_observations": 4,
+      "stage1_beam_m1": 32,
+      "stage2_beam_m2": 32,
+      "screening_rule": null,
+      "candidate_budget_max_tuples": 1024,
+      "role": "classical_hybrid_comparator",
+      "backend": "pycryptosat",
+      "caveat": "Stage 1 uses neural guidance; Stage 2 uses classical distribution. Fully classical Stage 1 is computationally bounded and not claimed."
+    },
+    {
+      "method_id": "random_sat",
+      "display_name": "Random Candidate SAT",
+      "method_type": "random_order_control",
+      "sat_observations": 4,
+      "stage1_beam_m1": null,
+      "stage2_beam_m2": null,
+      "screening_rule": null,
+      "candidate_budget_max_tuples": 1024,
+      "role": "random_ordering_control",
+      "backend": "pycryptosat"
+    },
+    {
+      "method_id": "sat_only_4obs",
+      "display_name": "Exact SAT Only (4 obs, formula-matched)",
+      "method_type": "exact_sat_unguided",
+      "sat_observations": 4,
+      "stage1_beam_m1": null,
+      "stage2_beam_m2": null,
+      "screening_rule": null,
+      "candidate_budget_max_tuples": 1,
+      "role": "formula_size_matched_sat_control",
+      "backend": "pycryptosat"
+    },
+    {
+      "method_id": "sat_only_all_observations",
+      "display_name": "Exact SAT Only (128 obs, info-matched)",
+      "method_type": "exact_sat_unguided",
+      "sat_observations": 128,
+      "stage1_beam_m1": null,
+      "stage2_beam_m2": null,
+      "screening_rule": null,
+      "candidate_budget_max_tuples": 1,
+      "role": "information_parity_sat_control",
+      "backend": "pycryptosat"
+    }
+  ],
+  "failure_taxonomy": [
+    {
+      "category": "successful_verified_recovery",
+      "is_backend_failure": false,
+      "counts_as_verified_recovery": true,
+      "counts_as_unconditional_failure": false,
+      "is_resolved_sat_state": true,
+      "failure_domain": "none",
+      "description": "SAT solver returned a satisfying assignment that was decoded and independently verified against fresh validation pairs."
+    },
+    {
+      "category": "expected_candidate_unsat",
+      "is_backend_failure": false,
+      "counts_as_verified_recovery": false,
+      "counts_as_unconditional_failure": false,
+      "is_resolved_sat_state": true,
+      "failure_domain": "search_progress",
+      "description": "Normal candidate UNSAT during multi-round search when an incorrect subkey hypothesis is proven unsatisfiable. This is correct solver behavior, not a failure."
+    },
+    {
+      "category": "candidates_exhausted_without_unresolved",
+      "is_backend_failure": false,
+      "counts_as_verified_recovery": false,
+      "counts_as_unconditional_failure": true,
+      "is_resolved_sat_state": true,
+      "failure_domain": "ranking",
+      "description": "All tested candidates in the budget were proven UNSAT; search terminated without any candidate solver timeouts or unresolved queries."
+    },
+    {
+      "category": "unsuccessful_with_unresolved_timeouts",
+      "is_backend_failure": false,
+      "counts_as_verified_recovery": false,
+      "counts_as_unconditional_failure": true,
+      "is_resolved_sat_state": false,
+      "failure_domain": "solver",
+      "description": "Search ended unsuccessfully but encountered at least one per-candidate solver timeout, leaving unresolved candidate states."
+    },
+    {
+      "category": "solver_timeout",
+      "is_backend_failure": false,
+      "counts_as_verified_recovery": false,
+      "counts_as_unconditional_failure": true,
+      "is_resolved_sat_state": false,
+      "failure_domain": "solver",
+      "description": "An individual SAT solver call reached its per-candidate time limit (10.0s) without returning SAT or UNSAT."
+    },
+    {
+      "category": "global_timeout",
+      "is_backend_failure": false,
+      "counts_as_verified_recovery": false,
+      "counts_as_unconditional_failure": true,
+      "is_resolved_sat_state": false,
+      "failure_domain": "envelope",
+      "description": "Method total wall-clock execution time reached the global monotonic deadline (300.0s)."
+    },
+    {
+      "category": "solver_unknown",
+      "is_backend_failure": true,
+      "counts_as_verified_recovery": false,
+      "counts_as_unconditional_failure": true,
+      "is_resolved_sat_state": false,
+      "failure_domain": "solver",
+      "description": "Solver returned an indeterminate or unknown status without exhausting its allotted time limit."
+    },
+    {
+      "category": "solver_exception",
+      "is_backend_failure": true,
+      "counts_as_verified_recovery": false,
+      "counts_as_unconditional_failure": true,
+      "is_resolved_sat_state": false,
+      "failure_domain": "system",
+      "description": "Solver library raised an uncaught runtime exception, memory fault, or abnormal termination."
+    },
+    {
+      "category": "decoding_failure",
+      "is_backend_failure": true,
+      "counts_as_verified_recovery": false,
+      "counts_as_unconditional_failure": true,
+      "is_resolved_sat_state": true,
+      "failure_domain": "system",
+      "description": "Solver reported SAT but variable assignments failed to map to a valid master key representation."
+    },
+    {
+      "category": "verification_failure",
+      "is_backend_failure": true,
+      "counts_as_verified_recovery": false,
+      "counts_as_unconditional_failure": true,
+      "is_resolved_sat_state": true,
+      "failure_domain": "verification",
+      "description": "Solver reported SAT with a validly formed master key, but the key failed independent fresh-pair verification."
+    }
+  ],
+  "statistical_plan": {
+    "primary_estimand": "Unconditional fresh-pair-verified recovery probability within 300.0s cutoff",
+    "secondary_estimand": "Full offline and online resource accounting (wall seconds, solver seconds, verification seconds, candidate attempts)",
+    "confidence_interval": "Wilson 95% score interval",
+    "primary_paired_contrast": {
+      "contrast_id": "primary_contrast_neural_screened_vs_sat_only_all_obs",
+      "method_a": "hierarchical_neural_screened",
+      "method_b": "sat_only_all_observations",
+      "test": "Exact two-sided paired McNemar test",
+      "alpha": 0.05,
+      "rationale": "Directly evaluates whether neural guidance provides an advantage over unguided SAT under strict observation parity (128 observations available to both methods; 4 encoded into formula for neural vs 128 in unguided formula) on the common pycryptosat backend and common 300.0s resource envelope."
+    },
+    "multiplicity_control": {
+      "method": "Holm-Bonferroni step-down procedure",
+      "family_wise_alpha": 0.05,
+      "adjusted_secondary_contrasts": [
+        {
+          "contrast_id": "secondary_contrast_1_neural_vs_hybrid",
+          "method_a": "hierarchical_neural_screened",
+          "method_b": "hierarchical_neural_classical",
+          "test": "Exact two-sided paired McNemar test"
+        },
+        {
+          "contrast_id": "secondary_contrast_2_neural_vs_random",
+          "method_a": "hierarchical_neural_screened",
+          "method_b": "random_sat",
+          "test": "Exact two-sided paired McNemar test"
+        },
+        {
+          "contrast_id": "secondary_contrast_3_neural_vs_sat4obs",
+          "method_a": "hierarchical_neural_screened",
+          "method_b": "sat_only_4obs",
+          "test": "Exact two-sided paired McNemar test"
+        }
+      ]
+    },
+    "descriptive_and_sensitivity_analyses": [
+      "screening_ablation_neural_screened_vs_neural_full",
+      "sat_only_native_gauss_sensitivity_4obs",
+      "sat_only_native_gauss_sensitivity_all_obs"
+    ],
+    "secondary_endpoints": [
+      "stage1_top32_containment",
+      "stage2_top32_conditional_containment",
+      "median_and_iqr_method_wall_seconds",
+      "par2_wall_seconds",
+      "mean_candidates_attempted",
+      "failure_cause_distribution"
+    ]
+  },
+  "environment_provenance": {
+    "python_version": "3.14.7",
+    "torch_version": "2.13.0",
+    "numpy_version": "2.5.2",
+    "pycryptosat_version": "5.14.7",
+    "cryptominisat_cli_version": "5.14.7",
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "machine": "arm64"
+  }
+}

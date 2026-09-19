@@ -28,6 +28,7 @@ import argparse
 import hashlib
 import json
 import os
+import statistics
 import sys
 import time
 from collections.abc import Sequence
@@ -63,9 +64,16 @@ from neural_sat_speck.neural.numpy_inference import (  # noqa: E402
     NumpyInferenceModule,
     NumpyRankerInference,
 )
+from neural_sat_speck.protocol.manifest_validator import (  # noqa: E402
+    ManifestValidationError,
+    classify_attack_outcome,
+    validate_manifest_for_development_execution,
+    validate_manifest_for_prospective_execution,
+    verify_attack_dataset_integrity,
+)
 from neural_sat_speck.sat.isolation import IsolatedSolverFactory  # noqa: E402
 
-DATASET_PATH = (
+DEFAULT_DATASET_PATH = (
     REPOSITORY_ROOT / "datasets" / "phase11a_oracle_r7" / "oracle_evaluation.json"
 )
 DATASET_ID = "speck32_64_attack_phase11a_oracle_r7"
@@ -161,6 +169,10 @@ REQUIRED_RECORD_FIELDS = {
     "ranking_screening_sorting_seconds",
     "solver_seconds",
     "verification_seconds",
+    "counts_as_verified_recovery",
+    "counts_as_unconditional_failure",
+    "is_resolved_sat_state",
+    "failure_domain",
 }
 
 
@@ -268,7 +280,41 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Resume an existing run, skipping completed instance-method pairs (requires --output)",
     )
+    parser.add_argument(
+        "--protocol-manifest",
+        type=Path,
+        default=None,
+        help="Path to protocol manifest JSON (enforced strictly for --prospective)",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=Path,
+        default=None,
+        help="Path to attack dataset JSON (required for --prospective; defaults to opened Seed 300001 dataset in development mode)",
+    )
+    parser.add_argument(
+        "--prospective",
+        action="store_true",
+        help="Flag indicating prospective evaluation on protected data (requires FROZEN_AUTHORIZED)",
+    )
+    parser.add_argument(
+        "--development-mode",
+        action="store_true",
+        help="Flag indicating development/diagnostic run on opened data",
+    )
     args = parser.parse_args(argv)
+
+    if args.prospective and args.development_mode:
+        raise SystemExit("Error: Cannot specify both --prospective and --development-mode.")
+
+    if args.prospective and args.protocol_manifest is None:
+        raise SystemExit("Error: --prospective requires an explicit --protocol-manifest.")
+
+    if args.prospective and args.dataset is None:
+        raise SystemExit("Error: --prospective requires an explicit --dataset path.")
+
+    if args.dataset is None:
+        args.dataset = DEFAULT_DATASET_PATH
 
     # Normalize method aliases to canonical names while preserving user order
     normalized_methods: list[str] = []
@@ -335,19 +381,22 @@ def compute_method_summary(
     total = len(records)
     successes = sum(1 for r in records if r["success"])
     low, high = wilson_score_interval(successes, total)
-    wall_times = sorted(r["wall_seconds"] for r in records)
-    median_wall = wall_times[total // 2]
-    method_wall_times = sorted(
+    wall_times = [r["wall_seconds"] for r in records]
+    median_wall = statistics.median(wall_times)
+    method_wall_times = [
         r.get("method_wall_seconds", r["wall_seconds"]) for r in records
-    )
-    median_method_wall = method_wall_times[total // 2]
+    ]
+    median_method_wall = statistics.median(method_wall_times)
     mean_candidates = sum(r["candidates_attempted"] for r in records) / total
     overshoots = [r.get("cutoff_overshoot_seconds", 0.0) for r in records]
     max_overshoot = max(overshoots) if overshoots else 0.0
     mean_overshoot = sum(overshoots) / total if total > 0 else 0.0
 
     causes: dict[str, int] = {}
+    domain_counts: dict[str, int] = {}
     for r in records:
+        dom = r.get("failure_domain", "none" if r.get("success") else "unknown")
+        domain_counts[dom] = domain_counts.get(dom, 0) + 1
         if not r["success"]:
             cause = r.get("failure_cause") or r.get("status") or "unknown"
             causes[cause] = causes.get(cause, 0) + 1
@@ -357,6 +406,9 @@ def compute_method_summary(
         "verified_recoveries": successes,
         "verified_recovery_rate": round(successes / total, 4),
         "wilson_95_ci": [round(low, 4), round(high, 4)],
+        "unconditional_failures": sum(1 for r in records if r.get("counts_as_unconditional_failure")),
+        "resolved_sat_states": sum(1 for r in records if r.get("is_resolved_sat_state")),
+        "failure_domains": domain_counts,
         "median_wall_seconds": round(median_wall, 3),
         "median_method_wall_seconds": round(median_method_wall, 3),
         "max_cutoff_overshoot_seconds": round(max_overshoot, 6),
@@ -407,6 +459,51 @@ def compute_method_summary(
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
+    # Strict Pre-Execution Manifest Gate and Dataset Integrity Check
+    manifest_data = None
+    if args.prospective:
+        try:
+            manifest_data = validate_manifest_for_prospective_execution(
+                args.protocol_manifest,
+                cli_args=args,
+                base_dir=REPOSITORY_ROOT,
+            )
+            dataset_info = verify_attack_dataset_integrity(
+                args.dataset,
+                manifest_data=manifest_data,
+                is_prospective=True,
+            )
+            print("[INFO] Manifest validated for PROSPECTIVE execution (FROZEN_AUTHORIZED).")
+            print(
+                f"[INFO] Prospective dataset validated: {dataset_info['dataset_id']} "
+                f"(N={dataset_info['instance_count']}, seed={dataset_info['seed']})."
+            )
+        except ManifestValidationError as err:
+            raise SystemExit(f"PROSPECTIVE EXECUTION REFUSED: {err}") from err
+    elif args.protocol_manifest is not None:
+        try:
+            manifest_data = validate_manifest_for_development_execution(
+                args.protocol_manifest,
+                base_dir=REPOSITORY_ROOT,
+            )
+            dataset_info = verify_attack_dataset_integrity(
+                args.dataset,
+                manifest_data=manifest_data,
+                is_prospective=False,
+            )
+            print(
+                f"[INFO] Manifest validated in DEVELOPMENT mode "
+                f"(status: {manifest_data.get('protocol_status')})."
+            )
+        except ManifestValidationError as err:
+            raise SystemExit(f"DEVELOPMENT MANIFEST VALIDATION FAILED: {err}") from err
+    else:
+        dataset_info = verify_attack_dataset_integrity(
+            args.dataset,
+            manifest_data=None,
+            is_prospective=False,
+        )
+
     # Determine execution device
     device_obj = torch.device(
         args.device
@@ -427,7 +524,8 @@ def main(argv: list[str] | None = None) -> int:
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Validate or compute hashes
-    dataset_hash = _sha256_file(DATASET_PATH)
+    dataset_hash = dataset_info["sha256"]
+    dataset_id = dataset_info["dataset_id"]
     stage1_hash = _sha256_file(args.stage1_model)
     stage2_hash = _sha256_file(args.stage2_model)
     classical_hash = _sha256_file(args.classical_dist)
@@ -440,9 +538,12 @@ def main(argv: list[str] | None = None) -> int:
 
     metadata: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
-        "dataset_path": str(DATASET_PATH),
+        "protocol_manifest_path": str(args.protocol_manifest) if args.protocol_manifest else None,
+        "prospective": args.prospective,
+        "protocol_status": manifest_data.get("protocol_status") if manifest_data else "UNSPECIFIED_DEVELOPMENT",
+        "dataset_path": str(args.dataset),
         "dataset_sha256": dataset_hash,
-        "dataset_id": DATASET_ID,
+        "dataset_id": dataset_id,
         "stage1_model_path": str(args.stage1_model),
         "stage1_model_sha256": stage1_hash,
         "stage2_model_path": str(args.stage2_model),
@@ -621,7 +722,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # Load dataset
-    shard = load_attack_shard(DATASET_PATH, expected_dataset_id=DATASET_ID)
+    shard = load_attack_shard(args.dataset, expected_dataset_id=dataset_id)
     selected_instances = shard.instances[args.start : args.start + args.instances]
     if not selected_instances:
         raise SystemExit("No instances selected for evaluation.")
@@ -1095,6 +1196,11 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError(f"Unknown method {method!r}")
 
             method_wall_sec = time.perf_counter() - method_started
+            classified = classify_attack_outcome(
+                rec["status"],
+                success=bool(rec["success"]),
+                unresolved_timeouts=1 if rec["status"] == "solver_timeout" else 0,
+            )
             rec.update(
                 {
                     "instance_id": instance_id,
@@ -1106,6 +1212,10 @@ def main(argv: list[str] | None = None) -> int:
                     "cutoff_overshoot_seconds": round(
                         max(0.0, method_wall_sec - cutoff_seconds), 6
                     ),
+                    "counts_as_verified_recovery": classified["counts_as_verified_recovery"],
+                    "counts_as_unconditional_failure": classified["counts_as_unconditional_failure"],
+                    "is_resolved_sat_state": classified["is_resolved_sat_state"],
+                    "failure_domain": classified["failure_domain"],
                 }
             )
 

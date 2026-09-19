@@ -542,8 +542,9 @@ def test_solver_rebuilt_on_candidate_timeout() -> None:
 
     spy_factory = _SpyFactory(factory)
 
-    # Candidate 0 times out immediately under 1e-6 timeout, candidate 1 has true key under 10s
-    candidates = [{3: wrong_k3}, {3: true_k3}]
+    # Candidate 0 times out under 1e-6 timeout; candidate 1 is also a wrong candidate
+    wrong_k3_b = (wrong_k3 + 1) & 0xFFFF
+    candidates = [{3: wrong_k3}, {3: wrong_k3_b}]
     result = run_multi_round_key_recovery(
         model,
         candidates,
@@ -556,7 +557,7 @@ def test_solver_rebuilt_on_candidate_timeout() -> None:
         solver_factory=spy_factory,
     )
 
-    # Candidate 0 timed out, candidate 1 should also time out under 1e-6
+    # Candidate 0 timed out, triggering solver rebuild via spy_factory
     assert "spy_strategy" in rebuild_calls
     assert len(rebuild_calls) >= 1
     assert result.status == STATUS_UNSUCCESSFUL_WITH_UNRESOLVED_TIMEOUTS
@@ -783,6 +784,10 @@ def test_resume_fail_closed_validation(tmp_path: Path) -> None:
         "ranking_screening_sorting_seconds": 0.0,
         "solver_seconds": 10.0,
         "verification_seconds": 0.0,
+        "counts_as_verified_recovery": False,
+        "counts_as_unconditional_failure": True,
+        "is_resolved_sat_state": False,
+        "failure_domain": "solver",
     }
     dup_file = tmp_path / "duplicate_record.json"
     dup_file.write_text(
@@ -993,4 +998,38 @@ def test_solver_timeout_leaves_instance_unverified_with_cause() -> None:
     assert res.recovered_master_key is None
     assert res.status in (STATUS_SOLVER_TIMEOUT, STATUS_GLOBAL_TIMEOUT)
 
+
+def test_runner_prospective_gate_fails_closed_on_proposed_manifest() -> None:
+    """The comparator runner must fail closed when --prospective is invoked on a proposed manifest."""
+    from scripts.evaluate_seven_round_comparators import main
+
+    manifest_path = Path("docs/seven_round_protocol_manifest.json")
+    dataset_path = Path("datasets/phase11a_oracle_r7/oracle_evaluation.json")
+    assert manifest_path.exists()
+    assert dataset_path.exists()
+
+    with pytest.raises(SystemExit, match="PROSPECTIVE EXECUTION REFUSED.*PROPOSED_NOT_AUTHORIZED"):
+        main([
+            "--prospective",
+            "--protocol-manifest", str(manifest_path),
+            "--dataset", str(dataset_path),
+            "--instances", "1",
+        ])
+
+
+def test_runner_flags_conflict_rejection() -> None:
+    """Specifying both --prospective and --development-mode must be rejected."""
+    from scripts.evaluate_seven_round_comparators import parse_args
+
+    with pytest.raises(SystemExit, match="Cannot specify both --prospective and --development-mode"):
+        parse_args(["--prospective", "--development-mode"])
+
+    with pytest.raises(SystemExit, match="--prospective requires an explicit --protocol-manifest"):
+        parse_args(["--prospective"])
+
+    with pytest.raises(SystemExit, match="--prospective requires an explicit --dataset path"):
+        parse_args([
+            "--prospective",
+            "--protocol-manifest", "docs/seven_round_protocol_manifest.json",
+        ])
 

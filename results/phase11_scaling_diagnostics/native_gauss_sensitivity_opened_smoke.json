@@ -1,0 +1,166 @@
+{
+  "metadata": {
+    "schema_version": "1.0.0",
+    "evidence_class": "DEVELOPMENT_SENSITIVITY",
+    "dataset_path": "/Users/ashfaq/Dev/comp-sci-project/datasets/phase11a_oracle_r7/oracle_evaluation.json",
+    "dataset_sha256": "896f2908c513eb20bd8338ad61cc1675ef00c335db9a779791a0b517cc409a36",
+    "dataset_id": "speck32_64_attack_phase11a_oracle_r7",
+    "rounds": 7,
+    "timeout_seconds": 5.0,
+    "maxmatrixcols": 2500,
+    "autodisablegauss": 0,
+    "maxmatrixrows": null,
+    "threads": 1,
+    "methods": [
+      "sat_only_native_gauss_4obs",
+      "sat_only_native_gauss_all_observations"
+    ],
+    "protocol_manifest_path": null,
+    "protocol_status": "UNSPECIFIED_DEVELOPMENT",
+    "formula_metrics": {
+      "sat_only_native_gauss_4obs": {
+        "observations": 4,
+        "differential_pairs_equivalent": 2,
+        "variables": 2368,
+        "cnf_clauses_unpinned": 3350,
+        "xor_clauses": 1632,
+        "total_clauses_unpinned": 4982
+      },
+      "sat_only_native_gauss_all_observations": {
+        "observations": 128,
+        "differential_pairs_equivalent": 64,
+        "variables": 61888,
+        "cnf_clauses_unpinned": 90274,
+        "xor_clauses": 43296,
+        "total_clauses_unpinned": 133570
+      }
+    },
+    "environment_provenance": {
+      "python_version": "3.14.7",
+      "cryptominisat_cli_version": "5.14.7",
+      "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+      "machine": "arm64"
+    }
+  },
+  "summary_by_method": {
+    "sat_only_native_gauss_4obs": {
+      "instances_evaluated": 1,
+      "verified_recoveries": 0,
+      "verified_recovery_rate": 0.0,
+      "wilson_95_ci": [
+        0.0,
+        0.7935
+      ],
+      "unconditional_failures": 1,
+      "resolved_sat_states": 0,
+      "matrix_used_instances": 1,
+      "matrix_used_rate": 1.0,
+      "mean_wall_seconds": 4.118,
+      "median_wall_seconds": 4.118,
+      "mean_solver_cpu_seconds": 0.0,
+      "failure_domain_distribution": {
+        "solver": 1
+      }
+    },
+    "sat_only_native_gauss_all_observations": {
+      "instances_evaluated": 1,
+      "verified_recoveries": 0,
+      "verified_recovery_rate": 0.0,
+      "wilson_95_ci": [
+        0.0,
+        0.7935
+      ],
+      "unconditional_failures": 1,
+      "resolved_sat_states": 0,
+      "matrix_used_instances": 0,
+      "matrix_used_rate": 0.0,
+      "mean_wall_seconds": 4.224,
+      "median_wall_seconds": 4.224,
+      "mean_solver_cpu_seconds": 0.0,
+      "failure_domain_distribution": {
+        "solver": 1
+      }
+    }
+  },
+  "records_by_method": {
+    "sat_only_native_gauss_4obs": [
+      {
+        "method_id": "sat_only_native_gauss_4obs",
+        "instance_id": "train-0000",
+        "observations": 4,
+        "success": false,
+        "status": "solver_timeout",
+        "category": "solver_timeout",
+        "counts_as_verified_recovery": false,
+        "counts_as_unconditional_failure": true,
+        "is_resolved_sat_state": false,
+        "failure_domain": "solver",
+        "recovered_master_key": null,
+        "timing_seconds": {
+          "dimacs_generation": 0.002472,
+          "subprocess_wall": 4.115085,
+          "solver_cpu": 0.0,
+          "parse": 0.00073,
+          "verification": 0.0,
+          "total_wall": 4.118293
+        },
+        "matrix_diagnostics": {
+          "solver_version": "c CryptoMiniSat version 5.14.7",
+          "matrix_detected": true,
+          "matrix_dimensions": "1145 x 1880",
+          "matrix_used": true,
+          "matrix_count_used": 1,
+          "unused_reason": null,
+          "autodisable_observed": true,
+          "solver_cpu_seconds": 0.0,
+          "command": "cryptominisat5 --verb 1 --random 0 --threads 1 --maxmatrixcols 2500 --autodisablegauss 0 --maxtime 4",
+          "returncode": 15,
+          "stderr": ""
+        },
+        "returncode": 15,
+        "stdout_summary": "c CMS SHA1: GIT-notfound\nc CryptoMiniSat version 5.14.7\nc CMS compilation env CMAKE_CXX_COMPILER = clang++ | CMAKE_CXX_FLAGS =  -fno-stack-protector -msse4.2 -Wno-bitfield-constant-conversion -Wlogical-op -Wrestrict -Wnull-dereference -Wdouble-promotion -Wshadow -Wformat=2 -Wextra-semi -pedantic | COMPILE_DEFINES =  -DNDEBUG -D_FORTIFY_SOURCE=0 -DUSE_ZLIB | BUILD_SHARED_LIBS = ON | ONLY_SIMPLE =  | STATS = OFF | SQLITE3_FOUND =  | ZLIB_FOUND = TRUE | VALGRIND_FOUND =  | ENABLE_TESTING = OFF | SLOW_DEBUG = OFF | ENABLE_ASSERTIONS = OFF | PYTHON_EXECUTABLE =  | PYTHON_LIBRARY =  | PYTHON_INCLUDE_DIRS =  | MY_TARGETS =  | LARGEMEM = OFF | LIMITMEM = OFF | BREAKID_LIBRARIES =  | BREAKID-VER = . | c c Using VMTF, picosat, CaDiCaL, and CadiBack code by Armin Biere\nc CMS is MIT licensed\nc Using code from 'When Boolean Satisfiability Meets Gauss-E. in a Simplex Way'\n...\nc [g 0] -> of which confl       :  0.72 %\nc [g 0] elim called             : 12786\nc [g 0] ---> which lead to prop : 283.44 %\nc [g 0] ---> which lead to confl:  1.70 %\nc [g 0] size: 1117  x 1466 ",
+        "instance_index": 0
+      }
+    ],
+    "sat_only_native_gauss_all_observations": [
+      {
+        "method_id": "sat_only_native_gauss_all_observations",
+        "instance_id": "train-0000",
+        "observations": 128,
+        "success": false,
+        "status": "solver_timeout",
+        "category": "solver_timeout",
+        "counts_as_verified_recovery": false,
+        "counts_as_unconditional_failure": true,
+        "is_resolved_sat_state": false,
+        "failure_domain": "solver",
+        "recovered_master_key": null,
+        "timing_seconds": {
+          "dimacs_generation": 0.063991,
+          "subprocess_wall": 4.15967,
+          "solver_cpu": 0.0,
+          "parse": 0.000274,
+          "verification": 0.0,
+          "total_wall": 4.22394
+        },
+        "matrix_diagnostics": {
+          "solver_version": "c CryptoMiniSat version 5.14.7",
+          "matrix_detected": true,
+          "matrix_dimensions": null,
+          "matrix_used": false,
+          "matrix_count_used": 0,
+          "unused_reason": "c [matrix] Too many rows in matrix: 30656 -> set usage to NO",
+          "autodisable_observed": true,
+          "solver_cpu_seconds": 0.0,
+          "command": "cryptominisat5 --verb 1 --random 0 --threads 1 --maxmatrixcols 2500 --autodisablegauss 0 --maxtime 4",
+          "returncode": 15,
+          "stderr": ""
+        },
+        "returncode": 15,
+        "stdout_summary": "c CMS SHA1: GIT-notfound\nc CryptoMiniSat version 5.14.7\nc CMS compilation env CMAKE_CXX_COMPILER = clang++ | CMAKE_CXX_FLAGS =  -fno-stack-protector -msse4.2 -Wno-bitfield-constant-conversion -Wlogical-op -Wrestrict -Wnull-dereference -Wdouble-promotion -Wshadow -Wformat=2 -Wextra-semi -pedantic | COMPILE_DEFINES =  -DNDEBUG -D_FORTIFY_SOURCE=0 -DUSE_ZLIB | BUILD_SHARED_LIBS = ON | ONLY_SIMPLE =  | STATS = OFF | SQLITE3_FOUND =  | ZLIB_FOUND = TRUE | VALGRIND_FOUND =  | ENABLE_TESTING = OFF | SLOW_DEBUG = OFF | ENABLE_ASSERTIONS = OFF | PYTHON_EXECUTABLE =  | PYTHON_LIBRARY =  | PYTHON_INCLUDE_DIRS =  | MY_TARGETS =  | LARGEMEM = OFF | LIMITMEM = OFF | BREAKID_LIBRARIES =  | BREAKID-VER = . | c c Using VMTF, picosat, CaDiCaL, and CadiBack code by Armin Biere\nc CMS is MIT licensed\nc Using code from 'When Boolean Satisfiability Meets Gauss-E. in a Simplex Way'\n...\nc avg cls in red 2         : 11251.95    \nc Conflicts in UIP         : 35584       (8602.41   confl/time_this_thread)\nc Mem used                 : 0.00        MB\nc Total time (this thread) : 4.14        \ns INDETERMINATE",
+        "instance_index": 0
+      }
+    ]
+  },
+  "updated_at": "2026-09-19T12:42:55.453128+00:00"
+}
