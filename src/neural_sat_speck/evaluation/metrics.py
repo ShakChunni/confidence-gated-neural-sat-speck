@@ -221,3 +221,76 @@ def _erfinv(y: float) -> float:
     term2 = math.log(1.0 - y_abs * y_abs) / a
     inner = term1 * term1 - term2
     return sgn * math.sqrt(math.sqrt(inner) - term1)
+
+
+def paired_risk_difference_newcombe(
+    n11: int,
+    n10: int,
+    n01: int,
+    n00: int,
+    total: int,
+    confidence: float = 0.95,
+) -> tuple[float, float, float]:
+    """Compute risk difference (p_1 - p_2) and paired score confidence interval (Newcombe 1998, Method 10).
+
+    Given a 2x2 contingency table of paired binary outcomes:
+    - n11: both succeed
+    - n10: method 1 succeeds, method 2 fails
+    - n01: method 1 fails, method 2 succeeds
+    - n00: both fail
+
+    Args:
+        n11: Count of concordant successes.
+        n10: Count of discordant pairs favoring method 1.
+        n01: Count of discordant pairs favoring method 2.
+        n00: Count of concordant failures.
+        total: Total number of paired trials (must equal n11 + n10 + n01 + n00).
+        confidence: Confidence level in (0, 1), default 0.95.
+
+    Returns:
+        A tuple (risk_difference, lower_bound, upper_bound) clamped to [-1.0, 1.0].
+
+    Raises:
+        ValueError: If counts are negative, total does not match sum of cells,
+            or total <= 0.
+    """
+    if n11 < 0 or n10 < 0 or n01 < 0 or n00 < 0:
+        raise ValueError("Contingency table counts must be non-negative")
+    cell_sum = n11 + n10 + n01 + n00
+    if total <= 0 or cell_sum != total:
+        raise ValueError(
+            f"Total ({total}) must be positive and equal sum of cells ({cell_sum})"
+        )
+
+    d = (n10 - n01) / float(total)
+
+    # Edge case: zero discordant pairs (n10 == 0 and n01 == 0)
+    # The point estimate of risk difference is 0.0. The confidence interval is bounded
+    # by the Wilson score interval for a 0-count proportion: [-u_disc, u_disc].
+    if n10 == 0 and n01 == 0:
+        _, u_disc = wilson_score_interval(0, total, confidence=confidence)
+        return 0.0, -u_disc, u_disc
+
+    p1 = (n11 + n10) / float(total)
+    p2 = (n11 + n01) / float(total)
+    l1, u1 = wilson_score_interval(n11 + n10, total, confidence=confidence)
+    l2, u2 = wilson_score_interval(n11 + n01, total, confidence=confidence)
+
+    denom = math.sqrt(
+        (n11 + n10) * (total - (n11 + n10)) * (n11 + n01) * (total - (n11 + n01))
+    )
+    if denom > 0.0:
+        phi = float(n11 * n00 - n10 * n01) / denom
+    else:
+        phi = 0.0
+    phi = max(-1.0, min(1.0, phi))
+
+    term1 = (p1 - l1) ** 2 - 2.0 * phi * (p1 - l1) * (u2 - p2) + (u2 - p2) ** 2
+    delta1 = math.sqrt(max(0.0, term1))
+
+    term2 = (u1 - p1) ** 2 - 2.0 * phi * (u1 - p1) * (p2 - l2) + (p2 - l2) ** 2
+    delta2 = math.sqrt(max(0.0, term2))
+
+    lower = max(-1.0, d - delta1)
+    upper = min(1.0, d + delta2)
+    return float(d), float(lower), float(upper)

@@ -36,9 +36,16 @@ if str(REPOSITORY_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
 
 from neural_sat_speck.evaluation.metrics import (  # noqa: E402
+    calculate_cactus_curve,
     calculate_global_par2,
     exact_mcnemar_test,
+    paired_risk_difference_newcombe,
     wilson_score_interval,
+)
+from neural_sat_speck.protocol.manifest_validator import (  # noqa: E402
+    ManifestValidationError,
+    validate_manifest_for_prospective_execution,
+    verify_record_integrity,
 )
 
 EXPECTED_METHODS: frozenset[str] = frozenset({
@@ -81,84 +88,6 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(65536), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
-
-
-def verify_record_integrity(r: dict[str, Any]) -> bool:
-    """Explicitly cross-check fresh-pair recovery consistency.
-
-    Returns True if the record represents an independently verified fresh-pair recovery.
-    Raises ValueError if there are contradictory status or classification flags.
-    """
-    success = bool(r.get("success", False))
-    counts_recovery = bool(r.get("counts_as_verified_recovery", False))
-    counts_fail = bool(r.get("counts_as_unconditional_failure", False))
-    status = r.get("status")
-    failure_domain = r.get("failure_domain")
-    key = r.get("recovered_master_key")
-    late_verified = bool(r.get("late_verified_recovery", False))
-    cutoff = float(r.get("cutoff_seconds", 300.0))
-    wall_sec = float(r.get("method_wall_seconds", r.get("wall_seconds", 0.0)))
-
-    if success:
-        if wall_sec >= cutoff:
-            raise ValueError(
-                f"Contradictory record: success=True but method_wall_seconds ({wall_sec}) >= cutoff ({cutoff}) "
-                f"for instance {r.get('instance_id')}"
-            )
-        if late_verified:
-            raise ValueError(
-                f"Contradictory record: success=True but late_verified_recovery=True "
-                f"for instance {r.get('instance_id')}"
-            )
-        if not counts_recovery:
-            raise ValueError(
-                f"Contradictory record: success=True but counts_as_verified_recovery=False "
-                f"for instance {r.get('instance_id')}"
-            )
-        if counts_fail:
-            raise ValueError(
-                f"Contradictory record: success=True but counts_as_unconditional_failure=True "
-                f"for instance {r.get('instance_id')}"
-            )
-        if status not in ("sat_and_verified", "verified_recovery"):
-            raise ValueError(
-                f"Contradictory record: success=True but status={status!r} "
-                f"for instance {r.get('instance_id')}"
-            )
-        if failure_domain != "none":
-            raise ValueError(
-                f"Contradictory record: success=True but failure_domain={failure_domain!r} "
-                f"for instance {r.get('instance_id')}"
-            )
-        if not key or len(key) != 4:
-            raise ValueError(
-                f"Contradictory record: success=True but invalid recovered_master_key {key!r} "
-                f"for instance {r.get('instance_id')}"
-            )
-        return True
-    else:
-        if counts_recovery:
-            raise ValueError(
-                f"Contradictory record: success=False but counts_as_verified_recovery=True "
-                f"for instance {r.get('instance_id')}"
-            )
-        if late_verified:
-            if status != "global_timeout":
-                raise ValueError(
-                    f"Contradictory record: late_verified_recovery=True but status={status!r} != 'global_timeout' "
-                    f"for instance {r.get('instance_id')}"
-                )
-            if not counts_fail:
-                raise ValueError(
-                    f"Contradictory record: late_verified_recovery=True but counts_as_unconditional_failure=False "
-                    f"for instance {r.get('instance_id')}"
-                )
-            if failure_domain != "envelope":
-                raise ValueError(
-                    f"Contradictory record: late_verified_recovery=True but failure_domain={failure_domain!r} != 'envelope' "
-                    f"for instance {r.get('instance_id')}"
-                )
-        return False
 
 
 def holm_bonferroni_correction(
@@ -245,20 +174,21 @@ def paired_risk_difference_ci(
     n01: int,
     total: int,
     confidence: float = 0.95,
+    n11: int = 0,
+    n00: int = 0,
 ) -> tuple[float, float, float]:
-    """Compute risk difference (p_A - p_B) and paired Wald confidence interval."""
-    if total == 0:
+    """Compute risk difference (p_A - p_B) and paired score confidence interval (Newcombe Method 10)."""
+    if total <= 0:
         return 0.0, 0.0, 0.0
+    if n11 + n00 == 0:
+        rem = max(0, total - n10 - n01)
+        n11 = rem // 2
+        n00 = rem - n11
+    return paired_risk_difference_newcombe(
+        n11=n11, n10=n10, n01=n01, n00=n00, total=total, confidence=confidence
+    )
 
-    diff = (n10 - n01) / total
-    z = 1.959963984540054 if math.isclose(confidence, 0.95) else 1.96
 
-    # Paired variance of risk difference: [ (n10 + n01) - (n10 - n01)^2 / N ] / N^2
-    var = ((n10 + n01) - ((n10 - n01) ** 2) / total) / (total ** 2)
-    se = math.sqrt(max(0.0, var))
-    lower = max(-1.0, diff - z * se)
-    upper = min(1.0, diff + z * se)
-    return diff, lower, upper
 
 
 def analyze_records(
@@ -356,6 +286,39 @@ def analyze_records(
             cause = r.get("failure_cause") or r.get("status", "none")
             cause_counts[cause] = cause_counts.get(cause, 0) + 1
 
+        stage_containment: dict[str, Any] | None = None
+        if m in ("hierarchical_neural_screened", "hierarchical_neural_full", "hierarchical_neural_classical"):
+            s1_count = 0
+            s2_cond_count = 0
+            has_stage_data = True
+            for r in recs:
+                st_list = r.get("stages", [])
+                if len(st_list) >= 2:
+                    s1 = st_list[0]
+                    s2 = st_list[1]
+                    s1_rank = s1.get("true_round_key_rank")
+                    s1_bw = s1.get("beam_width", 32)
+                    if s1_rank is not None and s1_rank <= s1_bw:
+                        s1_count += 1
+                        s2_rank = s2.get("true_round_key_rank")
+                        s2_bw = s2.get("beam_width", 32)
+                        if s2_rank is not None and s2_rank <= s2_bw:
+                            s2_cond_count += 1
+                else:
+                    has_stage_data = False
+                    break
+            if has_stage_data:
+                stage_containment = {
+                    "stage1_top32_containment_count": s1_count,
+                    "stage1_top32_containment_rate": round(s1_count / n_instances, 4),
+                    "stage2_top32_conditional_containment_count": s2_cond_count,
+                    "stage2_top32_conditional_containment_rate": (
+                        round(s2_cond_count / s1_count, 4) if s1_count > 0 else 0.0
+                    ),
+                }
+
+        cactus_data = calculate_cactus_curve(wall_times, successes, max_time=global_cutoff)
+
         method_metrics[m] = {
             "instances": n_instances,
             "verified_recoveries": k,
@@ -375,6 +338,8 @@ def analyze_records(
             "mean_candidates_attempted": round(sum(tuples_attempted) / n_instances, 1),
             "failure_domain_distribution": domain_counts,
             "failure_cause_distribution": cause_counts,
+            "stage_containment": stage_containment,
+            "ecdf_data": cactus_data,
         }
 
     # 2. Primary Paired Contrast (aligned by instance_id)
@@ -382,12 +347,15 @@ def analyze_records(
     succ_b = [verify_record_integrity(by_method_id[PRIMARY_METHOD_B][iid]) for iid in sorted_instance_ids]
     table = compute_paired_contingency(succ_a, succ_b)
     mcnemar = exact_mcnemar_test(b=table["n10"], c=table["n01"])
-    diff, diff_l, diff_u = paired_risk_difference_ci(table["n10"], table["n01"], n_instances)
+    diff, diff_l, diff_u = paired_risk_difference_newcombe(
+        table["n11"], table["n10"], table["n01"], table["n00"], n_instances, confidence=1.0 - alpha
+    )
 
     primary_contrast_result = {
         "contrast_id": "primary_contrast_neural_screened_vs_sat_only_all_obs",
         "method_a": PRIMARY_METHOD_A,
         "method_b": PRIMARY_METHOD_B,
+        "role": "CONFIRMATORY_PRIMARY",
         "hypothesis": "H0: P(Success_A) == P(Success_B) vs H1: P(Success_A) != P(Success_B)",
         "contingency_table": table,
         "risk_difference": round(diff, 4),
@@ -408,10 +376,13 @@ def analyze_records(
         succ_b_sc = [verify_record_integrity(by_method_id[mb][iid]) for iid in sorted_instance_ids]
         tbl = compute_paired_contingency(succ_a_sc, succ_b_sc)
         mc = exact_mcnemar_test(b=tbl["n10"], c=tbl["n01"])
-        d, dl, du = paired_risk_difference_ci(tbl["n10"], tbl["n01"], n_instances)
+        d, dl, du = paired_risk_difference_newcombe(
+            tbl["n11"], tbl["n10"], tbl["n01"], tbl["n00"], n_instances, confidence=1.0 - alpha
+        )
         applicable_contrasts.append({
             "contrast_id": sc["contrast_id"],
             "name": sc["name"],
+            "role": "EXPLORATORY_SECONDARY",
             "method_a": ma,
             "method_b": mb,
             "contingency_table": tbl,
@@ -420,6 +391,7 @@ def analyze_records(
             "mcnemar": mc,
         })
         raw_p_values.append(mc["p_value"])
+
 
     if raw_p_values:
         holm_adj = holm_bonferroni_correction(raw_p_values, alpha=alpha)
@@ -480,12 +452,18 @@ def format_text_report(analysis: dict[str, Any]) -> str:
             f"{mm['wall_seconds']['median']:>7.2f}s | "
             f"{mm['mean_candidates_attempted']:>11.1f}"
         )
+        if mm.get("stage_containment"):
+            sc = mm["stage_containment"]
+            s1_str = f"S1 Containment (top-32): {sc['stage1_top32_containment_count']}/{mm['instances']} ({sc['stage1_top32_containment_rate']*100:.1f}%)"
+            s2_str = f"S2 Conditional: {sc['stage2_top32_conditional_containment_count']}/{sc['stage1_top32_containment_count']} ({sc['stage2_top32_conditional_containment_rate']*100:.1f}%)"
+            lines.append(f"  └─ {s1_str} | {s2_str}")
     lines.append("=" * 115)
 
     # Primary Contrast
     pc = analysis.get("primary_paired_contrast")
     if pc:
         lines.append("\n--- PRIMARY HYPOTHESIS CONTRAST (Information Parity: 128 Observations) ---")
+        lines.append("Confirmatory Status: SOLE CONFIRMATORY PRIMARY CONTRAST (alpha = 0.05)")
         lines.append(f"Method A: {pc['method_a']} vs Method B: {pc['method_b']}")
         ct = pc["contingency_table"]
         lines.append(f"Contingency: N11={ct['n11']}, N10={ct['n10']} (A+ B-), N01={ct['n01']} (A- B+), N00={ct['n00']}")
@@ -499,6 +477,8 @@ def format_text_report(analysis: dict[str, Any]) -> str:
     sc_list = analysis.get("multiplicity_controlled_secondary_contrasts", [])
     if sc_list:
         lines.append("\n--- SECONDARY CONTRASTS (Holm-Bonferroni Adjusted FWER alpha=0.05) ---")
+        lines.append("Confirmatory Status: EXPLORATORY SECONDARY CONTRASTS (Holm-Bonferroni adjusted FWER alpha = 0.05)")
+        lines.append("Note: Study-wide confirmatory significance is not claimed for secondary contrasts.")
         lines.append(
             f"{'Contrast':<42} | {'Risk Diff':<12} | {'Raw p':<10} | {'Holm p':<10} | {'Rejected H0':<11}"
         )
@@ -517,6 +497,13 @@ def format_text_report(analysis: dict[str, Any]) -> str:
         lines.append(f"Screened Rate: {abl['screened_recovery_rate']*100:.1f}% vs Full Rate: {abl['full_recovery_rate']*100:.1f}% (Diff: {abl['rate_difference']*100:+.1f}%)")
         lines.append(f"Mean Wall: Screened {abl['screened_mean_wall_seconds']:.2f}s vs Full {abl['full_mean_wall_seconds']:.2f}s (Speedup: {abl['speedup_factor']}x, Saved: {abl['mean_time_saved_seconds']:.2f}s)")
 
+    lines.append("\n--- RESOURCE ACCOUNTING & TIMING NOTE ---")
+    lines.append(
+        "Resource Accounting Convention: Execution runtime on Apple Silicon (MPS) is evaluated via wall-clock "
+        "duration under strict solver isolation and fixed single-threaded execution (torch_num_threads=1, threads=1). "
+        "Because GPU kernels execute asynchronously on MPS, CPU process_time does not capture neural inference time; "
+        "isolated per-method wall-clock time is the authoritative and standard resource metric."
+    )
     lines.append("=" * 115)
     return "\n".join(lines)
 
@@ -569,6 +556,60 @@ def main(argv: list[str] | None = None) -> int:
     if not isinstance(records_by_method, dict):
         raise SystemExit("Input JSON missing valid 'records_by_method' dictionary")
 
+    manifest_path = args.protocol_manifest
+    if manifest_path is None:
+        default_manifest = REPOSITORY_ROOT / "docs" / "seven_round_protocol_manifest.json"
+        if default_manifest.exists():
+            manifest_path = default_manifest
+
+    manifest_data = None
+    if args.prospective:
+        if manifest_path is None or not manifest_path.exists():
+            raise SystemExit("Error: Prospective analysis requires an explicit valid --protocol-manifest.")
+        try:
+            manifest_data = validate_manifest_for_prospective_execution(
+                manifest_path,
+                base_dir=REPOSITORY_ROOT,
+            )
+        except ManifestValidationError as err:
+            raise SystemExit(f"PROSPECTIVE ANALYSIS REFUSED: {err}") from err
+
+        # Derive cutoff and alpha directly from manifest
+        envelope = manifest_data.get("search_and_resource_envelope", {})
+        manifest_cutoff = float(envelope.get("global_method_cutoff_seconds", 300.0))
+        stat_plan = manifest_data.get("statistical_plan", {})
+        manifest_alpha = float(stat_plan.get("primary_paired_contrast", {}).get("alpha", 0.05))
+
+        if not math.isclose(args.cutoff, manifest_cutoff, abs_tol=1e-4):
+            raise SystemExit(
+                f"Error: CLI --cutoff {args.cutoff} does not match frozen manifest cutoff {manifest_cutoff}"
+            )
+        if not math.isclose(args.alpha, manifest_alpha, abs_tol=1e-4):
+            raise SystemExit(
+                f"Error: CLI --alpha {args.alpha} does not match frozen manifest alpha {manifest_alpha}"
+            )
+        args.cutoff = manifest_cutoff
+        args.alpha = manifest_alpha
+
+        meta = data.get("metadata", {})
+        if not meta.get("prospective"):
+            raise SystemExit(
+                "Error: Prospective analysis requires input results with metadata.prospective=True"
+            )
+        if data.get("evidence_class") != "PROSPECTIVE_EVALUATION":
+            raise SystemExit(
+                f"Error: Prospective analysis requires evidence_class='PROSPECTIVE_EVALUATION'; got {data.get('evidence_class')!r}"
+            )
+        if meta.get("device") != "mps":
+            raise SystemExit(
+                f"Error: Prospective results must use device='mps'; found {meta.get('device')!r}"
+            )
+        expected_dataset_sha256 = manifest_data.get("protected_dataset", {}).get("sha256")
+        if meta.get("dataset_sha256") != expected_dataset_sha256:
+            raise SystemExit(
+                f"Error: Results dataset_sha256 {meta.get('dataset_sha256')!r} does not match manifest {expected_dataset_sha256!r}"
+            )
+
     try:
         analysis = analyze_records(
             records_by_method,
@@ -581,11 +622,6 @@ def main(argv: list[str] | None = None) -> int:
 
     # Provenance tracking
     input_results_sha256 = _sha256_file(args.input_json)
-    manifest_path = args.protocol_manifest
-    if manifest_path is None:
-        default_manifest = REPOSITORY_ROOT / "docs" / "seven_round_protocol_manifest.json"
-        if default_manifest.exists():
-            manifest_path = default_manifest
     manifest_sha256 = _sha256_file(manifest_path) if manifest_path and manifest_path.exists() else None
 
     analysis["provenance"] = {
@@ -607,6 +643,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nAnalysis saved to: {args.output}")
 
     return 0
+
 
 
 if __name__ == "__main__":

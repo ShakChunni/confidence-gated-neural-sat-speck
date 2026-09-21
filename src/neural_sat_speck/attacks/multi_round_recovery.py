@@ -254,7 +254,29 @@ def run_multi_round_key_recovery(
 
         assumptions = assumptions_for_round_keys(current_model, candidate)
         solver_started = perf_counter()
-        result = current_model.solve(assumptions, time_limit=eff_timeout)
+        try:
+            result = current_model.solve(assumptions, time_limit=eff_timeout)
+        except Exception:
+            attempt_solver_seconds = perf_counter() - solver_started
+            solver_seconds += attempt_solver_seconds
+            attempts.append(
+                MultiRoundAttempt(
+                    candidate_position=position,
+                    round_keys=tuple(sorted(candidate.items())),
+                    solver_status="solver_exception",
+                    satisfiable=False,
+                    timed_out=False,
+                    solver_seconds=attempt_solver_seconds,
+                    verification_seconds=0.0,
+                    recovered_master_key=None,
+                    known_pairs_verified=False,
+                    independent_pairs_verified=False,
+                )
+            )
+            status = STATUS_SOLVER_EXCEPTION
+            success = False
+            break
+
         attempt_solver_seconds = perf_counter() - solver_started
         solver_seconds += attempt_solver_seconds
 
@@ -303,13 +325,20 @@ def run_multi_round_key_recovery(
             any_solver_timed_out = True
             # Purge potentially corrupted solver state by rebuilding a fresh isolated model
             rebuild_start = perf_counter()
-            if solver_factory is not None and hasattr(solver_factory, "rebuild_isolated_model"):
-                current_model = solver_factory.rebuild_isolated_model(strategy)
-            else:
-                current_model = SpeckSatModel.from_known_pairs(known, rounds=rounds)
+            try:
+                if solver_factory is not None and hasattr(solver_factory, "rebuild_isolated_model"):
+                    current_model = solver_factory.rebuild_isolated_model(strategy)
+                else:
+                    current_model = SpeckSatModel.from_known_pairs(known, rounds=rounds)
+            except Exception:
+                rebuild_seconds = perf_counter() - rebuild_start
+                rebuilding_seconds += rebuild_seconds
+                status = STATUS_SOLVER_EXCEPTION
+                success = False
+                break
+
             rebuild_seconds = perf_counter() - rebuild_start
             rebuilding_seconds += rebuild_seconds
-            solver_seconds += rebuild_seconds
 
             if global_deadline is not None and perf_counter() >= global_deadline:
                 status = STATUS_GLOBAL_TIMEOUT
@@ -464,7 +493,38 @@ def run_multi_round_sat_only_recovery(
         eff_timeout = min(timeout, g_timeout) if timeout is not None else g_timeout
 
     solver_started = perf_counter()
-    result = model.solve(time_limit=eff_timeout)
+    try:
+        result = model.solve(time_limit=eff_timeout)
+    except Exception:
+        solver_seconds = perf_counter() - solver_started
+        attempt = MultiRoundAttempt(
+            candidate_position=0,
+            round_keys=(),
+            solver_status="solver_exception",
+            satisfiable=False,
+            timed_out=False,
+            solver_seconds=solver_seconds,
+            verification_seconds=0.0,
+            recovered_master_key=None,
+            known_pairs_verified=False,
+            independent_pairs_verified=False,
+        )
+        return MultiRoundRecoveryResult(
+            strategy=strategy,
+            status=STATUS_SOLVER_EXCEPTION,
+            success=False,
+            rounds=rounds,
+            assumed_round_keys=0,
+            residual_rounds=rounds,
+            candidates_attempted=0,
+            solver_calls=1,
+            attempts=(attempt,),
+            recovered_master_key=None,
+            solver_seconds=solver_seconds,
+            rebuilding_seconds=0.0,
+            verification_seconds=0.0,
+            total_seconds=perf_counter() - started,
+        )
     solver_seconds = perf_counter() - solver_started
 
     recovered: MasterKey | None = None

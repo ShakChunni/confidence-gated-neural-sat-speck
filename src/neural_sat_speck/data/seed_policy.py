@@ -252,7 +252,7 @@ def validate_seed_for_role(seed: int, role: SeedRole | str) -> None:
             )
         if seed == PHASE11_BEAM_ADJUDICATION_SEED:
             raise ValueError(
-                f"Seed {seed} is RETIRED from Phase 11 beam adjudication (permanently opened development cohort) "
+                f"Seed {seed} is RETIRED from Phase 11 beam adjudication (406737, permanently opened development cohort) "
                 "and cannot serve as prospective validation."
             )
         if seed in HISTORICAL_SEEDS or (seed in PROTECTED_RESEARCH_SEEDS and seed != PHASE10_PROSPECTIVE_SEED):

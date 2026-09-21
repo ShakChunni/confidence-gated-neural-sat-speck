@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import math
 import sys
 from pathlib import Path
+
+import pytest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 if str(REPOSITORY_ROOT / "scripts") not in sys.path:
@@ -396,3 +399,84 @@ def test_even_n_median_correctness() -> None:
     screened_stats = res["method_metrics"]["hierarchical_neural_screened"]["wall_seconds"]
     assert screened_stats["median"] == statistics.median(times)
     assert screened_stats["median"] == 25.0
+
+
+def test_newcombe_method_10_edge_cases() -> None:
+    """Newcombe Method 10 paired score CI must correctly handle boundary edge cases."""
+    from neural_sat_speck.evaluation.metrics import paired_risk_difference_newcombe
+
+    # 1. Zero discordant pairs (identical outcomes across all instances, some successes)
+    diff, low, high = paired_risk_difference_newcombe(n11=20, n10=0, n01=0, n00=20, total=40, confidence=0.95)
+    assert diff == 0.0
+    assert low < 0.0
+    assert high > 0.0
+    assert abs(low + high) < 1e-6  # Symmetric around 0
+
+    # 2. All concordant successes (n11=50, all others 0)
+    diff, low, high = paired_risk_difference_newcombe(n11=50, n10=0, n01=0, n00=0, total=50, confidence=0.95)
+    assert diff == 0.0
+    assert low < 0.0
+    assert high > 0.0
+    assert abs(low + high) < 1e-6
+
+    # 3. All concordant failures (n00=50, all others 0)
+    diff, low, high = paired_risk_difference_newcombe(n11=0, n10=0, n01=0, n00=50, total=50, confidence=0.95)
+    assert diff == 0.0
+    assert low < 0.0
+    assert high > 0.0
+    assert abs(low + high) < 1e-6
+
+    # 4. Asymmetric discordance (e.g. n10=15, n01=1, N=64)
+    diff, low, high = paired_risk_difference_newcombe(n11=10, n10=15, n01=1, n00=38, total=64, confidence=0.95)
+    expected_diff = (15 - 1) / 64
+    assert abs(diff - expected_diff) < 1e-6
+    assert low > 0.0  # Significantly positive
+    assert high > diff
+    assert low < diff
+
+
+def test_analyzer_prospective_validation_gate(tmp_path: Path) -> None:
+    """Analyzer main() must fail closed in prospective mode on unapproved manifest or parameter drift."""
+    from scripts.analyze_seven_round_results import main as analyzer_main
+
+    # Create dummy results file
+    results_file = tmp_path / "results.json"
+    dummy_data = {
+        "metadata": {
+            "prospective": True,
+            "dataset_sha256": "fake_dataset_hash",
+            "m1": 32,
+            "m2": 32,
+            "candidate_budget": 1024,
+            "solver_timeout": 10.0,
+            "global_timeout": 300.0,
+            "threads": 1,
+            "device": "mps",
+        },
+        "records_by_method": {
+            m: [_build_synthetic_record(f"inst_{i}", success=False, wall_seconds=1.0) for i in range(128)]
+            for m in [
+                "hierarchical_neural_screened",
+                "hierarchical_neural_full",
+                "hierarchical_neural_classical",
+                "random_sat",
+                "sat_only_4obs",
+                "sat_only_all_observations",
+            ]
+        },
+    }
+    results_file.write_text(json.dumps(dummy_data), encoding="utf-8")
+
+    # Calling with --prospective against a proposed (unauthorized) manifest must raise SystemExit
+    manifest_path = Path("docs/seven_round_protocol_manifest.json")
+    proposed_manifest_path = tmp_path / "proposed_manifest.json"
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    data["protocol_status"] = "PROPOSED_NOT_AUTHORIZED"
+    proposed_manifest_path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="(ManifestValidationError|Refusing prospective analysis|PROPOSED_NOT_AUTHORIZED)"):
+        analyzer_main([
+            str(results_file),
+            "--prospective",
+            "--protocol-manifest", str(proposed_manifest_path),
+        ])

@@ -28,8 +28,8 @@ def test_authoritative_manifest_passes_validation() -> None:
     assert MANIFEST_PATH.exists()
     data = validate_protocol_manifest_file(MANIFEST_PATH)
     assert data["manifest_version"] == "1.0.0"
-    assert data["protocol_status"] == "PROPOSED_NOT_AUTHORIZED"
-    assert data["seed_governance"]["protected_dataset_seed"] is None
+    assert data["protocol_status"] == "FROZEN_AUTHORIZED"
+    assert data["seed_governance"]["protected_dataset_seed"] == 669981
     assert data["search_and_resource_envelope"]["candidate_budget_max_tuples"] == 1024
     assert len(data["comparator_methods"]) == 6
     assert len(data["failure_taxonomy"]) == 10
@@ -39,7 +39,10 @@ def test_authoritative_manifest_passes_validation() -> None:
 def test_seed_governance_rejection() -> None:
     """Assigning a protected seed before authorization must fail validation."""
     data = _load_manifest_copy()
-    data["seed_governance"]["protected_dataset_seed"] = 400001
+    data["protocol_status"] = "PROPOSED_NOT_AUTHORIZED"
+    data["seed_governance"]["protected_dataset_seed"] = 888888
+    data["seed_governance"].pop("authorization", None)
+    data["protected_dataset"]["seed"] = None
     with pytest.raises(ManifestValidationError, match="Protected seed must be null"):
         validate_protocol_manifest(data, verify_file_hashes=False)
 
@@ -180,7 +183,7 @@ def test_prospective_execution_refused_on_proposed_status() -> None:
     )
 
     data = _load_manifest_copy()
-    assert data["protocol_status"] == "PROPOSED_NOT_AUTHORIZED"
+    data["protocol_status"] = "PROPOSED_NOT_AUTHORIZED"
     with pytest.raises(ManifestValidationError, match="Prospective execution refused.*PROPOSED_NOT_AUTHORIZED"):
         validate_manifest_for_prospective_execution(data)
 
@@ -199,24 +202,29 @@ def test_prospective_execution_refused_on_null_seed() -> None:
 
 
 def test_prospective_execution_accepted_on_frozen_authorized() -> None:
-    """Prospective validation passes when status is FROZEN_AUTHORIZED with full authorization."""
+    """Prospective validation passes when status is FROZEN_AUTHORIZED with full D-031 authorization."""
     from neural_sat_speck.protocol.manifest_validator import (
         validate_manifest_for_prospective_execution,
     )
 
+    synthetic_seed = 888888
     data = _load_manifest_copy()
     data["protocol_status"] = "FROZEN_AUTHORIZED"
-    data["seed_governance"]["protected_dataset_seed"] = 400001
+    data["governing_decisions"].append("D-031")
+    data["seed_governance"]["protected_dataset_seed"] = synthetic_seed
     data["seed_governance"]["authorization"] = {
         "authorized_by": "COMP6002 Project Lead",
-        "authorization_decision": "D-030",
-        "authorized_at": "2026-09-19T14:00:00Z",
+        "authorization_decision": "D-031",
+        "authorized_at": "2026-09-21T10:00:00Z",
+        "authorization_scope": "PROSPECTIVE_EVALUATION",
+        "protocol_id": "speck32_64_seven_round_comparative_protocol_v1",
+        "sample_size_n": 128,
     }
     data["protected_dataset"] = {
         "dataset_path": "datasets/phase11_prospective/prospective_evaluation.json",
         "dataset_id": "speck32_64_attack_phase11_prospective_r7",
         "sha256": "a" * 64,
-        "seed": 400001,
+        "seed": synthetic_seed,
         "sample_size_n": 128,
         "role": "PROSPECTIVE_EVALUATION",
         "rounds": 7,
@@ -226,23 +234,61 @@ def test_prospective_execution_accepted_on_frozen_authorized() -> None:
     }
     validated = validate_manifest_for_prospective_execution(data)
     assert validated["protocol_status"] == "FROZEN_AUTHORIZED"
-    assert validated["seed_governance"]["protected_dataset_seed"] == 400001
+    assert validated["seed_governance"]["protected_dataset_seed"] == synthetic_seed
 
 
-def test_retired_seed_rejection_in_prospective() -> None:
-    """Assigning an opened or retired seed (e.g. 300001) in FROZEN_AUTHORIZED must be rejected."""
+def test_d030_rejected_for_prospective_authorization() -> None:
+    """Attempting to use development-only decision D-030 for prospective authorization must fail."""
     from neural_sat_speck.protocol.manifest_validator import (
         validate_manifest_for_prospective_execution,
     )
 
-    for retired_seed in (98001, 97001, 99001, 101001, 201001, 300001, 406737):
+    synthetic_seed = 888888
+    data = _load_manifest_copy()
+    data["protocol_status"] = "FROZEN_AUTHORIZED"
+    data["seed_governance"]["protected_dataset_seed"] = synthetic_seed
+    data["seed_governance"]["authorization"] = {
+        "authorized_by": "COMP6002 Project Lead",
+        "authorization_decision": "D-030",
+        "authorized_at": "2026-09-19T14:00:00Z",
+        "authorization_scope": "PROSPECTIVE_EVALUATION",
+        "protocol_id": "speck32_64_seven_round_comparative_protocol_v1",
+        "sample_size_n": 128,
+    }
+    data["protected_dataset"] = {
+        "dataset_path": "datasets/phase11_prospective/prospective_evaluation.json",
+        "dataset_id": "speck32_64_attack_phase11_prospective_r7",
+        "sha256": "a" * 64,
+        "seed": synthetic_seed,
+        "sample_size_n": 128,
+        "role": "PROSPECTIVE_EVALUATION",
+        "rounds": 7,
+        "ranking_differential_pairs": 64,
+        "generation_config_hash": "b" * 64,
+        "schema": "neural_sat_speck.attack_shard.v1",
+    }
+    with pytest.raises(ManifestValidationError, match="development-only or prior decision"):
+        validate_manifest_for_prospective_execution(data)
+
+
+def test_retired_seed_rejection_in_prospective() -> None:
+    """Assigning an opened, development, or retired seed in FROZEN_AUTHORIZED must be rejected."""
+    from neural_sat_speck.protocol.manifest_validator import (
+        validate_manifest_for_prospective_execution,
+    )
+
+    for retired_seed in (98001, 97001, 99001, 100001, 101001, 200001, 201001, 300001, 400001, 400002, 406737):
         data = _load_manifest_copy()
         data["protocol_status"] = "FROZEN_AUTHORIZED"
+        data["governing_decisions"].append("D-031")
         data["seed_governance"]["protected_dataset_seed"] = retired_seed
         data["seed_governance"]["authorization"] = {
             "authorized_by": "COMP6002 Project Lead",
-            "authorization_decision": "D-030",
-            "authorized_at": "2026-09-19T14:00:00Z",
+            "authorization_decision": "D-031",
+            "authorized_at": "2026-09-21T10:00:00Z",
+            "authorization_scope": "PROSPECTIVE_EVALUATION",
+            "protocol_id": "speck32_64_seven_round_comparative_protocol_v1",
+            "sample_size_n": 128,
         }
         data["protected_dataset"] = {
             "dataset_path": "datasets/phase11_prospective/prospective_evaluation.json",
@@ -256,7 +302,7 @@ def test_retired_seed_rejection_in_prospective() -> None:
             "generation_config_hash": "b" * 64,
             "schema": "neural_sat_speck.attack_shard.v1",
         }
-        with pytest.raises(ManifestValidationError, match="RETIRED_OR_OPENED_SEEDS"):
+        with pytest.raises(ManifestValidationError, match="(RETIRED_OR_OPENED_SEEDS|seed policy)"):
             validate_manifest_for_prospective_execution(data)
 
 
@@ -395,3 +441,22 @@ def test_seed_policy_governance_for_406737() -> None:
 
     # Allowed for its specific development role
     validate_seed_for_role(406737, SeedRole.PHASE11_BEAM_ADJUDICATION)
+
+
+def test_critical_code_mutation_invalidates_manifest() -> None:
+    """Tampering with or mutating any execution-critical code file hash must invalidate the manifest."""
+    from neural_sat_speck.protocol.manifest_validator import (
+        EXECUTION_CRITICAL_CODE_PATHS,
+        ManifestValidationError,
+        validate_protocol_manifest,
+    )
+
+    data = _load_manifest_copy()
+
+    # Tamper with each critical code path hash individually
+    for key in EXECUTION_CRITICAL_CODE_PATHS:
+        bad_data = copy.deepcopy(data)
+        if key in bad_data.get("code_manifest", {}):
+            bad_data["code_manifest"][key]["sha256"] = "0" * 64
+            with pytest.raises(ManifestValidationError, match=f"Hash mismatch for code entry {key}"):
+                validate_protocol_manifest(bad_data, verify_file_hashes=True)

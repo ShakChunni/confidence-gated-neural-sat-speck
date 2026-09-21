@@ -119,6 +119,8 @@ def _validate_timeout(timeout: object, name: str = "solver_timeout") -> float | 
         return None
     if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
         raise TypeError(f"{name} must be a number or None")
+    if name == "solver_timeout" and timeout <= 0:
+        raise ValueError(f"{name} must be positive")
     if timeout < 0:
         raise ValueError(f"{name} must be non-negative")
     return float(timeout)
@@ -275,6 +277,8 @@ class HierarchicalAttackResult:
     failure_cause: str | None
     attempted_paths: tuple[tuple[int, ...], ...] = ()
     rebuilding_seconds: float = 0.0
+    online_seconds: float = 0.0
+    diagnostics_seconds: float = 0.0
 
     def __post_init__(self) -> None:
         """Enforce the result's accounting and outcome invariants."""
@@ -300,6 +304,8 @@ class HierarchicalAttackResult:
         _validate_seconds(self.rebuilding_seconds, "rebuilding_seconds")
         _validate_seconds(self.verification_seconds, "verification_seconds")
         _validate_seconds(self.total_seconds, "total_seconds")
+        _validate_seconds(self.online_seconds, "online_seconds")
+        _validate_seconds(self.diagnostics_seconds, "diagnostics_seconds")
         if not isinstance(self.attempted_paths, tuple):
             raise TypeError("attempted_paths must be a tuple of path tuples")
         if self.failure_cause not in (
@@ -339,8 +345,12 @@ class HierarchicalAttackResult:
                 "solver": self.solver_seconds,
                 "rebuilding": self.rebuilding_seconds,
                 "verification": self.verification_seconds,
+                "diagnostics": self.diagnostics_seconds,
+                "online": self.online_seconds,
                 "total": self.total_seconds,
             },
+            "online_seconds": self.online_seconds,
+            "diagnostics_seconds": self.diagnostics_seconds,
         }
 
 
@@ -545,6 +555,8 @@ def run_hierarchical_multi_round_attack(
             failure_cause=FAILURE_CAUSE_GLOBAL_TIMEOUT,
             attempted_paths=(),
             rebuilding_seconds=0.0,
+            online_seconds=0.0,
+            diagnostics_seconds=0.0,
         )
     deadline = (started + g_timeout) if g_timeout is not None else None
     ranking_seconds = 0.0
@@ -720,7 +732,10 @@ def run_hierarchical_multi_round_attack(
         success = False
         status = STATUS_NO_RANKED_CANDIDATES
 
+    online_seconds = time.perf_counter() - started
+
     # Post-search diagnostics: the only ground-truth read in this module.
+    t_diag_start = time.perf_counter()
     stage_diagnostics, failure_cause = _diagnose_stages(
         instance=instance,
         rounds=rounds,
@@ -733,6 +748,8 @@ def run_hierarchical_multi_round_attack(
         success=success,
         failure_cause=FAILURE_CAUSE_GLOBAL_TIMEOUT if timed_out_globally else None,
     )
+    diagnostics_seconds = time.perf_counter() - t_diag_start
+    total_seconds = time.perf_counter() - started
 
     return HierarchicalAttackResult(
         strategy=HIERARCHICAL_ATTACK_STRATEGY,
@@ -744,10 +761,12 @@ def run_hierarchical_multi_round_attack(
         ranking_seconds=ranking_seconds,
         solver_seconds=solver_seconds,
         verification_seconds=verification_seconds,
-        total_seconds=time.perf_counter() - started,
+        total_seconds=total_seconds,
         failure_cause=failure_cause,
         attempted_paths=attempted_tuples,
         rebuilding_seconds=rebuilding_seconds,
+        online_seconds=online_seconds,
+        diagnostics_seconds=diagnostics_seconds,
     )
 
 

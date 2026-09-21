@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import platform
 import statistics
@@ -86,11 +87,13 @@ from neural_sat_speck.neural.numpy_inference import (  # noqa: E402
     NumpyRankerInference,
 )
 from neural_sat_speck.protocol.manifest_validator import (  # noqa: E402
+    EXECUTION_CRITICAL_CODE_PATHS,
     ManifestValidationError,
     classify_attack_outcome,
     validate_manifest_for_development_execution,
     validate_manifest_for_prospective_execution,
     verify_attack_dataset_integrity,
+    verify_record_integrity,
 )
 from neural_sat_speck.sat.isolation import IsolatedSolverFactory  # noqa: E402
 
@@ -118,7 +121,7 @@ DEFAULT_CLASSICAL_PATH = (
     REPOSITORY_ROOT / "models" / "classical_dist_r5_sparse_v2.json"
 )
 
-COMPARATOR_METHODS = (
+CANONICAL_METHOD_ORDER = (
     "hierarchical_neural_screened",
     "hierarchical_neural_full",
     "hierarchical_neural_classical",
@@ -126,6 +129,15 @@ COMPARATOR_METHODS = (
     "sat_only_4obs",
     "sat_only_all_observations",
 )
+
+COMPARATOR_METHODS = CANONICAL_METHOD_ORDER
+
+
+def get_counterbalanced_method_order(instance_index: int) -> list[str]:
+    """Deterministic Latin-square-style cyclic rotation over all six canonical methods."""
+    n = len(CANONICAL_METHOD_ORDER)
+    shift = instance_index % n
+    return [CANONICAL_METHOD_ORDER[(shift + j) % n] for j in range(n)]
 
 METHOD_ALIASES = {
     "hierarchical_classical": "hierarchical_neural_classical",
@@ -166,6 +178,12 @@ REQUIRED_METADATA_FIELDS = {
     "candidate_budget",
     "solver_timeout",
     "global_timeout",
+    "threads",
+    "torch_num_threads",
+    "start",
+    "instances",
+    "method_order_policy",
+    "code_provenance",
     "device",
     "methods",
 }
@@ -183,7 +201,10 @@ REQUIRED_RECORD_FIELDS = {
     "recovered_master_key",
     "timing_seconds",
     "wall_seconds",
+    "online_wall_seconds",
+    "total_wall_seconds",
     "method_wall_seconds",
+    "diagnostics_seconds",
     "cutoff_seconds",
     "cutoff_overshoot_seconds",
     "preprocessing_seconds",
@@ -197,6 +218,7 @@ REQUIRED_RECORD_FIELDS = {
     "failure_domain",
     "late_verified_recovery",
 }
+
 
 
 def _sha256_file(path: Path) -> str:
@@ -287,11 +309,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Candidate batch size for neural ranking",
     )
     parser.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="Number of solver threads (default: 1)",
+    )
+    parser.add_argument(
         "--device",
         type=str,
         default="mps",
         help="PyTorch device (e.g. mps, cpu, cuda)",
     )
+
     parser.add_argument(
         "--output",
         type=Path,
@@ -487,7 +516,9 @@ def compute_method_summary(
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
-    # Strict Pre-Execution Manifest Gate and Dataset Integrity Check
+    # Authorization is the first prospective precondition.  Reject an
+    # unfrozen manifest before inspecting local hardware so that a machine's
+    # capabilities can never mask the governing stop boundary.
     manifest_data = None
     if args.prospective:
         try:
@@ -496,6 +527,51 @@ def main(argv: list[str] | None = None) -> int:
                 cli_args=args,
                 base_dir=REPOSITORY_ROOT,
             )
+        except ManifestValidationError as err:
+            raise SystemExit(f"PROSPECTIVE EXECUTION REFUSED: {err}") from err
+
+    if args.prospective:
+        if args.device != "mps":
+            raise SystemExit(
+                f"Error: Prospective execution requires --device mps; got {args.device!r}."
+            )
+        if not torch.backends.mps.is_available():
+            raise SystemExit(
+                "Error: Prospective execution requires MPS backend, but torch.backends.mps.is_available() is False."
+            )
+        if args.start != 0:
+            raise SystemExit("Error: Prospective execution requires --start 0.")
+        if args.instances != 128:
+            raise SystemExit("Error: Prospective execution requires --instances 128.")
+        if args.threads != 1:
+            raise SystemExit(
+                f"Error: Prospective execution requires --threads 1; got {args.threads}."
+            )
+        if args.batch_size != 1024:
+            raise SystemExit(
+                f"Error: Prospective execution requires --batch-size 1024; got {args.batch_size}."
+            )
+        if not math.isclose(args.timeout, 10.0, abs_tol=1e-4):
+            raise SystemExit(
+                f"Error: Prospective execution requires --timeout 10.0; got {args.timeout}."
+            )
+        if not math.isclose(args.global_timeout, 300.0, abs_tol=1e-4):
+            raise SystemExit(
+                f"Error: Prospective execution requires --global-timeout 300.0; got {args.global_timeout}."
+            )
+        if args.methods is not None and set(args.methods) != set(CANONICAL_METHOD_ORDER):
+            raise SystemExit(
+                f"Error: Fresh prospective launch requires all {len(CANONICAL_METHOD_ORDER)} canonical methods; "
+                f"got {args.methods}."
+            )
+        if args.m1 != 32 or args.m2 != 32:
+            raise SystemExit(
+                f"Error: Prospective execution requires M1=32, M2=32; got M1={args.m1}, M2={args.m2}."
+            )
+
+    # Strict Pre-Execution Manifest Gate and Dataset Integrity Check
+    if args.prospective:
+        try:
             dataset_info = verify_attack_dataset_integrity(
                 args.dataset,
                 manifest_data=manifest_data,
@@ -532,15 +608,27 @@ def main(argv: list[str] | None = None) -> int:
             is_prospective=False,
         )
 
-    # Determine execution device
-    device_obj = torch.device(
-        args.device
-        if (
-            (args.device == "mps" and torch.backends.mps.is_available())
-            or (args.device == "cuda" and torch.cuda.is_available())
-        )
-        else "cpu"
-    )
+    # Determine execution device and thread policies
+    if args.device == "mps":
+        if not torch.backends.mps.is_available():
+            if args.prospective:
+                raise SystemExit(
+                    "Error: Prospective evaluation requires MPS device, but torch.backends.mps.is_available() is False."
+                )
+            print("[WARNING] MPS requested but unavailable; falling back to CPU for development/testing.")
+            device_obj = torch.device("cpu")
+        else:
+            device_obj = torch.device("mps")
+    elif args.device == "cuda":
+        if not torch.cuda.is_available():
+            raise SystemExit("Error: CUDA requested but unavailable.")
+        device_obj = torch.device("cuda")
+    else:
+        if args.prospective:
+            raise SystemExit(f"Error: Prospective execution requires --device mps; got {args.device!r}.")
+        device_obj = torch.device(args.device)
+
+    torch.set_num_threads(1)
 
     # Output file path
     output_path = args.output
@@ -565,6 +653,50 @@ def main(argv: list[str] | None = None) -> int:
         if args.candidate_budget is not None
         else (args.m1 * args.m2)
     )
+
+    if args.prospective:
+        if args.start != 0:
+            raise SystemExit("Error: Prospective execution requires --start 0.")
+        if args.instances != 128:
+            raise SystemExit("Error: Prospective execution requires --instances 128.")
+        if len(shard.instances) != 128:
+            raise SystemExit(
+                f"Error: Prospective dataset must contain exactly 128 instances; found {len(shard.instances)}."
+            )
+        if args.methods is not None and set(args.methods) != set(CANONICAL_METHOD_ORDER):
+            raise SystemExit(
+                f"Error: Fresh prospective launch requires all {len(CANONICAL_METHOD_ORDER)} canonical methods; "
+                f"got {args.methods}."
+            )
+        if args.m1 != 32 or args.m2 != 32 or effective_candidate_budget != 1024:
+            raise SystemExit(
+                f"Error: Prospective execution requires M1=32, M2=32, candidate_budget=1024; "
+                f"got M1={args.m1}, M2={args.m2}, budget={effective_candidate_budget}."
+            )
+        if args.batch_size != 1024:
+            raise SystemExit(
+                f"Error: Prospective execution requires --batch-size 1024; got {args.batch_size}."
+            )
+        if not math.isclose(args.timeout, 10.0, abs_tol=1e-4):
+            raise SystemExit(
+                f"Error: Prospective execution requires --timeout 10.0; got {args.timeout}."
+            )
+        if not math.isclose(args.global_timeout, 300.0, abs_tol=1e-4):
+            raise SystemExit(
+                f"Error: Prospective execution requires --global-timeout 300.0; got {args.global_timeout}."
+            )
+        if args.threads != 1:
+            raise SystemExit(
+                f"Error: Prospective execution requires --threads 1; got {args.threads}."
+            )
+        if args.device != "mps":
+            raise SystemExit(
+                f"Error: Prospective execution requires --device mps; got {args.device!r}."
+            )
+        if not torch.backends.mps.is_available():
+            raise SystemExit(
+                "Error: Prospective execution requires MPS backend, but torch.backends.mps.is_available() is False."
+            )
 
     # Load existing results if resuming (fail-closed on error or mismatch)
     records_by_method: dict[str, list[dict[str, Any]]] = {}
@@ -652,7 +784,13 @@ def main(argv: list[str] | None = None) -> int:
             ("candidate_budget", effective_candidate_budget),
             ("solver_timeout", args.timeout),
             ("global_timeout", args.global_timeout),
+            ("threads", args.threads),
+            ("torch_num_threads", 1),
+            ("device", str(device_obj)),
+            ("start", args.start),
         ]
+        if args.prospective:
+            config_checks.append(("instances", 128))
         for key, expected in config_checks:
             actual = loaded_metadata.get(key)
             if actual != expected:
@@ -661,6 +799,18 @@ def main(argv: list[str] | None = None) -> int:
                     f"expected {expected!r}, found {actual!r}. "
                     "Refusing to resume into an incompatible run."
                 )
+
+        # Code drift check during resume
+        loaded_code_prov = loaded_metadata.get("code_provenance", {})
+        for code_key, expected_hash in loaded_code_prov.items():
+            rel_path = EXECUTION_CRITICAL_CODE_PATHS.get(code_key)
+            if rel_path:
+                actual_hash = _sha256_file(REPOSITORY_ROOT / rel_path)
+                if actual_hash != expected_hash:
+                    raise SystemExit(
+                        f"Error: Code drift detected during resume for '{code_key}' ({rel_path}): "
+                        f"expected {expected_hash}, found {actual_hash}. Refusing to resume."
+                    )
 
         records_by_method_raw = loaded.get("records_by_method")
         if not isinstance(records_by_method_raw, dict):
@@ -706,6 +856,28 @@ def main(argv: list[str] | None = None) -> int:
                     )
                 seen_instances.add(inst_id)
 
+                inst_idx = rec.get("instance_index")
+                if inst_idx is None or not (args.start <= inst_idx < args.start + args.instances):
+                    raise SystemExit(
+                        f"Error: record instance_index {inst_idx} outside selected cohort "
+                        f"[{args.start}..{args.start + args.instances - 1}] in method {m_name}."
+                    )
+                try:
+                    verify_record_integrity(rec)
+                except ValueError as err:
+                    raise SystemExit(
+                        f"Error: record integrity verification failed for instance {rec.get('instance_id')!r} "
+                        f"in method {m_name!r}: {err}"
+                    )
+                expected_overshoot = round(
+                    max(0.0, float(rec["method_wall_seconds"]) - float(rec["cutoff_seconds"])), 6
+                )
+                if not math.isclose(float(rec.get("cutoff_overshoot_seconds", 0.0)), expected_overshoot, abs_tol=1e-5):
+                    raise SystemExit(
+                        f"Error: cutoff overshoot arithmetic mismatch for instance {rec.get('instance_id')!r} "
+                        f"in method {m_name!r}: expected {expected_overshoot}, found {rec.get('cutoff_overshoot_seconds')}"
+                    )
+
         # Preserve every method bucket from previous run
         records_by_method = {
             m: list(records_by_method_raw.get(m, [])) for m in records_by_method_raw
@@ -714,6 +886,11 @@ def main(argv: list[str] | None = None) -> int:
             records_by_method.setdefault(m, [])
 
         metadata = dict(loaded_metadata)
+        if not args.prospective:
+            metadata["instances"] = max(loaded_metadata.get("instances", 0), args.instances)
+        if "original_git_commit" not in metadata:
+            metadata["original_git_commit"] = loaded_metadata.get("git_commit", _get_git_commit())
+        metadata["git_commit"] = metadata["original_git_commit"]
         resume_events = list(metadata.get("resume_events", []))
         resume_event = {
             "resumed_from": str(output_path),
@@ -728,7 +905,6 @@ def main(argv: list[str] | None = None) -> int:
         resume_events.append(resume_event)
         metadata["resume_events"] = resume_events
         metadata["resume_provenance"] = resume_event
-        metadata["git_commit"] = _get_git_commit()
         metadata["command_line"] = sys.argv
 
         print(
@@ -738,16 +914,19 @@ def main(argv: list[str] | None = None) -> int:
         )
     else:
         if args.methods is None:
-            args.methods = list(COMPARATOR_METHODS)
-        elif args.prospective and set(args.methods) != set(COMPARATOR_METHODS):
+            args.methods = list(CANONICAL_METHOD_ORDER)
+        elif args.prospective and set(args.methods) != set(CANONICAL_METHOD_ORDER):
             raise SystemExit(
-                f"Error: fresh prospective launch requires all {len(COMPARATOR_METHODS)} methods; "
+                f"Error: fresh prospective launch requires all {len(CANONICAL_METHOD_ORDER)} methods; "
                 f"got {args.methods}. Resume mode (--resume) is required to run a subset."
             )
 
         metadata: dict[str, Any] = {
             "schema_version": SCHEMA_VERSION,
             "protocol_manifest_path": str(args.protocol_manifest) if args.protocol_manifest else None,
+            "protocol_manifest_sha256": (
+                _sha256_file(args.protocol_manifest) if args.protocol_manifest and args.protocol_manifest.exists() else None
+            ),
             "prospective": args.prospective,
             "protocol_status": manifest_data.get("protocol_status") if manifest_data else "UNSPECIFIED_DEVELOPMENT",
             "dataset_path": str(args.dataset),
@@ -791,8 +970,14 @@ def main(argv: list[str] | None = None) -> int:
             "candidate_budget": effective_candidate_budget,
             "solver_timeout": args.timeout,
             "global_timeout": args.global_timeout,
+            "threads": args.threads,
+            "torch_num_threads": 1,
+            "start": args.start,
+            "instances": args.instances,
+            "method_order_policy": "cyclic_latin_square_canonical_v1",
             "device": str(device_obj),
             "methods": args.methods,
+            "original_git_commit": _get_git_commit(),
             "git_commit": _get_git_commit(),
             "command_line": sys.argv,
             "environment_provenance": {
@@ -803,12 +988,13 @@ def main(argv: list[str] | None = None) -> int:
                 "pycryptosat_version": getattr(pycryptosat, "__version__", "unknown"),
             },
             "code_provenance": {
-                "runner_script": _sha256_file(Path(__file__).resolve()),
-                "manifest_validator": _sha256_file(REPOSITORY_ROOT / "src/neural_sat_speck/protocol/manifest_validator.py"),
+                k: _sha256_file(REPOSITORY_ROOT / rel)
+                for k, rel in EXECUTION_CRITICAL_CODE_PATHS.items()
             },
             "resume_provenance": None,
             "resume_events": [],
         }
+
 
     for m in args.methods:
         records_by_method.setdefault(m, [])
@@ -861,7 +1047,10 @@ def main(argv: list[str] | None = None) -> int:
 
         print(f"--- Instance [{global_idx:02d}] {instance_id} ---")
 
-        for method in args.methods:
+        scheduled_methods = get_counterbalanced_method_order(global_idx)
+        instance_methods = [m for m in scheduled_methods if m in args.methods]
+
+        for eval_idx, method in enumerate(instance_methods):
             # Check if already recorded in resume mode
             if any(
                 r.get("instance_id") == instance_id
@@ -876,454 +1065,432 @@ def main(argv: list[str] | None = None) -> int:
             method_deadline = method_started + cutoff_seconds
 
             rec: dict[str, Any]
+            diagnostics_seconds = 0.0
+            online_seconds = 0.0
+            preprocessing_seconds = 0.0
+            ranking_seconds = 0.0
+            solver_seconds = 0.0
+            rebuilding_seconds = 0.0
+            verification_seconds = 0.0
 
-            if method == "hierarchical_neural_screened":
-                t_prep_start = time.perf_counter()
-                stages = (
-                    HierarchicalStage(
-                        round_index=ROUNDS - 1,
-                        model=stage1_pyt,
-                        beam_width=args.m1,
-                    ),
-                    HierarchicalStage(
-                        round_index=ROUNDS - 2,
-                        model=stage2_pyt,
-                        beam_width=args.m2,
-                        screened=True,
-                        screen_pairs=16,
-                        screen_top_k=512,
-                    ),
-                )
-                preprocessing_seconds = time.perf_counter() - t_prep_start
-                remaining = max(0.0, method_deadline - time.perf_counter())
+            try:
+                if method == "hierarchical_neural_screened":
+                    t_prep_start = time.perf_counter()
+                    stages = (
+                        HierarchicalStage(
+                            round_index=ROUNDS - 1,
+                            model=stage1_pyt,
+                            beam_width=args.m1,
+                        ),
+                        HierarchicalStage(
+                            round_index=ROUNDS - 2,
+                            model=stage2_pyt,
+                            beam_width=args.m2,
+                            screened=True,
+                            screen_pairs=16,
+                            screen_top_k=512,
+                        ),
+                    )
+                    preprocessing_seconds = time.perf_counter() - t_prep_start
+                    remaining = max(0.0, method_deadline - time.perf_counter())
 
-                if remaining <= 0.0:
-                    rec = {
-                        "strategy": "hierarchical_multi_round_beam",
-                        "success": False,
-                        "status": "global_timeout",
-                        "failure_cause": "global_timeout",
-                        "stages": [],
-                        "candidates_attempted": 0,
-                        "attempted_paths": [],
-                        "recovered_master_key": None,
-                        "timing_seconds": {
-                            "ranking": 0.0,
-                            "solver": 0.0,
-                            "verification": 0.0,
-                            "total": 0.0,
-                        },
-                        "wall_seconds": 0.0,
-                        "preprocessing_seconds": round(preprocessing_seconds, 6),
-                        "ranking_screening_sorting_seconds": 0.0,
-                        "solver_seconds": 0.0,
-                        "rebuilding_seconds": 0.0,
-                        "verification_seconds": 0.0,
-                    }
-                else:
-                    eff_timeout = min(args.timeout, remaining)
-                    t_run_start = time.perf_counter()
-                    res = run_hierarchical_multi_round_attack(
-                        instance,
+                    if remaining <= 0.0:
+                        rec = {
+                            "strategy": "hierarchical_multi_round_beam",
+                            "success": False,
+                            "status": "global_timeout",
+                            "failure_cause": "global_timeout",
+                            "stages": [],
+                            "candidates_attempted": 0,
+                            "attempted_paths": [],
+                            "recovered_master_key": None,
+                            "timing_seconds": {
+                                "ranking": 0.0,
+                                "solver": 0.0,
+                                "rebuilding": 0.0,
+                                "verification": 0.0,
+                                "total": 0.0,
+                            },
+                        }
+                    else:
+                        eff_timeout = min(args.timeout, remaining)
+                        res = run_hierarchical_multi_round_attack(
+                            instance,
+                            rounds=ROUNDS,
+                            stages=stages,
+                            known_pairs=known_4,
+                            verification_pairs=verification,
+                            solver_timeout=eff_timeout,
+                            global_timeout=remaining,
+                            candidate_batch_size=args.batch_size,
+                            device=device_obj,
+                        )
+                        online_seconds = res.online_seconds
+                        diagnostics_seconds = res.diagnostics_seconds
+                        ranking_seconds = res.ranking_seconds
+                        solver_seconds = res.solver_seconds
+                        rebuilding_seconds = res.rebuilding_seconds
+                        verification_seconds = res.verification_seconds
+                        rec = res.to_dict()
+
+                elif method == "hierarchical_neural_full":
+                    t_prep_start = time.perf_counter()
+                    stages = (
+                        HierarchicalStage(
+                            round_index=ROUNDS - 1,
+                            model=stage1_pyt,
+                            beam_width=args.m1,
+                        ),
+                        HierarchicalStage(
+                            round_index=ROUNDS - 2,
+                            model=stage2_pyt,
+                            beam_width=args.m2,
+                            screened=False,
+                        ),
+                    )
+                    preprocessing_seconds = time.perf_counter() - t_prep_start
+                    remaining = max(0.0, method_deadline - time.perf_counter())
+
+                    if remaining <= 0.0:
+                        rec = {
+                            "strategy": "hierarchical_multi_round_beam",
+                            "success": False,
+                            "status": "global_timeout",
+                            "failure_cause": "global_timeout",
+                            "stages": [],
+                            "candidates_attempted": 0,
+                            "attempted_paths": [],
+                            "recovered_master_key": None,
+                            "timing_seconds": {
+                                "ranking": 0.0,
+                                "solver": 0.0,
+                                "rebuilding": 0.0,
+                                "verification": 0.0,
+                                "total": 0.0,
+                            },
+                        }
+                    else:
+                        eff_timeout = min(args.timeout, remaining)
+                        res = run_hierarchical_multi_round_attack(
+                            instance,
+                            rounds=ROUNDS,
+                            stages=stages,
+                            known_pairs=known_4,
+                            verification_pairs=verification,
+                            solver_timeout=eff_timeout,
+                            global_timeout=remaining,
+                            candidate_batch_size=args.batch_size,
+                            device=device_obj,
+                        )
+                        online_seconds = res.online_seconds
+                        diagnostics_seconds = res.diagnostics_seconds
+                        ranking_seconds = res.ranking_seconds
+                        solver_seconds = res.solver_seconds
+                        rebuilding_seconds = res.rebuilding_seconds
+                        verification_seconds = res.verification_seconds
+                        rec = res.to_dict()
+
+                elif method in ("hierarchical_neural_classical", "hierarchical_classical"):
+                    t_prep_start = time.perf_counter()
+                    stages = (
+                        HierarchicalStage(
+                            round_index=ROUNDS - 1,
+                            model=stage1_pyt,
+                            beam_width=args.m1,
+                        ),
+                        HierarchicalStage(
+                            round_index=ROUNDS - 2,
+                            model=classical_table,
+                            beam_width=args.m2,
+                            screened=False,
+                        ),
+                    )
+                    preprocessing_seconds = time.perf_counter() - t_prep_start
+                    remaining = max(0.0, method_deadline - time.perf_counter())
+
+                    if remaining <= 0.0:
+                        rec = {
+                            "strategy": "hierarchical_multi_round_beam",
+                            "success": False,
+                            "status": "global_timeout",
+                            "failure_cause": "global_timeout",
+                            "stages": [],
+                            "candidates_attempted": 0,
+                            "attempted_paths": [],
+                            "recovered_master_key": None,
+                            "timing_seconds": {
+                                "ranking": 0.0,
+                                "solver": 0.0,
+                                "rebuilding": 0.0,
+                                "verification": 0.0,
+                                "total": 0.0,
+                            },
+                        }
+                    else:
+                        eff_timeout = min(args.timeout, remaining)
+                        res = run_hierarchical_multi_round_attack(
+                            instance,
+                            rounds=ROUNDS,
+                            stages=stages,
+                            known_pairs=known_4,
+                            verification_pairs=verification,
+                            solver_timeout=eff_timeout,
+                            global_timeout=remaining,
+                            candidate_batch_size=args.batch_size,
+                            device=device_obj,
+                        )
+                        online_seconds = res.online_seconds
+                        diagnostics_seconds = res.diagnostics_seconds
+                        ranking_seconds = res.ranking_seconds
+                        solver_seconds = res.solver_seconds
+                        rebuilding_seconds = res.rebuilding_seconds
+                        verification_seconds = res.verification_seconds
+                        rec = res.to_dict()
+
+                elif method == "random_sat":
+                    t_prep_start = time.perf_counter()
+                    method_factory = IsolatedSolverFactory.from_pairs(
+                        known_4,
                         rounds=ROUNDS,
-                        stages=stages,
-                        known_pairs=known_4,
-                        verification_pairs=verification,
-                        solver_timeout=eff_timeout,
-                        global_timeout=remaining,
-                        candidate_batch_size=args.batch_size,
-                        device=device_obj,
+                        instance_id=f"{instance_id}_{method}",
                     )
-                    wall_sec = time.perf_counter() - t_run_start
-                    rec = res.to_dict()
-                    rec["wall_seconds"] = round(wall_sec, 3)
-                    rec["preprocessing_seconds"] = round(preprocessing_seconds, 6)
-                    rec["ranking_screening_sorting_seconds"] = round(
-                        res.ranking_seconds, 6
-                    )
-                    rec["solver_seconds"] = round(res.solver_seconds, 6)
-                    rec["rebuilding_seconds"] = round(res.rebuilding_seconds, 6)
-                    rec["verification_seconds"] = round(
-                        res.verification_seconds, 6
-                    )
+                    model = method_factory.build_isolated_model("random_multi_round_sat")
+                    preprocessing_seconds = time.perf_counter() - t_prep_start
+                    remaining = max(0.0, method_deadline - time.perf_counter())
 
-            elif method == "hierarchical_neural_full":
-                t_prep_start = time.perf_counter()
-                stages = (
-                    HierarchicalStage(
-                        round_index=ROUNDS - 1,
-                        model=stage1_pyt,
-                        beam_width=args.m1,
-                    ),
-                    HierarchicalStage(
-                        round_index=ROUNDS - 2,
-                        model=stage2_pyt,
-                        beam_width=args.m2,
-                        screened=False,
-                    ),
-                )
-                preprocessing_seconds = time.perf_counter() - t_prep_start
-                remaining = max(0.0, method_deadline - time.perf_counter())
+                    if remaining <= 0.0:
+                        rec = {
+                            "strategy": "random_multi_round_sat",
+                            "success": False,
+                            "status": "global_timeout",
+                            "failure_cause": "global_timeout",
+                            "candidates_attempted": 0,
+                            "recovered_master_key": None,
+                            "timing_seconds": {
+                                "ranking": 0.0,
+                                "solver": 0.0,
+                                "rebuilding": 0.0,
+                                "verification": 0.0,
+                                "total": 0.0,
+                            },
+                        }
+                    else:
+                        rand_seed = 100_000 + global_idx
+                        eff_timeout = min(args.timeout, remaining)
+                        t_run_start = time.perf_counter()
+                        recovery_res = run_random_multi_round_recovery(
+                            model,
+                            known_pairs=known_4,
+                            verification_pairs=verification,
+                            rounds=ROUNDS,
+                            round_indices=(ROUNDS - 1, ROUNDS - 2),
+                            candidate_budget=effective_candidate_budget,
+                            seed=rand_seed,
+                            solver_timeout=eff_timeout,
+                            global_timeout=remaining,
+                            strategy="random_multi_round_sat",
+                            solver_factory=method_factory,
+                        )
+                        wall_sec = time.perf_counter() - t_run_start
+                        online_seconds = wall_sec
+                        diagnostics_seconds = 0.0
+                        ranking_seconds = 0.0
+                        solver_seconds = recovery_res.solver_seconds
+                        rebuilding_seconds = recovery_res.rebuilding_seconds
+                        verification_seconds = recovery_res.verification_seconds
+                        rec = {
+                            "strategy": recovery_res.strategy,
+                            "success": recovery_res.success,
+                            "status": recovery_res.status,
+                            "failure_cause": (
+                                None
+                                if recovery_res.success
+                                else recovery_res.status
+                            ),
+                            "candidates_attempted": recovery_res.candidates_attempted,
+                            "recovered_master_key": (
+                                list(recovery_res.recovered_master_key)
+                                if recovery_res.recovered_master_key is not None
+                                else None
+                            ),
+                            "timing_seconds": {
+                                "ranking": 0.0,
+                                "solver": recovery_res.solver_seconds,
+                                "rebuilding": recovery_res.rebuilding_seconds,
+                                "verification": recovery_res.verification_seconds,
+                                "total": wall_sec,
+                            },
+                        }
 
-                if remaining <= 0.0:
-                    rec = {
-                        "strategy": "hierarchical_multi_round_beam",
-                        "success": False,
-                        "status": "global_timeout",
-                        "failure_cause": "global_timeout",
-                        "stages": [],
-                        "candidates_attempted": 0,
-                        "attempted_paths": [],
-                        "recovered_master_key": None,
-                        "timing_seconds": {
-                            "ranking": 0.0,
-                            "solver": 0.0,
-                            "verification": 0.0,
-                            "total": 0.0,
-                        },
-                        "wall_seconds": 0.0,
-                        "preprocessing_seconds": round(preprocessing_seconds, 6),
-                        "ranking_screening_sorting_seconds": 0.0,
-                        "solver_seconds": 0.0,
-                        "rebuilding_seconds": 0.0,
-                        "verification_seconds": 0.0,
-                    }
-                else:
-                    eff_timeout = min(args.timeout, remaining)
-                    t_run_start = time.perf_counter()
-                    res = run_hierarchical_multi_round_attack(
-                         instance,
+                elif method in ("sat_only_4obs", "sat_only"):
+                    t_prep_start = time.perf_counter()
+                    method_factory = IsolatedSolverFactory.from_pairs(
+                        known_4,
                         rounds=ROUNDS,
-                        stages=stages,
-                        known_pairs=known_4,
-                        verification_pairs=verification,
-                        solver_timeout=eff_timeout,
-                        global_timeout=remaining,
-                        candidate_batch_size=args.batch_size,
-                        device=device_obj,
+                        instance_id=f"{instance_id}_{method}",
                     )
-                    wall_sec = time.perf_counter() - t_run_start
-                    rec = res.to_dict()
-                    rec["wall_seconds"] = round(wall_sec, 3)
-                    rec["preprocessing_seconds"] = round(preprocessing_seconds, 6)
-                    rec["ranking_screening_sorting_seconds"] = round(
-                        res.ranking_seconds, 6
-                    )
-                    rec["solver_seconds"] = round(res.solver_seconds, 6)
-                    rec["rebuilding_seconds"] = round(res.rebuilding_seconds, 6)
-                    rec["verification_seconds"] = round(
-                        res.verification_seconds, 6
-                    )
+                    model = method_factory.build_isolated_model("sat_only_4obs")
+                    preprocessing_seconds = time.perf_counter() - t_prep_start
+                    remaining = max(0.0, method_deadline - time.perf_counter())
 
-            elif method in ("hierarchical_neural_classical", "hierarchical_classical"):
-                t_prep_start = time.perf_counter()
-                stages = (
-                    HierarchicalStage(
-                        round_index=ROUNDS - 1,
-                        model=stage1_pyt,
-                        beam_width=args.m1,
-                    ),
-                    HierarchicalStage(
-                        round_index=ROUNDS - 2,
-                        model=classical_table,
-                        beam_width=args.m2,
-                        screened=False,
-                    ),
-                )
-                preprocessing_seconds = time.perf_counter() - t_prep_start
-                remaining = max(0.0, method_deadline - time.perf_counter())
+                    if remaining <= 0.0:
+                        rec = {
+                            "strategy": "sat_only_4obs",
+                            "success": False,
+                            "status": "global_timeout",
+                            "failure_cause": "global_timeout",
+                            "candidates_attempted": 0,
+                            "recovered_master_key": None,
+                            "timing_seconds": {
+                                "ranking": 0.0,
+                                "solver": 0.0,
+                                "rebuilding": 0.0,
+                                "verification": 0.0,
+                                "total": 0.0,
+                            },
+                        }
+                    else:
+                        t_run_start = time.perf_counter()
+                        recovery_res = run_multi_round_sat_only_recovery(
+                            model,
+                            known_pairs=known_4,
+                            verification_pairs=verification,
+                            rounds=ROUNDS,
+                            solver_timeout=remaining,
+                            global_timeout=remaining,
+                            strategy="sat_only_4obs",
+                        )
+                        wall_sec = time.perf_counter() - t_run_start
+                        online_seconds = wall_sec
+                        diagnostics_seconds = 0.0
+                        ranking_seconds = 0.0
+                        solver_seconds = recovery_res.solver_seconds
+                        rebuilding_seconds = recovery_res.rebuilding_seconds
+                        verification_seconds = recovery_res.verification_seconds
+                        rec = {
+                            "strategy": recovery_res.strategy,
+                            "success": recovery_res.success,
+                            "status": recovery_res.status,
+                            "failure_cause": (
+                                None
+                                if recovery_res.success
+                                else recovery_res.status
+                            ),
+                            "candidates_attempted": recovery_res.candidates_attempted,
+                            "recovered_master_key": (
+                                list(recovery_res.recovered_master_key)
+                                if recovery_res.recovered_master_key is not None
+                                else None
+                            ),
+                            "timing_seconds": {
+                                "ranking": 0.0,
+                                "solver": recovery_res.solver_seconds,
+                                "rebuilding": recovery_res.rebuilding_seconds,
+                                "verification": recovery_res.verification_seconds,
+                                "total": wall_sec,
+                            },
+                        }
 
-                if remaining <= 0.0:
-                    rec = {
-                        "strategy": "hierarchical_multi_round_beam",
-                        "success": False,
-                        "status": "global_timeout",
-                        "failure_cause": "global_timeout",
-                        "stages": [],
-                        "candidates_attempted": 0,
-                        "attempted_paths": [],
-                        "recovered_master_key": None,
-                        "timing_seconds": {
-                            "ranking": 0.0,
-                            "solver": 0.0,
-                            "verification": 0.0,
-                            "total": 0.0,
-                        },
-                        "wall_seconds": 0.0,
-                        "preprocessing_seconds": round(preprocessing_seconds, 6),
-                        "ranking_screening_sorting_seconds": 0.0,
-                        "solver_seconds": 0.0,
-                        "rebuilding_seconds": 0.0,
-                        "verification_seconds": 0.0,
-                    }
-                else:
-                    eff_timeout = min(args.timeout, remaining)
-                    t_run_start = time.perf_counter()
-                    res = run_hierarchical_multi_round_attack(
-                        instance,
+                elif method == "sat_only_all_observations":
+                    t_prep_start = time.perf_counter()
+                    method_factory = IsolatedSolverFactory.from_pairs(
+                        known_all,
                         rounds=ROUNDS,
-                        stages=stages,
-                        known_pairs=known_4,
-                        verification_pairs=verification,
-                        solver_timeout=eff_timeout,
-                        global_timeout=remaining,
-                        candidate_batch_size=args.batch_size,
-                        device=device_obj,
+                        instance_id=f"{instance_id}_{method}",
                     )
-                    wall_sec = time.perf_counter() - t_run_start
-                    rec = res.to_dict()
-                    rec["wall_seconds"] = round(wall_sec, 3)
-                    rec["preprocessing_seconds"] = round(preprocessing_seconds, 6)
-                    rec["ranking_screening_sorting_seconds"] = round(
-                        res.ranking_seconds, 6
-                    )
-                    rec["solver_seconds"] = round(res.solver_seconds, 6)
-                    rec["rebuilding_seconds"] = round(res.rebuilding_seconds, 6)
-                    rec["verification_seconds"] = round(
-                        res.verification_seconds, 6
-                    )
+                    model = method_factory.build_isolated_model("sat_only_all_observations")
+                    preprocessing_seconds = time.perf_counter() - t_prep_start
+                    remaining = max(0.0, method_deadline - time.perf_counter())
 
-            elif method == "random_sat":
-                t_prep_start = time.perf_counter()
-                method_factory = IsolatedSolverFactory.from_pairs(
-                    known_4,
-                    rounds=ROUNDS,
-                    instance_id=f"{instance_id}_{method}",
-                )
-                model = method_factory.build_isolated_model("random_multi_round_sat")
-                preprocessing_seconds = time.perf_counter() - t_prep_start
-                remaining = max(0.0, method_deadline - time.perf_counter())
-
-                if remaining <= 0.0:
-                    rec = {
-                        "strategy": "random_multi_round_sat",
-                        "success": False,
-                        "status": "global_timeout",
-                        "failure_cause": "global_timeout",
-                        "candidates_attempted": 0,
-                        "recovered_master_key": None,
-                        "timing_seconds": {
-                            "ranking": 0.0,
-                            "solver": 0.0,
-                            "verification": 0.0,
-                            "total": 0.0,
-                        },
-                        "wall_seconds": 0.0,
-                        "preprocessing_seconds": round(preprocessing_seconds, 6),
-                        "ranking_screening_sorting_seconds": 0.0,
-                        "solver_seconds": 0.0,
-                        "rebuilding_seconds": 0.0,
-                        "verification_seconds": 0.0,
-                    }
+                    if remaining <= 0.0:
+                        rec = {
+                            "strategy": "sat_only_all_observations",
+                            "success": False,
+                            "status": "global_timeout",
+                            "failure_cause": "global_timeout",
+                            "candidates_attempted": 0,
+                            "recovered_master_key": None,
+                            "timing_seconds": {
+                                "ranking": 0.0,
+                                "solver": 0.0,
+                                "rebuilding": 0.0,
+                                "verification": 0.0,
+                                "total": 0.0,
+                            },
+                        }
+                    else:
+                        t_run_start = time.perf_counter()
+                        recovery_res = run_multi_round_sat_only_recovery(
+                            model,
+                            known_pairs=known_all,
+                            verification_pairs=verification,
+                            rounds=ROUNDS,
+                            solver_timeout=remaining,
+                            global_timeout=remaining,
+                            strategy="sat_only_all_observations",
+                        )
+                        wall_sec = time.perf_counter() - t_run_start
+                        online_seconds = wall_sec
+                        diagnostics_seconds = 0.0
+                        ranking_seconds = 0.0
+                        solver_seconds = recovery_res.solver_seconds
+                        rebuilding_seconds = recovery_res.rebuilding_seconds
+                        verification_seconds = recovery_res.verification_seconds
+                        rec = {
+                            "strategy": recovery_res.strategy,
+                            "success": recovery_res.success,
+                            "status": recovery_res.status,
+                            "failure_cause": (
+                                None
+                                if recovery_res.success
+                                else recovery_res.status
+                            ),
+                            "candidates_attempted": recovery_res.candidates_attempted,
+                            "recovered_master_key": (
+                                list(recovery_res.recovered_master_key)
+                                if recovery_res.recovered_master_key is not None
+                                else None
+                            ),
+                            "timing_seconds": {
+                                "ranking": 0.0,
+                                "solver": recovery_res.solver_seconds,
+                                "rebuilding": recovery_res.rebuilding_seconds,
+                                "verification": recovery_res.verification_seconds,
+                                "total": wall_sec,
+                            },
+                        }
                 else:
-                    rand_seed = 100_000 + global_idx
-                    eff_timeout = min(args.timeout, remaining)
-                    t_run_start = time.perf_counter()
-                    recovery_res = run_random_multi_round_recovery(
-                        model,
-                        known_pairs=known_4,
-                        verification_pairs=verification,
-                        rounds=ROUNDS,
-                        round_indices=(ROUNDS - 1, ROUNDS - 2),
-                        candidate_budget=effective_candidate_budget,
-                        seed=rand_seed,
-                        solver_timeout=eff_timeout,
-                        global_timeout=remaining,
-                        strategy="random_multi_round_sat",
-                        solver_factory=method_factory,
-                    )
-                    wall_sec = time.perf_counter() - t_run_start
-                    rec = {
-                        "strategy": recovery_res.strategy,
-                        "success": recovery_res.success,
-                        "status": recovery_res.status,
-                        "failure_cause": (
-                            None
-                            if recovery_res.success
-                            else recovery_res.status
-                        ),
-                        "candidates_attempted": recovery_res.candidates_attempted,
-                        "recovered_master_key": (
-                            list(recovery_res.recovered_master_key)
-                            if recovery_res.recovered_master_key is not None
-                            else None
-                        ),
-                        "timing_seconds": {
-                            "ranking": 0.0,
-                            "solver": recovery_res.solver_seconds,
-                            "rebuilding": recovery_res.rebuilding_seconds,
-                            "verification": recovery_res.verification_seconds,
-                            "total": wall_sec,
-                        },
-                        "wall_seconds": round(wall_sec, 3),
-                        "preprocessing_seconds": round(preprocessing_seconds, 6),
-                        "ranking_screening_sorting_seconds": 0.0,
-                        "solver_seconds": round(recovery_res.solver_seconds, 6),
-                        "rebuilding_seconds": round(recovery_res.rebuilding_seconds, 6),
-                        "verification_seconds": round(
-                            recovery_res.verification_seconds, 6
-                        ),
-                    }
+                    raise ValueError(f"Unknown method {method!r}")
 
-            elif method in ("sat_only_4obs", "sat_only"):
-                t_prep_start = time.perf_counter()
-                method_factory = IsolatedSolverFactory.from_pairs(
-                    known_4,
-                    rounds=ROUNDS,
-                    instance_id=f"{instance_id}_{method}",
-                )
-                model = method_factory.build_isolated_model("sat_only_4obs")
-                preprocessing_seconds = time.perf_counter() - t_prep_start
-                remaining = max(0.0, method_deadline - time.perf_counter())
+            except Exception as exc:
+                t_exc = time.perf_counter() - method_started
+                rec = {
+                    "strategy": method,
+                    "success": False,
+                    "status": "solver_exception",
+                    "failure_cause": f"solver_exception: {exc}",
+                    "candidates_attempted": 0,
+                    "recovered_master_key": None,
+                    "timing_seconds": {
+                        "ranking": 0.0,
+                        "solver": 0.0,
+                        "rebuilding": 0.0,
+                        "verification": 0.0,
+                        "total": round(t_exc, 6),
+                    },
+                }
+                online_seconds = t_exc
+                diagnostics_seconds = 0.0
+                solver_seconds = 0.0
+                rebuilding_seconds = 0.0
+                verification_seconds = 0.0
+                ranking_seconds = 0.0
 
-                if remaining <= 0.0:
-                    rec = {
-                        "strategy": "sat_only_4obs",
-                        "success": False,
-                        "status": "global_timeout",
-                        "failure_cause": "global_timeout",
-                        "candidates_attempted": 0,
-                        "recovered_master_key": None,
-                        "timing_seconds": {
-                            "ranking": 0.0,
-                            "solver": 0.0,
-                            "rebuilding": 0.0,
-                            "verification": 0.0,
-                            "total": 0.0,
-                        },
-                        "wall_seconds": 0.0,
-                        "preprocessing_seconds": round(preprocessing_seconds, 6),
-                        "ranking_screening_sorting_seconds": 0.0,
-                        "solver_seconds": 0.0,
-                        "rebuilding_seconds": 0.0,
-                        "verification_seconds": 0.0,
-                    }
-                else:
-                    t_run_start = time.perf_counter()
-                    recovery_res = run_multi_round_sat_only_recovery(
-                        model,
-                        known_pairs=known_4,
-                        verification_pairs=verification,
-                        rounds=ROUNDS,
-                        solver_timeout=remaining,
-                        global_timeout=remaining,
-                        strategy="sat_only_4obs",
-                    )
-                    wall_sec = time.perf_counter() - t_run_start
-                    rec = {
-                        "strategy": recovery_res.strategy,
-                        "success": recovery_res.success,
-                        "status": recovery_res.status,
-                        "failure_cause": (
-                            None
-                            if recovery_res.success
-                            else recovery_res.status
-                        ),
-                        "candidates_attempted": recovery_res.candidates_attempted,
-                        "recovered_master_key": (
-                            list(recovery_res.recovered_master_key)
-                            if recovery_res.recovered_master_key is not None
-                            else None
-                        ),
-                        "timing_seconds": {
-                            "ranking": 0.0,
-                            "solver": recovery_res.solver_seconds,
-                            "rebuilding": recovery_res.rebuilding_seconds,
-                            "verification": recovery_res.verification_seconds,
-                            "total": wall_sec,
-                        },
-                        "wall_seconds": round(wall_sec, 3),
-                        "preprocessing_seconds": round(preprocessing_seconds, 6),
-                        "ranking_screening_sorting_seconds": 0.0,
-                        "solver_seconds": round(recovery_res.solver_seconds, 6),
-                        "rebuilding_seconds": round(recovery_res.rebuilding_seconds, 6),
-                        "verification_seconds": round(
-                            recovery_res.verification_seconds, 6
-                        ),
-                    }
+            method_online_wall_sec = preprocessing_seconds + online_seconds
+            total_wall_sec = method_online_wall_sec + diagnostics_seconds
 
-            elif method == "sat_only_all_observations":
-                t_prep_start = time.perf_counter()
-                method_factory = IsolatedSolverFactory.from_pairs(
-                    known_all,
-                    rounds=ROUNDS,
-                    instance_id=f"{instance_id}_{method}",
-                )
-                model = method_factory.build_isolated_model("sat_only_all_observations")
-                preprocessing_seconds = time.perf_counter() - t_prep_start
-                remaining = max(0.0, method_deadline - time.perf_counter())
-
-                if remaining <= 0.0:
-                    rec = {
-                        "strategy": "sat_only_all_observations",
-                        "success": False,
-                        "status": "global_timeout",
-                        "failure_cause": "global_timeout",
-                        "candidates_attempted": 0,
-                        "recovered_master_key": None,
-                        "timing_seconds": {
-                            "ranking": 0.0,
-                            "solver": 0.0,
-                            "rebuilding": 0.0,
-                            "verification": 0.0,
-                            "total": 0.0,
-                        },
-                        "wall_seconds": 0.0,
-                        "preprocessing_seconds": round(preprocessing_seconds, 6),
-                        "ranking_screening_sorting_seconds": 0.0,
-                        "solver_seconds": 0.0,
-                        "rebuilding_seconds": 0.0,
-                        "verification_seconds": 0.0,
-                    }
-                else:
-                    t_run_start = time.perf_counter()
-                    recovery_res = run_multi_round_sat_only_recovery(
-                        model,
-                        known_pairs=known_all,
-                        verification_pairs=verification,
-                        rounds=ROUNDS,
-                        solver_timeout=remaining,
-                        global_timeout=remaining,
-                        strategy="sat_only_all_observations",
-                    )
-                    wall_sec = time.perf_counter() - t_run_start
-                    rec = {
-                        "strategy": recovery_res.strategy,
-                        "success": recovery_res.success,
-                        "status": recovery_res.status,
-                        "failure_cause": (
-                            None
-                            if recovery_res.success
-                            else recovery_res.status
-                        ),
-                        "candidates_attempted": recovery_res.candidates_attempted,
-                        "recovered_master_key": (
-                            list(recovery_res.recovered_master_key)
-                            if recovery_res.recovered_master_key is not None
-                            else None
-                        ),
-                        "timing_seconds": {
-                            "ranking": 0.0,
-                            "solver": recovery_res.solver_seconds,
-                            "rebuilding": recovery_res.rebuilding_seconds,
-                            "verification": recovery_res.verification_seconds,
-                            "total": wall_sec,
-                        },
-                        "wall_seconds": round(wall_sec, 3),
-                        "preprocessing_seconds": round(preprocessing_seconds, 6),
-                        "ranking_screening_sorting_seconds": 0.0,
-                        "solver_seconds": round(recovery_res.solver_seconds, 6),
-                        "rebuilding_seconds": round(recovery_res.rebuilding_seconds, 6),
-                        "verification_seconds": round(
-                            recovery_res.verification_seconds, 6
-                        ),
-                    }
-            else:
-                raise ValueError(f"Unknown method {method!r}")
-
-            method_wall_sec = time.perf_counter() - method_started
             late_verified_recovery = False
-            if method_wall_sec >= cutoff_seconds:
+            if method_online_wall_sec >= cutoff_seconds:
                 if rec.get("success", False):
                     late_verified_recovery = True
                     rec["success"] = False
@@ -1347,10 +1514,21 @@ def main(argv: list[str] | None = None) -> int:
                     "instance_index": global_idx,
                     "method": method,
                     "method_display_name": METHOD_DISPLAY_NAMES.get(method, method),
-                    "method_wall_seconds": round(method_wall_sec, 6),
+                    "execution_order": list(instance_methods),
+                    "execution_order_index": eval_idx,
+                    "online_wall_seconds": round(method_online_wall_sec, 6),
+                    "total_wall_seconds": round(total_wall_sec, 6),
+                    "method_wall_seconds": round(method_online_wall_sec, 6),
+                    "wall_seconds": round(method_online_wall_sec, 6),
+                    "diagnostics_seconds": round(diagnostics_seconds, 6),
+                    "preprocessing_seconds": round(preprocessing_seconds, 6),
+                    "ranking_screening_sorting_seconds": round(ranking_seconds, 6),
+                    "solver_seconds": round(solver_seconds, 6),
+                    "rebuilding_seconds": round(rebuilding_seconds, 6),
+                    "verification_seconds": round(verification_seconds, 6),
                     "cutoff_seconds": cutoff_seconds,
                     "cutoff_overshoot_seconds": round(
-                        max(0.0, method_wall_sec - cutoff_seconds), 6
+                        max(0.0, method_online_wall_sec - cutoff_seconds), 6
                     ),
                     "counts_as_verified_recovery": classified["counts_as_verified_recovery"],
                     "counts_as_unconditional_failure": classified["counts_as_unconditional_failure"],
@@ -1360,12 +1538,15 @@ def main(argv: list[str] | None = None) -> int:
                 }
             )
 
+            # Enforce record integrity
+            verify_record_integrity(rec)
+
             records_by_method[method].append(rec)
             status_str = f"success={rec['success']} status={rec['status']} cause={rec['failure_cause']}"
             tuples_str = f"tuples={rec['candidates_attempted']}"
             overshoot_str = f"overshoot={rec['cutoff_overshoot_seconds']:.4f}s"
             print(
-                f"  {method:<30} {status_str:<45} {tuples_str:<12} {overshoot_str:<18} wall={method_wall_sec:6.2f}s"
+                f"  {method:<30} {status_str:<45} {tuples_str:<12} {overshoot_str:<18} wall={method_online_wall_sec:6.2f}s"
             )
 
         # Save checkpoint after each instance preserving all methods

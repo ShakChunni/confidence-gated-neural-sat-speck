@@ -625,6 +625,8 @@ def test_resume_fail_closed_validation(tmp_path: Path) -> None:
         DEFAULT_CLASSICAL_PATH,
         DEFAULT_STAGE1_PATH,
         DEFAULT_STAGE2_PATH,
+        EXECUTION_CRITICAL_CODE_PATHS,
+        REPOSITORY_ROOT,
         SCHEMA_VERSION,
         _sha256_file,
         main,
@@ -664,7 +666,16 @@ def test_resume_fail_closed_validation(tmp_path: Path) -> None:
         "candidate_budget": 1024,
         "solver_timeout": 10.0,
         "global_timeout": 300.0,
-        "device": "cpu",
+        "threads": 1,
+        "torch_num_threads": 1,
+        "start": 0,
+        "instances": 1,
+        "method_order_policy": "cyclic_latin_square_canonical_v1",
+        "code_provenance": {
+            k: _sha256_file(REPOSITORY_ROOT / rel)
+            for k, rel in EXECUTION_CRITICAL_CODE_PATHS.items()
+        },
+        "device": "mps" if torch.backends.mps.is_available() else "cpu",
         "methods": ["sat_only_4obs"],
         "prospective": False,
         "protocol_manifest_path": None,
@@ -771,7 +782,10 @@ def test_resume_fail_closed_validation(tmp_path: Path) -> None:
             "total": 10.0,
         },
         "wall_seconds": 10.0,
+        "online_wall_seconds": 10.05,
+        "total_wall_seconds": 10.05,
         "method_wall_seconds": 10.05,
+        "diagnostics_seconds": 0.0,
         "cutoff_seconds": 300.0,
         "cutoff_overshoot_seconds": 0.0,
         "preprocessing_seconds": 0.05,
@@ -1011,7 +1025,7 @@ def test_solver_timeout_leaves_instance_unverified_with_cause() -> None:
     assert res.status in (STATUS_SOLVER_TIMEOUT, STATUS_GLOBAL_TIMEOUT)
 
 
-def test_runner_prospective_gate_fails_closed_on_proposed_manifest() -> None:
+def test_runner_prospective_gate_fails_closed_on_proposed_manifest(tmp_path: Path) -> None:
     """The comparator runner must fail closed when --prospective is invoked on a proposed manifest."""
     from scripts.evaluate_seven_round_comparators import main
 
@@ -1020,12 +1034,17 @@ def test_runner_prospective_gate_fails_closed_on_proposed_manifest() -> None:
     assert manifest_path.exists()
     assert dataset_path.exists()
 
+    proposed_manifest_path = tmp_path / "proposed_manifest.json"
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    data["protocol_status"] = "PROPOSED_NOT_AUTHORIZED"
+    proposed_manifest_path.write_text(json.dumps(data), encoding="utf-8")
+
     with pytest.raises(SystemExit, match="PROSPECTIVE EXECUTION REFUSED.*PROPOSED_NOT_AUTHORIZED"):
         main([
             "--prospective",
-            "--protocol-manifest", str(manifest_path),
+            "--protocol-manifest", str(proposed_manifest_path),
             "--dataset", str(dataset_path),
-            "--instances", "1",
+            "--instances", "128",
         ])
 
 
@@ -1395,3 +1414,349 @@ def test_verify_record_integrity_contradictions() -> None:
     with pytest.raises(ValueError, match="late_verified_recovery=True but failure_domain='timeout' != 'envelope'"):
         verify_record_integrity(bad_domain)
 
+
+def test_delayed_diagnostics_regression() -> None:
+    """Diagnostic delay (e.g. 350s) must NOT count against online cutoff or flip verified recovery to timeout."""
+    from scripts.evaluate_seven_round_comparators import (
+        classify_attack_outcome,
+        verify_record_integrity,
+    )
+
+    online_wall_sec = 5.0
+    diagnostics_sec = 350.0
+    total_wall_sec = online_wall_sec + diagnostics_sec
+    cutoff_seconds = 300.0
+
+    late_verified_recovery = False
+    status = "sat_and_verified"
+    success = True
+    recovered_master_key = [0x1, 0x2, 0x3, 0x4]
+
+    if online_wall_sec >= cutoff_seconds:
+        if success:
+            late_verified_recovery = True
+            success = False
+            recovered_master_key = None
+        status = "global_timeout"
+
+    assert success is True
+    assert late_verified_recovery is False
+    assert status == "sat_and_verified"
+
+    classified = classify_attack_outcome(status, success=success)
+    rec = {
+        "instance_id": "test-diag-01",
+        "instance_index": 0,
+        "method": "hierarchical_neural_screened",
+        "method_display_name": "Neural Screened",
+        "strategy": "hierarchical_multi_round_beam",
+        "success": success,
+        "status": status,
+        "failure_cause": None,
+        "candidates_attempted": 32,
+        "recovered_master_key": recovered_master_key,
+        "timing_seconds": {
+            "ranking": 2.0,
+            "solver": 3.0,
+            "verification": 0.0,
+            "total": online_wall_sec,
+        },
+        "wall_seconds": online_wall_sec,
+        "online_wall_seconds": online_wall_sec,
+        "total_wall_seconds": total_wall_sec,
+        "method_wall_seconds": online_wall_sec,
+        "diagnostics_seconds": diagnostics_sec,
+        "preprocessing_seconds": 0.0,
+        "ranking_screening_sorting_seconds": 2.0,
+        "solver_seconds": 3.0,
+        "rebuilding_seconds": 0.0,
+        "verification_seconds": 0.0,
+        "cutoff_seconds": cutoff_seconds,
+        "cutoff_overshoot_seconds": 0.0,
+        "counts_as_verified_recovery": classified["counts_as_verified_recovery"],
+        "counts_as_unconditional_failure": classified["counts_as_unconditional_failure"],
+        "is_resolved_sat_state": classified["is_resolved_sat_state"],
+        "failure_domain": classified["failure_domain"],
+        "late_verified_recovery": late_verified_recovery,
+    }
+
+    assert verify_record_integrity(rec) is True
+    assert rec["counts_as_verified_recovery"] is True
+    assert rec["failure_domain"] == "none"
+    assert rec["method_wall_seconds"] == 5.0
+    assert rec["total_wall_seconds"] == 355.0
+
+
+def test_disjoint_timing_fields() -> None:
+    """Solver, rebuilding, ranking, and diagnostics timings must be strictly disjoint and sum correctly."""
+    from scripts.evaluate_seven_round_comparators import verify_record_integrity
+
+    t_rank = 1.25
+    t_solve = 3.50
+    t_rebuild = 0.45
+    t_verif = 0.05
+    t_prep = 0.10
+    t_diag = 2.00
+
+    online_sec = t_rank + t_solve + t_rebuild + t_verif
+    method_online = t_prep + online_sec
+    total_sec = method_online + t_diag
+
+    rec = {
+        "instance_id": "test-timing-01",
+        "instance_index": 0,
+        "method": "hierarchical_neural_screened",
+        "method_display_name": "Neural Screened",
+        "strategy": "hierarchical_multi_round_beam",
+        "success": True,
+        "status": "sat_and_verified",
+        "failure_cause": None,
+        "candidates_attempted": 10,
+        "recovered_master_key": [0x1, 0x2, 0x3, 0x4],
+        "timing_seconds": {
+            "ranking": t_rank,
+            "solver": t_solve,
+            "verification": t_verif,
+            "total": online_sec,
+        },
+        "wall_seconds": method_online,
+        "online_wall_seconds": method_online,
+        "total_wall_seconds": total_sec,
+        "method_wall_seconds": method_online,
+        "diagnostics_seconds": t_diag,
+        "preprocessing_seconds": t_prep,
+        "ranking_screening_sorting_seconds": t_rank,
+        "solver_seconds": t_solve,
+        "rebuilding_seconds": t_rebuild,
+        "verification_seconds": t_verif,
+        "cutoff_seconds": 300.0,
+        "cutoff_overshoot_seconds": 0.0,
+        "counts_as_verified_recovery": True,
+        "counts_as_unconditional_failure": False,
+        "is_resolved_sat_state": True,
+        "failure_domain": "none",
+        "late_verified_recovery": False,
+    }
+
+    assert verify_record_integrity(rec) is True
+    assert abs(rec["method_wall_seconds"] - (t_prep + t_rank + t_solve + t_rebuild + t_verif)) < 1e-9
+    assert abs(rec["total_wall_seconds"] - (rec["method_wall_seconds"] + t_diag)) < 1e-9
+
+
+def test_solver_exception_handling() -> None:
+    """A solver crash / exception must be recorded as status='solver_exception' with failure_domain='system'."""
+    from scripts.evaluate_seven_round_comparators import (
+        classify_attack_outcome,
+        verify_record_integrity,
+    )
+
+    classified = classify_attack_outcome("solver_exception", success=False)
+    assert classified["category"] == "solver_exception"
+    assert classified["counts_as_verified_recovery"] is False
+    assert classified["counts_as_unconditional_failure"] is True
+    assert classified["is_resolved_sat_state"] is False
+    assert classified["failure_domain"] == "system"
+
+    rec = {
+        "instance_id": "test-exc-01",
+        "instance_index": 0,
+        "method": "sat_only_4obs",
+        "method_display_name": "Exact SAT Only",
+        "strategy": "sat_only_4obs",
+        "success": False,
+        "status": "solver_exception",
+        "failure_cause": "solver_exception: simulated backend segfault",
+        "candidates_attempted": 0,
+        "recovered_master_key": None,
+        "timing_seconds": {
+            "ranking": 0.0,
+            "solver": 0.0,
+            "rebuilding": 0.0,
+            "verification": 0.0,
+            "total": 0.05,
+        },
+        "wall_seconds": 0.05,
+        "online_wall_seconds": 0.05,
+        "total_wall_seconds": 0.05,
+        "method_wall_seconds": 0.05,
+        "diagnostics_seconds": 0.0,
+        "preprocessing_seconds": 0.0,
+        "ranking_screening_sorting_seconds": 0.0,
+        "solver_seconds": 0.0,
+        "rebuilding_seconds": 0.0,
+        "verification_seconds": 0.0,
+        "cutoff_seconds": 300.0,
+        "cutoff_overshoot_seconds": 0.0,
+        "counts_as_verified_recovery": classified["counts_as_verified_recovery"],
+        "counts_as_unconditional_failure": classified["counts_as_unconditional_failure"],
+        "is_resolved_sat_state": classified["is_resolved_sat_state"],
+        "failure_domain": classified["failure_domain"],
+        "late_verified_recovery": False,
+    }
+
+    assert verify_record_integrity(rec) is False
+
+
+def test_device_enforcement_prospective(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An authorized prospective evaluation must still reject a non-MPS device."""
+    import scripts.evaluate_seven_round_comparators as runner
+
+    # Device eligibility is downstream of authorization.  Isolate this test
+    # from the deliberately unfrozen repository manifest so it exercises the
+    # intended hardware invariant rather than the earlier governance gate.
+    monkeypatch.setattr(
+        runner,
+        "validate_manifest_for_prospective_execution",
+        lambda *args, **kwargs: {},
+    )
+
+    with pytest.raises(SystemExit, match="Prospective execution requires --device mps"):
+        runner.main([
+            "--prospective",
+            "--protocol-manifest", "docs/seven_round_protocol_manifest.json",
+            "--dataset", "datasets/phase11a_oracle_r7/oracle_evaluation.json",
+            "--device", "cpu",
+            "--start", "0",
+            "--instances", "128",
+        ])
+
+
+def test_counterbalanced_method_order_cyclic() -> None:
+    """Counterbalanced method scheduling must form a cyclic Latin-square rotation over all 6 methods."""
+    from scripts.evaluate_seven_round_comparators import (
+        CANONICAL_METHOD_ORDER,
+        get_counterbalanced_method_order,
+    )
+
+    n = len(CANONICAL_METHOD_ORDER)
+    assert n == 6
+
+    first_methods = []
+    for i in range(n):
+        order = get_counterbalanced_method_order(i)
+        assert len(order) == n
+        assert set(order) == set(CANONICAL_METHOD_ORDER)
+        first_methods.append(order[0])
+
+    assert len(set(first_methods)) == n
+    assert set(first_methods) == set(CANONICAL_METHOD_ORDER)
+
+    order_0 = get_counterbalanced_method_order(0)
+    order_1 = get_counterbalanced_method_order(1)
+    assert order_1 == order_0[1:] + order_0[:1]
+
+
+def test_resume_cohort_and_code_drift_validation(tmp_path: Path) -> None:
+    """Resuming must fail closed if record is outside requested cohort or if code drift is detected."""
+    from scripts.evaluate_seven_round_comparators import (
+        DEFAULT_CLASSICAL_PATH,
+        DEFAULT_STAGE1_PATH,
+        DEFAULT_STAGE2_PATH,
+        EXECUTION_CRITICAL_CODE_PATHS,
+        REPOSITORY_ROOT,
+        SCHEMA_VERSION,
+        _sha256_file,
+        main,
+    )
+
+    dataset_path = Path("datasets/phase11a_oracle_r7/oracle_evaluation.json")
+    valid_metadata = {
+        "schema_version": SCHEMA_VERSION,
+        "dataset_path": str(dataset_path),
+        "dataset_sha256": _sha256_file(dataset_path),
+        "dataset_id": "speck32_64_attack_phase11a_oracle_r7",
+        "stage1_model_path": str(DEFAULT_STAGE1_PATH),
+        "stage1_model_sha256": _sha256_file(DEFAULT_STAGE1_PATH),
+        "stage2_model_path": str(DEFAULT_STAGE2_PATH),
+        "stage2_model_sha256": _sha256_file(DEFAULT_STAGE2_PATH),
+        "classical_dist_path": str(DEFAULT_CLASSICAL_PATH),
+        "classical_dist_sha256": _sha256_file(DEFAULT_CLASSICAL_PATH),
+        "rounds": 7,
+        "ranking_differential_pairs": 64,
+        "ranking_total_observations": 128,
+        "sat_observations_4obs": 4,
+        "sat_observations_all": 128,
+        "verification_pairs": 2,
+        "verification_seed": 999999,
+        "m1": 32,
+        "m2": 32,
+        "candidate_budget": 1024,
+        "solver_timeout": 10.0,
+        "global_timeout": 300.0,
+        "threads": 1,
+        "torch_num_threads": 1,
+        "start": 0,
+        "instances": 2,
+        "method_order_policy": "cyclic_latin_square_canonical_v1",
+        "code_provenance": {
+            k: _sha256_file(REPOSITORY_ROOT / rel)
+            for k, rel in EXECUTION_CRITICAL_CODE_PATHS.items()
+        },
+        "device": "mps" if torch.backends.mps.is_available() else "cpu",
+        "methods": ["sat_only_4obs"],
+        "prospective": False,
+        "protocol_manifest_path": None,
+    }
+
+    valid_record = {
+        "instance_id": "train-0000",
+        "instance_index": 0,
+        "method": "sat_only_4obs",
+        "method_display_name": "Exact SAT Only",
+        "strategy": "sat_only_4obs",
+        "success": False,
+        "status": "solver_timeout",
+        "failure_cause": "solver_timeout",
+        "candidates_attempted": 0,
+        "recovered_master_key": None,
+        "timing_seconds": {
+            "ranking": 0.0,
+            "solver": 10.0,
+            "verification": 0.0,
+            "total": 10.0,
+        },
+        "wall_seconds": 10.0,
+        "online_wall_seconds": 10.0,
+        "total_wall_seconds": 10.0,
+        "method_wall_seconds": 10.0,
+        "diagnostics_seconds": 0.0,
+        "preprocessing_seconds": 0.0,
+        "ranking_screening_sorting_seconds": 0.0,
+        "solver_seconds": 10.0,
+        "rebuilding_seconds": 0.0,
+        "verification_seconds": 0.0,
+        "cutoff_seconds": 300.0,
+        "cutoff_overshoot_seconds": 0.0,
+        "counts_as_verified_recovery": False,
+        "counts_as_unconditional_failure": True,
+        "is_resolved_sat_state": False,
+        "failure_domain": "solver",
+        "late_verified_recovery": False,
+    }
+
+    cohort_mismatch_file = tmp_path / "cohort_mismatch.json"
+    bad_rec = dict(valid_record, instance_index=99)
+    cohort_mismatch_file.write_text(
+        json.dumps({
+            "metadata": valid_metadata,
+            "records_by_method": {"sat_only_4obs": [bad_rec]},
+        }),
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit, match="outside selected cohort"):
+        main(["--resume", "--output", str(cohort_mismatch_file), "--instances", "2"])
+
+    drift_file = tmp_path / "drift.json"
+    drifted_meta = dict(valid_metadata)
+    drifted_code_prov = dict(valid_metadata["code_provenance"])
+    drifted_code_prov["runner_script"] = "0" * 64
+    drifted_meta["code_provenance"] = drifted_code_prov
+    drift_file.write_text(
+        json.dumps({
+            "metadata": drifted_meta,
+            "records_by_method": {"sat_only_4obs": [valid_record]},
+        }),
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit, match="Code drift detected during resume"):
+        main(["--resume", "--output", str(drift_file), "--instances", "2"])

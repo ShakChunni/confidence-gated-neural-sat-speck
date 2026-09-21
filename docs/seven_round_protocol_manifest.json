@@ -1,15 +1,16 @@
 {
   "manifest_version": "1.0.0",
   "protocol_id": "speck32_64_seven_round_comparative_protocol_v1",
-  "protocol_status": "PROPOSED_NOT_AUTHORIZED",
+  "protocol_status": "FROZEN_AUTHORIZED",
   "created_at": "2026-09-17T17:38:00Z",
-  "updated_at": "2026-09-20T13:05:00Z",
+  "updated_at": "2026-09-21T15:05:03+08:00",
   "governing_decisions": [
     "D-025",
     "D-027",
     "D-028",
     "D-029",
-    "D-030"
+    "D-030",
+    "D-031"
   ],
   "target_publication": {
     "venue": "ACNS 2027 Cycle 2",
@@ -17,7 +18,7 @@
     "primary_research_question": "Under a common global resource envelope, when does neural subkey guidance provide an operational advantage in verified exact recovery over classical, hybrid, random-order, and SAT-only alternatives, and when is the apparent advantage instead explained by ranking truncation, threshold transport, or exact-backend configuration?"
   },
   "seed_governance": {
-    "protected_dataset_seed": null,
+    "protected_dataset_seed": 669981,
     "sample_size_n": 128,
     "evaluation_role": "PROSPECTIVE_EVALUATION",
     "authorization_requirement": "Explicit author and supervisor sign-off before numerical seed assignment",
@@ -32,19 +33,40 @@
       201001,
       300001,
       406737
-    ]
+    ],
+    "authorization": {
+      "authorized_by": "F.M. Ashfaq, Project Author and Supervisor",
+      "authorization_decision": "D-031",
+      "authorized_at": "2026-09-21T15:05:03+08:00",
+      "authorization_scope": "PROSPECTIVE_EVALUATION",
+      "protocol_id": "speck32_64_seven_round_comparative_protocol_v1",
+      "sample_size_n": 128,
+      "selected_hierarchy": "M1=32, M2=32",
+      "candidate_budget": 1024,
+      "per_candidate_solver_timeout_seconds": 10.0,
+      "independent_cutoff_seconds": 300.0,
+      "canonical_methods": [
+        "hierarchical_neural_screened",
+        "hierarchical_neural_full",
+        "hierarchical_neural_classical",
+        "random_sat",
+        "sat_only_4obs",
+        "sat_only_all_observations"
+      ],
+      "post_outcome_modification_policy": "No method, beam, threshold, or analysis changes permitted after protected outcomes become visible"
+    }
   },
   "protected_dataset": {
-    "dataset_path": null,
-    "dataset_id": null,
-    "sha256": null,
-    "seed": null,
+    "dataset_path": "datasets/phase11_prospective/prospective_evaluation.json",
+    "dataset_id": "speck32_64_attack_phase11_prospective_r7",
+    "sha256": "4c21a1d463d08672b9e28ec25aa97706872e890a0cf5dd92d2155a833f6a5219",
+    "seed": 669981,
     "sample_size_n": 128,
     "role": "PROSPECTIVE_EVALUATION",
     "rounds": 7,
     "ranking_differential_pairs": 64,
-    "generation_config_hash": null,
-    "schema": null
+    "generation_config_hash": "7e3bd515fd304da6a117eba81c17e6504b8e9ee93ffdad5f7bc846c19fdb9131",
+    "schema": "neural_sat_speck.attack_shard.v1"
   },
   "cryptographic_parameters": {
     "cipher": "SPECK32/64",
@@ -130,35 +152,95 @@
   "code_manifest": {
     "runner_script": {
       "path": "scripts/evaluate_seven_round_comparators.py",
-      "sha256": "4e9643f64726af36d997c591eb3f54afc0788dede91721aaef8ed92eccd59bf4"
+      "sha256": "a6530f277e1dfe41a7b183830081a16ef30610dd661d883b688c63804e1ad86a"
+    },
+    "analyzer_script": {
+      "path": "scripts/analyze_seven_round_results.py",
+      "sha256": "9202f69dd85b45d7d0e7550881fac79d2774f4ef97ef159432bc093859a11bfa"
     },
     "hierarchical_multi_round": {
       "path": "src/neural_sat_speck/attacks/hierarchical_multi_round.py",
-      "sha256": "3705e872ce97c4fd5483a27ff7f1a855b25656ab9518c789cbbd65f56bb34a9f"
+      "sha256": "c23d3aa710e287f2cbb0fd10a4f8d435dc1affc4d48820575860fc944ec76d1c"
     },
     "multi_round_recovery": {
       "path": "src/neural_sat_speck/attacks/multi_round_recovery.py",
-      "sha256": "0a3ce8646dc27eb60c8e669389a1f4ac87305a7e73ee5ed2834e849cbb93eae5"
+      "sha256": "0712396e9c762d3c1abfffe45cdc4511ba88ca5bfc9b775bdbdfb4d74bc2445e"
     },
-    "solver_isolation": {
-      "path": "src/neural_sat_speck/sat/isolation.py",
-      "sha256": "15cd556f68befacbc4e4065a8e8ced4927a37efb97a3ee196295436d4c529aac"
+    "screened_group_ranking": {
+      "path": "src/neural_sat_speck/attacks/screened_group_ranking.py",
+      "sha256": "8a8587841dfc92a715014239c1259377d43c84c5922200c3ea4c1c53db2f92ba"
+    },
+    "group_ranking": {
+      "path": "src/neural_sat_speck/attacks/group_ranking.py",
+      "sha256": "ace647405031bacd9934de08dabb8c38a70b833b9d3305d09615a700050d20df"
     },
     "classical_ranking": {
       "path": "src/neural_sat_speck/attacks/classical_ranking.py",
       "sha256": "23ca85d15d836b44bc0a29325c89119162f03b3a0cb7cf050f7ae85c7bd253a4"
     },
+    "multi_round_instance": {
+      "path": "src/neural_sat_speck/attacks/multi_round_instance.py",
+      "sha256": "7a58f24d9d8a3223d8bfe286cd60348f0f2441e97f41709dba5ac5bfd797ea82"
+    },
     "recovery": {
       "path": "src/neural_sat_speck/attacks/recovery.py",
       "sha256": "d60861fb161f45c9f0df8001fd1768cac0d222f2a4fab198c682f881d64edf4d"
+    },
+    "solver_isolation": {
+      "path": "src/neural_sat_speck/sat/isolation.py",
+      "sha256": "15cd556f68befacbc4e4065a8e8ced4927a37efb97a3ee196295436d4c529aac"
+    },
+    "sat_model": {
+      "path": "src/neural_sat_speck/sat/model.py",
+      "sha256": "f9678b143e8f05d0dcec869b733f01d775a0af46a73d3a587129db3feca6ba79"
+    },
+    "sat_encoding": {
+      "path": "src/neural_sat_speck/sat/encoding.py",
+      "sha256": "f035a7938ea7e64642410f6d82c25c16032bea378e9b54bd005420d5f6d1c4e5"
+    },
+    "sat_multi_round": {
+      "path": "src/neural_sat_speck/sat/multi_round.py",
+      "sha256": "8085fdd5b8770772566417695dd67e8f225c168a927a1d6bb02297dfd2742b25"
+    },
+    "dimacs": {
+      "path": "src/neural_sat_speck/sat/dimacs.py",
+      "sha256": "3c54f68921092b5690aba357205a6170c833caf8d4866d776e7d02f282d422b3"
     },
     "group_model": {
       "path": "src/neural_sat_speck/neural/group_model.py",
       "sha256": "1d2227d4b1885d5a39cb3edd92574e258f463ce76b04718e395dea1f2c4e3cb8"
     },
-    "dimacs": {
-      "path": "src/neural_sat_speck/sat/dimacs.py",
-      "sha256": "3c54f68921092b5690aba357205a6170c833caf8d4866d776e7d02f282d422b3"
+    "numpy_inference": {
+      "path": "src/neural_sat_speck/neural/numpy_inference.py",
+      "sha256": "bd21c1055c6fdf3acd73f19d92aa957637b4f57698685620e09a798c2f004629"
+    },
+    "manifest_validator": {
+      "path": "src/neural_sat_speck/protocol/manifest_validator.py",
+      "sha256": "a357be1a24159db49ef342a6aba4982626ac139c206cf9f34b549fe5f06e590a"
+    },
+    "evaluation_metrics": {
+      "path": "src/neural_sat_speck/evaluation/metrics.py",
+      "sha256": "c38ead7ca7b05be539eb1144b26b5b15b54592351e705cde6e8da55eaba21292"
+    },
+    "speck_cipher": {
+      "path": "src/neural_sat_speck/speck/cipher.py",
+      "sha256": "99d594e00d5149d967a027b786a3afebeb5b377f05744d73e59913aba50e7f43"
+    },
+    "speck_key_schedule": {
+      "path": "src/neural_sat_speck/speck/key_schedule.py",
+      "sha256": "fcb3a847f514af3a06721463d03ba75f2c4b75fd575b77dcb9720d7e766ab8d9"
+    },
+    "speck_primitives": {
+      "path": "src/neural_sat_speck/speck/primitives.py",
+      "sha256": "ebec8a113cc27c94df1e2db7f60ab50767964c55cbd7de5e5a2dc3a13df95cd6"
+    },
+    "data_attack": {
+      "path": "src/neural_sat_speck/data/attack.py",
+      "sha256": "c37535e1798e17d35037ae66c0fc4da45f4fe902958ca40f8e5e8a8c2ab53e3f"
+    },
+    "seed_policy": {
+      "path": "src/neural_sat_speck/data/seed_policy.py",
+      "sha256": "c8c3f12bdf7e2c12ac9a68654314fa5d68e06caf155cf2c9be39d42850ab226b"
     },
     "native_cli_benchmark": {
       "path": "scripts/benchmark_native_cli_overhead.py",
@@ -168,10 +250,6 @@
       "path": "scripts/audit_solver_controlled.py",
       "sha256": "ce19a03aead8177f71d217e0740b229f76a8b4fb3e279d4adc3db3785457d572"
     },
-    "manifest_validator": {
-      "path": "src/neural_sat_speck/protocol/manifest_validator.py",
-      "sha256": "fcb5bf4c1ec4dad65ebc48dff5991e54b63d61c16d201ba28cdbb3b491cf327e"
-    },
     "native_sensitivity": {
       "path": "src/neural_sat_speck/sat/native_sensitivity.py",
       "sha256": "9d37f6491a6e82b951a6010ef32b0c493c6f53dc769db563c2ddfddd77b1c96d"
@@ -180,9 +258,9 @@
       "path": "scripts/evaluate_native_gauss_sensitivity.py",
       "sha256": "654e71179674aa256a727fc1cbe0b9817a0ae515864088dc78b2cbf488c3a63d"
     },
-    "analyze_seven_round_results": {
-      "path": "scripts/analyze_seven_round_results.py",
-      "sha256": "dbe14e080bdc229c6069637e5f6efd5d36d120a46ceb27bf51f92136079e938d"
+    "generator_script": {
+      "path": "scripts/generate_seven_round_prospective_data.py",
+      "sha256": "f0e08ac15f2b2123d5e0d7bdd85f46e160253d07f2af8b760ea23cc51b970ed2"
     }
   },
   "formula_metrics": {

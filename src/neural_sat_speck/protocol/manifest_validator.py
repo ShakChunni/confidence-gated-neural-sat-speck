@@ -13,6 +13,13 @@ import numpy
 import pycryptosat
 import torch
 
+from neural_sat_speck.data.seed_policy import (
+    HISTORICAL_SEEDS,
+    PROTECTED_RESEARCH_SEEDS,
+    SeedRole,
+    validate_seed_for_role,
+)
+
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
 REQUIRED_TOP_LEVEL_SECTIONS = {
@@ -36,15 +43,23 @@ REQUIRED_TOP_LEVEL_SECTIONS = {
     "environment_provenance",
 }
 
-RETIRED_OR_OPENED_SEEDS: frozenset[int] = frozenset({
-    98001,
-    97001,
-    99001,
-    101001,
-    201001,
-    300001,
-    406737,
-})
+RETIRED_OR_OPENED_SEEDS: frozenset[int] = frozenset(
+    HISTORICAL_SEEDS
+    | PROTECTED_RESEARCH_SEEDS
+    | {
+        98001,
+        97001,
+        99001,
+        100001,
+        101001,
+        200001,
+        201001,
+        300001,
+        400001,
+        400002,
+        406737,
+    }
+)
 
 EXPECTED_METHODS = {
     "hierarchical_neural_screened",
@@ -164,6 +179,47 @@ def compute_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(65536), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
+
+
+EXECUTION_CRITICAL_CODE_PATHS: dict[str, str] = {
+    "runner_script": "scripts/evaluate_seven_round_comparators.py",
+    "analyzer_script": "scripts/analyze_seven_round_results.py",
+    "hierarchical_multi_round": "src/neural_sat_speck/attacks/hierarchical_multi_round.py",
+    "multi_round_recovery": "src/neural_sat_speck/attacks/multi_round_recovery.py",
+    "screened_group_ranking": "src/neural_sat_speck/attacks/screened_group_ranking.py",
+    "group_ranking": "src/neural_sat_speck/attacks/group_ranking.py",
+    "classical_ranking": "src/neural_sat_speck/attacks/classical_ranking.py",
+    "multi_round_instance": "src/neural_sat_speck/attacks/multi_round_instance.py",
+    "recovery": "src/neural_sat_speck/attacks/recovery.py",
+    "solver_isolation": "src/neural_sat_speck/sat/isolation.py",
+    "sat_model": "src/neural_sat_speck/sat/model.py",
+    "sat_encoding": "src/neural_sat_speck/sat/encoding.py",
+    "sat_multi_round": "src/neural_sat_speck/sat/multi_round.py",
+    "dimacs": "src/neural_sat_speck/sat/dimacs.py",
+    "group_model": "src/neural_sat_speck/neural/group_model.py",
+    "numpy_inference": "src/neural_sat_speck/neural/numpy_inference.py",
+    "manifest_validator": "src/neural_sat_speck/protocol/manifest_validator.py",
+    "evaluation_metrics": "src/neural_sat_speck/evaluation/metrics.py",
+    "speck_cipher": "src/neural_sat_speck/speck/cipher.py",
+    "speck_key_schedule": "src/neural_sat_speck/speck/key_schedule.py",
+    "speck_primitives": "src/neural_sat_speck/speck/primitives.py",
+    "data_attack": "src/neural_sat_speck/data/attack.py",
+    "seed_policy": "src/neural_sat_speck/data/seed_policy.py",
+}
+
+
+def compute_execution_critical_code_hashes(base_dir: Path | None = None) -> dict[str, str]:
+    """Compute current SHA-256 hashes of all execution-critical code files."""
+    if base_dir is None:
+        base_dir = REPOSITORY_ROOT
+    hashes: dict[str, str] = {}
+    for key, rel_path in EXECUTION_CRITICAL_CODE_PATHS.items():
+        p = base_dir / rel_path
+        if not p.exists():
+            raise FileNotFoundError(f"Execution-critical code file not found: {p}")
+        hashes[key] = compute_sha256(p)
+    return hashes
+
 
 
 def classify_attack_outcome(
@@ -306,7 +362,7 @@ def validate_protocol_manifest(
     base_dir: Path | None = None,
     *,
     verify_file_hashes: bool = True,
-    allow_frozen_authorized: bool = False,
+    allow_frozen_authorized: bool = True,
 ) -> None:
     """Validate completeness, integrity, taxonomy, and seed governance of a protocol manifest.
 
@@ -386,6 +442,42 @@ def validate_protocol_manifest(
         if not isinstance(auth, dict) or not auth.get("authorized_by") or not auth.get("authorization_decision"):
             raise ManifestValidationError(
                 "FROZEN_AUTHORIZED status requires seed_governance.authorization with 'authorized_by' and 'authorization_decision'"
+            )
+        decision = auth.get("authorization_decision")
+        if decision in ("D-025", "D-027", "D-028", "D-029", "D-030"):
+            raise ManifestValidationError(
+                f"Authorization decision {decision!r} is a development-only or prior decision and cannot satisfy "
+                "prospective evaluation authorization. Prospective evaluation requires a new explicit authorization "
+                "decision (expected D-031)."
+            )
+        if decision != "D-031":
+            raise ManifestValidationError(
+                f"Prospective evaluation requires explicit authorization decision 'D-031'; found {decision!r}"
+            )
+        gov_decisions = manifest_data.get("governing_decisions", [])
+        if decision not in gov_decisions:
+            raise ManifestValidationError(
+                f"Authorization decision {decision!r} must be listed in manifest governing_decisions {gov_decisions}"
+            )
+        for req_auth_field in (
+            "authorized_by",
+            "authorization_decision",
+            "authorized_at",
+            "authorization_scope",
+            "protocol_id",
+            "sample_size_n",
+        ):
+            if not auth.get(req_auth_field):
+                raise ManifestValidationError(
+                    f"seed_governance.authorization missing required field {req_auth_field!r}"
+                )
+        if auth.get("sample_size_n") != 128:
+            raise ManifestValidationError(
+                f"seed_governance.authorization.sample_size_n must be 128; found {auth.get('sample_size_n')!r}"
+            )
+        if auth.get("protocol_id") != manifest_data.get("protocol_id"):
+            raise ManifestValidationError(
+                f"seed_governance.authorization.protocol_id {auth.get('protocol_id')!r} does not match manifest {manifest_data.get('protocol_id')!r}"
             )
 
     sample_size = seed_gov.get("sample_size_n")
@@ -666,6 +758,11 @@ def validate_protocol_manifest(
                 )
 
         code_manifest = manifest_data.get("code_manifest", {})
+        missing_code_keys = set(EXECUTION_CRITICAL_CODE_PATHS.keys()) - set(code_manifest.keys())
+        if missing_code_keys:
+            raise ManifestValidationError(
+                f"code_manifest missing required execution-critical entries: {sorted(missing_code_keys)}"
+            )
         for name, code in code_manifest.items():
             rel_path = code.get("path")
             expected_hash = code.get("sha256")
@@ -678,6 +775,7 @@ def validate_protocol_manifest(
                     f"Hash mismatch for code entry {name} ({rel_path}): "
                     f"expected {expected_hash}, computed {actual_hash}"
                 )
+
 
 
 def verify_attack_dataset_integrity(
@@ -858,6 +956,12 @@ def validate_manifest_for_prospective_execution(
             f"Prospective execution refused: protected seed {seed} is in RETIRED_OR_OPENED_SEEDS "
             f"({sorted(RETIRED_OR_OPENED_SEEDS)}). Historical or quarantined seeds cannot be used for prospective evaluation."
         )
+    try:
+        validate_seed_for_role(seed, SeedRole.PROSPECTIVE_VALIDATION)
+    except ValueError as err:
+        raise ManifestValidationError(
+            f"Prospective execution refused by seed policy: {err}"
+        ) from err
 
     # Perform full structural and hash check
     validate_protocol_manifest(
@@ -904,6 +1008,19 @@ def validate_manifest_for_prospective_execution(
             raise ManifestValidationError(
                 f"CLI global_timeout={getattr(cli_args, 'global_timeout')} does not match manifest {envelope['global_method_cutoff_seconds']}"
             )
+        if getattr(cli_args, "start", None) not in (None, 0):
+            raise ManifestValidationError(
+                f"Prospective execution requires start=0; got {getattr(cli_args, 'start')}"
+            )
+        if getattr(cli_args, "instances", None) not in (None, 128):
+            raise ManifestValidationError(
+                f"Prospective execution requires instances=128; got {getattr(cli_args, 'instances')}"
+            )
+        device_arg = getattr(cli_args, "device", None)
+        if device_arg not in (None, "mps"):
+            raise ManifestValidationError(
+                f"Prospective execution requires device='mps'; got {device_arg!r}"
+            )
         expected_manifest_methods = {
             m["method_id"] for m in manifest_data.get("comparator_methods", [])
         }
@@ -931,6 +1048,95 @@ def validate_manifest_for_prospective_execution(
             )
 
     return manifest_data
+
+
+def verify_record_integrity(r: dict[str, Any]) -> bool:
+    """Explicitly cross-check fresh-pair recovery consistency.
+
+    Returns True if the record represents an independently verified fresh-pair recovery.
+    Raises ValueError if there are contradictory status, classification, key, or cutoff flags.
+    """
+    success = bool(r.get("success", False))
+    counts_recovery = bool(r.get("counts_as_verified_recovery", False))
+    counts_fail = bool(r.get("counts_as_unconditional_failure", False))
+    status = r.get("status")
+    failure_domain = r.get("failure_domain")
+    key = r.get("recovered_master_key")
+    late_verified = bool(r.get("late_verified_recovery", False))
+    cutoff = float(r.get("cutoff_seconds", 300.0))
+    wall_sec = float(r.get("method_wall_seconds", r.get("wall_seconds", 0.0)))
+
+    if success:
+        if wall_sec >= cutoff:
+            raise ValueError(
+                f"Contradictory record: success=True but method_wall_seconds ({wall_sec}) >= cutoff ({cutoff}) "
+                f"for instance {r.get('instance_id')}"
+            )
+        if late_verified:
+            raise ValueError(
+                f"Contradictory record: success=True but late_verified_recovery=True "
+                f"for instance {r.get('instance_id')}"
+            )
+        if not counts_recovery:
+            raise ValueError(
+                f"Contradictory record: success=True but counts_as_verified_recovery=False "
+                f"for instance {r.get('instance_id')}"
+            )
+        if counts_fail:
+            raise ValueError(
+                f"Contradictory record: success=True but counts_as_unconditional_failure=True "
+                f"for instance {r.get('instance_id')}"
+            )
+        if status not in ("sat_and_verified", "verified_recovery"):
+            raise ValueError(
+                f"Contradictory record: success=True but status={status!r} "
+                f"for instance {r.get('instance_id')}"
+            )
+        if failure_domain != "none":
+            raise ValueError(
+                f"Contradictory record: success=True but failure_domain={failure_domain!r} "
+                f"for instance {r.get('instance_id')}"
+            )
+        if not key or len(key) != 4:
+            raise ValueError(
+                f"Contradictory record: success=True but invalid recovered_master_key {key!r} "
+                f"for instance {r.get('instance_id')}"
+            )
+        return True
+    else:
+        if counts_recovery:
+            raise ValueError(
+                f"Contradictory record: success=False but counts_as_verified_recovery=True "
+                f"for instance {r.get('instance_id')}"
+            )
+        if late_verified:
+            if not counts_fail:
+                raise ValueError(
+                    f"Contradictory record: late_verified_recovery=True but counts_as_unconditional_failure=False "
+                    f"for instance {r.get('instance_id')}"
+                )
+            if status != "global_timeout":
+                raise ValueError(
+                    f"Contradictory record: late_verified_recovery=True but status={status!r} != 'global_timeout' "
+                    f"for instance {r.get('instance_id')}"
+                )
+            if failure_domain != "envelope":
+                raise ValueError(
+                    f"Contradictory record: late_verified_recovery=True but failure_domain={failure_domain!r} != 'envelope' "
+                    f"for instance {r.get('instance_id')}"
+                )
+        if not counts_fail:
+            raise ValueError(
+                f"Contradictory record: success=False but counts_as_unconditional_failure=False "
+                f"for instance {r.get('instance_id')}"
+            )
+        if key is not None:
+            raise ValueError(
+                f"Contradictory record: success=False but recovered_master_key is not None ({key!r}) "
+                f"for instance {r.get('instance_id')}"
+            )
+        return False
+
 
 
 def validate_manifest_for_development_execution(
@@ -964,7 +1170,7 @@ def validate_protocol_manifest_file(
     manifest_path: Path,
     base_dir: Path | None = None,
     *,
-    allow_frozen_authorized: bool = False,
+    allow_frozen_authorized: bool = True,
 ) -> dict[str, Any]:
     """Load and validate a manifest JSON file from disk."""
     if not manifest_path.exists():
