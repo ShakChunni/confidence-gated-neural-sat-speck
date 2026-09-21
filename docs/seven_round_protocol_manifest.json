@@ -3,12 +3,13 @@
   "protocol_id": "speck32_64_seven_round_comparative_protocol_v1",
   "protocol_status": "PROPOSED_NOT_AUTHORIZED",
   "created_at": "2026-09-17T17:38:00Z",
-  "updated_at": "2026-09-19T14:00:00Z",
+  "updated_at": "2026-09-20T13:05:00Z",
   "governing_decisions": [
     "D-025",
     "D-027",
     "D-028",
-    "D-029"
+    "D-029",
+    "D-030"
   ],
   "target_publication": {
     "venue": "ACNS 2027 Cycle 2",
@@ -29,7 +30,8 @@
       98001,
       101001,
       201001,
-      300001
+      300001,
+      406737
     ]
   },
   "protected_dataset": {
@@ -128,15 +130,15 @@
   "code_manifest": {
     "runner_script": {
       "path": "scripts/evaluate_seven_round_comparators.py",
-      "sha256": "2214f6893fdf93b599efd31001d53cfbd210bb76352ce3a5e9b26f1e05e24110"
+      "sha256": "4e9643f64726af36d997c591eb3f54afc0788dede91721aaef8ed92eccd59bf4"
     },
     "hierarchical_multi_round": {
       "path": "src/neural_sat_speck/attacks/hierarchical_multi_round.py",
-      "sha256": "e4f873e99203ccd7a65e36091ca56350fdb083c6827a5c6490d59aab430692fd"
+      "sha256": "3705e872ce97c4fd5483a27ff7f1a855b25656ab9518c789cbbd65f56bb34a9f"
     },
     "multi_round_recovery": {
       "path": "src/neural_sat_speck/attacks/multi_round_recovery.py",
-      "sha256": "74ceac9a1ba4a27f4a04086b159e5a20f0020a95df619a9108266c5fa7c207ac"
+      "sha256": "0a3ce8646dc27eb60c8e669389a1f4ac87305a7e73ee5ed2834e849cbb93eae5"
     },
     "solver_isolation": {
       "path": "src/neural_sat_speck/sat/isolation.py",
@@ -168,7 +170,7 @@
     },
     "manifest_validator": {
       "path": "src/neural_sat_speck/protocol/manifest_validator.py",
-      "sha256": "5027378b62741b70cf11a78de3583cda12037d6af88dc9b52b55fbb1bf4b2dcb"
+      "sha256": "fcb5bf4c1ec4dad65ebc48dff5991e54b63d61c16d201ba28cdbb3b491cf327e"
     },
     "native_sensitivity": {
       "path": "src/neural_sat_speck/sat/native_sensitivity.py",
@@ -180,7 +182,7 @@
     },
     "analyze_seven_round_results": {
       "path": "scripts/analyze_seven_round_results.py",
-      "sha256": "7962e46f1b35b3b6de7c4059ed4568fd7532c02545a7d4a82b0fec1e0b299699"
+      "sha256": "dbe14e080bdc229c6069637e5f6efd5d36d120a46ceb27bf51f92136079e938d"
     }
   },
   "formula_metrics": {

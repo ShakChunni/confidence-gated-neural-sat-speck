@@ -1,0 +1,33 @@
+{
+  "dataset_id": "speck32_64_attack_phase11_beam_adjudication_r7",
+  "evidence_class": "DEVELOPMENT",
+  "protocol_status": "OPENED_PERMANENTLY_RETIRED",
+  "data_role": "development_beam_adjudication",
+  "rounds": 7,
+  "pair_count": 64,
+  "instance_count": 64,
+  "seed": 406737,
+  "seed_source": "os.urandom / secrets.SystemRandom",
+  "generated_at": "2026-09-19T15:38:57.435284+00:00",
+  "git_commit": "b8d580142789a8cda07500cbbac1607e3a3bc528",
+  "input_difference": [
+    64,
+    0
+  ],
+  "pair_construction": "plaintext_difference",
+  "key_generation_policy": "one_random_master_key_per_instance",
+  "supervisor_authorization": "Decision D-030 (2026-09-19) - Development-Only Beam Adjudication",
+  "status": "OPENED_PERMANENTLY_RETIRED",
+  "note": "Development cohort only. Never to be cited as prospective or publication evidence.",
+  "splits": {
+    "attack_instances": {
+      "data_checksum": "6260defd5e979a9b0d8911770b720988c7d577cb1aed32c1fc1f0fb018ef3c87",
+      "file_sha256": "09df5426f07ddd9653b6fdebd9d2b0949a8e14255f30687d97221334bfb575d8",
+      "instance_count": 64,
+      "pair_count": 64,
+      "path": "attack_instances.json",
+      "seed": 406737,
+      "split_role": "development"
+    }
+  }
+}

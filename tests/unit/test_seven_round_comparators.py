@@ -374,53 +374,45 @@ def test_solver_isolation_across_comparators() -> None:
         factory.build_isolated_model("comp1")
 
 
-def test_resume_preserves_unselected_methods(tmp_path: Path) -> None:
-    """Resuming evaluation must preserve records for methods not in current run."""
-    output_file = tmp_path / "test_run.json"
-    initial_data = {
-        "records_by_method": {
-            "hierarchical_neural_screened": [{"instance_id": "test-0", "success": True, "wall_seconds": 10.0, "candidates_attempted": 32}],
-            "random_sat": [{"instance_id": "test-0", "success": False, "wall_seconds": 5.0, "candidates_attempted": 1024}],
-        }
-    }
-    output_file.write_text(json.dumps(initial_data), encoding="utf-8")
+def test_resume_preserves_unselected_methods_behavioral_main(tmp_path: Path) -> None:
+    """Running main() with methods A and B, then resuming with method A, preserves method B records."""
+    from scripts.evaluate_seven_round_comparators import main
 
-    # Simulate resume loading
-    loaded_records: dict[str, list[dict]] = {}
-    with output_file.open("r", encoding="utf-8") as handle:
-        loaded = json.load(handle)
-        loaded_records = loaded.get("records_by_method", {})
+    out_file = tmp_path / "behavioral_resume_run.json"
 
-    active_methods = ["sat_only"]
-    for m in active_methods:
-        loaded_records.setdefault(m, [])
+    # Step 1: Run with sat_only_4obs and random_sat for 1 instance
+    ret1 = main([
+        "--methods", "sat_only_4obs", "random_sat",
+        "--instances", "1",
+        "--global-timeout", "1.0",
+        "--output", str(out_file),
+    ])
+    assert ret1 == 0
 
-    # Append new method result
-    loaded_records["sat_only"].append(
-        {"instance_id": "test-0", "success": False, "wall_seconds": 2.0, "candidates_attempted": 0}
-    )
+    with out_file.open("r", encoding="utf-8") as f:
+        data1 = json.load(f)
+    assert set(data1["records_by_method"].keys()) == {"sat_only_4obs", "random_sat"}
+    assert len(data1["records_by_method"]["sat_only_4obs"]) == 1
+    assert len(data1["records_by_method"]["random_sat"]) == 1
 
-    # Checkpoint save
-    from scripts.evaluate_seven_round_comparators import (
-        _save_atomic,
-        compute_method_summary,
-    )
-    checkpoint = {
-        "records_by_method": loaded_records,
-        "summary_by_method": {m: compute_method_summary(loaded_records[m]) for m in loaded_records},
-    }
-    _save_atomic(checkpoint, output_file)
+    # Step 2: Resume with only sat_only_4obs for 2 instances
+    ret2 = main([
+        "--methods", "sat_only_4obs",
+        "--instances", "2",
+        "--global-timeout", "1.0",
+        "--resume",
+        "--output", str(out_file),
+    ])
+    assert ret2 == 0
 
-    # Verify all 3 methods are preserved in on-disk file
-    saved_data = json.loads(output_file.read_text(encoding="utf-8"))
-    assert set(saved_data["records_by_method"].keys()) == {
-        "hierarchical_neural_screened",
-        "random_sat",
-        "sat_only",
-    }
-    assert len(saved_data["records_by_method"]["hierarchical_neural_screened"]) == 1
-    assert len(saved_data["records_by_method"]["random_sat"]) == 1
-    assert len(saved_data["records_by_method"]["sat_only"]) == 1
+    with out_file.open("r", encoding="utf-8") as f:
+        data2 = json.load(f)
+    assert set(data2["records_by_method"].keys()) == {"sat_only_4obs", "random_sat"}
+    assert len(data2["records_by_method"]["random_sat"]) == 1
+    assert len(data2["records_by_method"]["sat_only_4obs"]) == 2
+    assert "resume_events" in data2["metadata"]
+    assert len(data2["metadata"]["resume_events"]) == 1
+    assert data2["metadata"]["resume_events"][0]["resumed_methods"] == ["sat_only_4obs"]
 
 
 def test_resume_without_output_fails_loudly() -> None:
@@ -674,6 +666,8 @@ def test_resume_fail_closed_validation(tmp_path: Path) -> None:
         "global_timeout": 300.0,
         "device": "cpu",
         "methods": ["sat_only_4obs"],
+        "prospective": False,
+        "protocol_manifest_path": None,
     }
 
     # 1. Missing file fails closed
@@ -758,9 +752,9 @@ def test_resume_fail_closed_validation(tmp_path: Path) -> None:
     with pytest.raises(SystemExit, match="incomplete record for instance"):
         main(["--resume", "--output", str(incomplete_file), "--instances", "1"])
 
-    # 9. Duplicate instance ID within method fails closed
+    # 9. Instance ID not in dataset fails closed
     valid_record = {
-        "instance_id": "test-0000",
+        "instance_id": "train-0000",
         "instance_index": 0,
         "method": "sat_only_4obs",
         "method_display_name": "Exact SAT Only",
@@ -783,12 +777,30 @@ def test_resume_fail_closed_validation(tmp_path: Path) -> None:
         "preprocessing_seconds": 0.05,
         "ranking_screening_sorting_seconds": 0.0,
         "solver_seconds": 10.0,
+        "rebuilding_seconds": 0.0,
         "verification_seconds": 0.0,
         "counts_as_verified_recovery": False,
         "counts_as_unconditional_failure": True,
         "is_resolved_sat_state": False,
         "failure_domain": "solver",
+        "late_verified_recovery": False,
     }
+    unknown_inst_file = tmp_path / "unknown_inst.json"
+    unknown_inst_file.write_text(
+        json.dumps(
+            {
+                "metadata": valid_metadata,
+                "records_by_method": {
+                    "sat_only_4obs": [dict(valid_record, instance_id="unknown-9999")]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit, match="not found in dataset"):
+        main(["--resume", "--output", str(unknown_inst_file), "--instances", "1"])
+
+    # 10. Duplicate instance ID within method fails closed
     dup_file = tmp_path / "duplicate_record.json"
     dup_file.write_text(
         json.dumps(
@@ -800,7 +812,7 @@ def test_resume_fail_closed_validation(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     with pytest.raises(
-        SystemExit, match="duplicate record for instance 'test-0000'"
+        SystemExit, match="duplicate record for instance 'train-0000'"
     ):
         main(["--resume", "--output", str(dup_file), "--instances", "1"])
 
@@ -1032,4 +1044,354 @@ def test_runner_flags_conflict_rejection() -> None:
             "--prospective",
             "--protocol-manifest", "docs/seven_round_protocol_manifest.json",
         ])
+
+
+def test_runner_rebuilding_seconds_and_summary(tmp_path: Path) -> None:
+    """Records must include rebuilding_seconds and method summary must include total_rebuilding_seconds."""
+    import scripts.evaluate_seven_round_comparators as runner_module
+
+    out_file = tmp_path / "test_rebuilding.json"
+    ret = runner_module.main(
+        [
+            "--methods",
+            "sat_only_4obs",
+            "--instances",
+            "1",
+            "--global-timeout",
+            "1.0",
+            "--output",
+            str(out_file),
+        ]
+    )
+    assert ret == 0
+    with out_file.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    rec = data["records_by_method"]["sat_only_4obs"][0]
+    assert "rebuilding_seconds" in rec
+    assert rec["rebuilding_seconds"] >= 0.0
+
+    sm = data["summary_by_method"]["sat_only_4obs"]
+    assert "total_rebuilding_seconds" in sm
+    assert sm["total_rebuilding_seconds"] >= 0.0
+
+
+def test_runner_non_interruptible_overshoot_reclassification(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Non-interruptible methods that exceed the cutoff without recovering must be classified as global_timeout."""
+    import scripts.evaluate_seven_round_comparators as runner_module
+    from neural_sat_speck.attacks.multi_round_recovery import MultiRoundRecoveryResult
+
+    def mock_overshoot_sat_only(
+        model,
+        known_pairs,
+        verification_pairs,
+        *,
+        rounds,
+        solver_timeout,
+        global_timeout,
+        strategy,
+    ):
+        import time
+        # Simulate a non-interruptible operation that overshoots the cutoff
+        time.sleep(0.1)
+        return MultiRoundRecoveryResult(
+            strategy=strategy,
+            status="candidates_exhausted_without_unresolved_attempts",
+            success=False,
+            rounds=rounds,
+            assumed_round_keys=0,
+            residual_rounds=rounds,
+            candidates_attempted=1,
+            solver_calls=1,
+            attempts=(),
+            recovered_master_key=None,
+            solver_seconds=0.1,
+            verification_seconds=0.0,
+            total_seconds=0.1,
+        )
+
+    monkeypatch.setattr(
+        runner_module, "run_multi_round_sat_only_recovery", mock_overshoot_sat_only
+    )
+
+    out_file = tmp_path / "test_overshoot.json"
+    ret = runner_module.main(
+        [
+            "--methods",
+            "sat_only_4obs",
+            "--instances",
+            "1",
+            "--global-timeout",
+            "0.05",
+            "--output",
+            str(out_file),
+        ]
+    )
+    assert ret == 0
+    with out_file.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    rec = data["records_by_method"]["sat_only_4obs"][0]
+    assert rec["status"] == "global_timeout"
+    assert rec["failure_cause"] == "global_timeout"
+    assert rec["failure_domain"] == "envelope"
+
+
+def test_runner_resume_validation_fail_closed(tmp_path: Path) -> None:
+    """Resume must fail closed when prospective flags, manifest path, or methods mismatch."""
+    import scripts.evaluate_seven_round_comparators as runner_module
+
+    base_out = tmp_path / "base_run.json"
+    ret = runner_module.main(
+        [
+            "--methods",
+            "sat_only_4obs",
+            "--instances",
+            "1",
+            "--global-timeout",
+            "1.0",
+            "--output",
+            str(base_out),
+        ]
+    )
+    assert ret == 0
+
+    # 1. Prospective flag mismatch (saved run had prospective=True, resume attempted with prospective=False)
+    prosp_out = tmp_path / "prospective_run.json"
+    with base_out.open("r", encoding="utf-8") as f:
+        prosp_data = json.load(f)
+    prosp_data["metadata"]["prospective"] = True
+    with prosp_out.open("w", encoding="utf-8") as f:
+        json.dump(prosp_data, f, indent=2)
+
+    with pytest.raises(SystemExit, match="--resume prospective flag mismatch"):
+        runner_module.main(
+            [
+                "--methods",
+                "sat_only_4obs",
+                "--instances",
+                "1",
+                "--resume",
+                "--output",
+                str(prosp_out),
+            ]
+        )
+
+    # 2. Methods mismatch (requested method not in resumed file)
+    with pytest.raises(SystemExit, match="must be a subset of resumed file methods"):
+        runner_module.main(
+            [
+                "--methods",
+                "random_sat",
+                "--instances",
+                "1",
+                "--global-timeout",
+                "1.0",
+                "--resume",
+                "--output",
+                str(base_out),
+            ]
+        )
+
+
+def test_runner_late_verified_recovery_reclassification(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A method that succeeds after cutoff wall time must be reclassified as global_timeout with late_verified_recovery=True."""
+    import scripts.evaluate_seven_round_comparators as runner_module
+    from neural_sat_speck.attacks.multi_round_recovery import MultiRoundRecoveryResult
+
+    def mock_late_success_sat_only(
+        model,
+        known_pairs,
+        verification_pairs,
+        *,
+        rounds,
+        solver_timeout,
+        global_timeout,
+        strategy,
+    ):
+        import time
+
+        # Simulate finding a verified key only after exceeding the cutoff
+        time.sleep(0.1)
+        return MultiRoundRecoveryResult(
+            strategy=strategy,
+            status="sat_and_verified",
+            success=True,
+            rounds=rounds,
+            assumed_round_keys=0,
+            residual_rounds=rounds,
+            candidates_attempted=1,
+            solver_calls=1,
+            attempts=(),
+            recovered_master_key=(0x1111, 0x2222, 0x3333, 0x4444),
+            solver_seconds=0.1,
+            rebuilding_seconds=0.0,
+            verification_seconds=0.0,
+            total_seconds=0.1,
+        )
+
+    monkeypatch.setattr(
+        runner_module, "run_multi_round_sat_only_recovery", mock_late_success_sat_only
+    )
+
+    out_file = tmp_path / "test_late_verified.json"
+    ret = runner_module.main(
+        [
+            "--methods",
+            "sat_only_4obs",
+            "--instances",
+            "1",
+            "--global-timeout",
+            "0.05",
+            "--output",
+            str(out_file),
+        ]
+    )
+    assert ret == 0
+    with out_file.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    rec = data["records_by_method"]["sat_only_4obs"][0]
+    assert rec["late_verified_recovery"] is True
+    assert rec["success"] is False
+    assert rec["recovered_master_key"] is None
+    assert rec["status"] == "global_timeout"
+    assert rec["failure_cause"] == "global_timeout"
+    assert rec["counts_as_verified_recovery"] is False
+    assert rec["counts_as_unconditional_failure"] is True
+    assert rec["failure_domain"] == "envelope"
+
+
+def test_zero_remaining_time_clean_exit() -> None:
+    """Non-positive global_timeout (e.g. 0.0) must cleanly exit with global_timeout status without raising ValueError."""
+    instance = _build_instance(rounds=4, pair_count=8)
+    known = known_pairs_for_attack_instance(instance)[:KNOWN_PAIRS]
+    verification = independent_verification_pairs(
+        instance.master_key,
+        rounds=4,
+        pair_count=VERIFICATION_PAIRS,
+        seed=VERIFICATION_SEED,
+    )
+    factory = IsolatedSolverFactory.from_pairs(known, rounds=4, instance_id=instance.instance_id)
+    model = factory.build_isolated_model("zero_timeout_test")
+
+    # 1. MultiRoundRecovery key recovery
+    candidates = [{2: 0x1234, 3: 0x5678}]
+    res_key = run_multi_round_key_recovery(
+        model,
+        candidates,
+        known,
+        verification,
+        rounds=4,
+        solver_timeout=10.0,
+        global_timeout=0.0,
+    )
+    assert res_key.success is False
+    assert res_key.status == STATUS_GLOBAL_TIMEOUT
+    assert res_key.candidates_attempted == 0
+
+    # 2. MultiRoundRecovery sat-only recovery
+    res_sat = run_multi_round_sat_only_recovery(
+        model,
+        known,
+        verification,
+        rounds=4,
+        solver_timeout=10.0,
+        global_timeout=0.0,
+    )
+    assert res_sat.success is False
+    assert res_sat.status == STATUS_GLOBAL_TIMEOUT
+    assert res_sat.solver_calls == 0
+
+    # 3. Hierarchical multi-round attack
+    instance_64 = _build_instance(rounds=4, pair_count=64)
+    known_64 = known_pairs_for_attack_instance(instance_64)[:KNOWN_PAIRS]
+    verification_64 = independent_verification_pairs(
+        instance_64.master_key,
+        rounds=4,
+        pair_count=VERIFICATION_PAIRS,
+        seed=VERIFICATION_SEED,
+    )
+    dummy_model = _DummyGroupRanker()
+    stages = (
+        HierarchicalStage(round_index=3, model=dummy_model, beam_width=2),
+        HierarchicalStage(round_index=2, model=dummy_model, beam_width=2),
+    )
+    res_hier = run_hierarchical_multi_round_attack(
+        instance_64,
+        rounds=4,
+        stages=stages,
+        known_pairs=known_64,
+        verification_pairs=verification_64,
+        solver_timeout=5.0,
+        global_timeout=0.0,
+    )
+    assert res_hier.success is False
+    assert res_hier.status == STATUS_GLOBAL_TIMEOUT
+    assert res_hier.failure_cause == FAILURE_CAUSE_GLOBAL_TIMEOUT
+    assert res_hier.candidates_attempted == 0
+
+
+def test_verify_record_integrity_contradictions() -> None:
+    """verify_record_integrity must catch contradictions in success, wall time, and late_verified_recovery."""
+    from scripts.analyze_seven_round_results import verify_record_integrity
+
+    # Base valid success record
+    valid_success = {
+        "instance_id": "test-0001",
+        "success": True,
+        "status": "sat_and_verified",
+        "counts_as_verified_recovery": True,
+        "counts_as_unconditional_failure": False,
+        "failure_domain": "none",
+        "recovered_master_key": [0x1, 0x2, 0x3, 0x4],
+        "late_verified_recovery": False,
+        "cutoff_seconds": 300.0,
+        "method_wall_seconds": 15.0,
+    }
+    assert verify_record_integrity(valid_success) is True
+
+    # 1. Success with wall_sec >= cutoff
+    bad_wall = dict(valid_success, method_wall_seconds=300.5)
+    with pytest.raises(ValueError, match="success=True but method_wall_seconds .* >= cutoff"):
+        verify_record_integrity(bad_wall)
+
+    # 2. Success with late_verified_recovery=True
+    bad_late_success = dict(valid_success, late_verified_recovery=True)
+    with pytest.raises(ValueError, match="success=True but late_verified_recovery=True"):
+        verify_record_integrity(bad_late_success)
+
+    # Base valid failure record with late_verified_recovery=True
+    valid_late_failure = {
+        "instance_id": "test-0002",
+        "success": False,
+        "status": "global_timeout",
+        "counts_as_verified_recovery": False,
+        "counts_as_unconditional_failure": True,
+        "failure_domain": "envelope",
+        "recovered_master_key": None,
+        "late_verified_recovery": True,
+        "cutoff_seconds": 300.0,
+        "method_wall_seconds": 305.0,
+    }
+    assert verify_record_integrity(valid_late_failure) is False
+
+    # 3. late_verified_recovery=True but status != 'global_timeout'
+    bad_status = dict(valid_late_failure, status="solver_timeout")
+    with pytest.raises(ValueError, match="late_verified_recovery=True but status='solver_timeout' != 'global_timeout'"):
+        verify_record_integrity(bad_status)
+
+    # 4. late_verified_recovery=True but counts_as_unconditional_failure=False
+    bad_fail_count = dict(valid_late_failure, counts_as_unconditional_failure=False)
+    with pytest.raises(ValueError, match="late_verified_recovery=True but counts_as_unconditional_failure=False"):
+        verify_record_integrity(bad_fail_count)
+
+    # 5. late_verified_recovery=True but failure_domain != 'envelope'
+    bad_domain = dict(valid_late_failure, failure_domain="timeout")
+    with pytest.raises(ValueError, match="late_verified_recovery=True but failure_domain='timeout' != 'envelope'"):
+        verify_record_integrity(bad_domain)
 

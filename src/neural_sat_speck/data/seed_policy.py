@@ -66,6 +66,9 @@ PHASE10_G2_PROSPECTIVE_SEED: Final[int] = 201001
 # Authoritative Oracle-SAT development/evaluation seed for Phase 11A (N=64 keys, 7 rounds)
 PHASE11A_ORACLE_SEED: Final[int] = 300001
 
+# Retired development beam-adjudication seed for Phase 11 (N=64 keys, permanently opened)
+PHASE11_BEAM_ADJUDICATION_SEED: Final[int] = 406737
+
 # Authoritative six-round stage-1 development-family seeds for the unfrozen
 # Phase 11B' hierarchical ranking protocol (train 4096 groups / validation 1024
 # groups, 64 pairs per group).  Development-family data only: they are not
@@ -85,6 +88,7 @@ PROTECTED_RESEARCH_SEEDS: Final[frozenset[int]] = frozenset(
         PHASE10_G2_DEVELOPMENT_SEED,
         PHASE10_G2_PROSPECTIVE_SEED,
         PHASE11A_ORACLE_SEED,
+        PHASE11_BEAM_ADJUDICATION_SEED,
         PHASE11B_PRIME_SIX_ROUND_TRAIN_SEED,
         PHASE11B_PRIME_SIX_ROUND_VALIDATION_SEED,
     }
@@ -129,6 +133,7 @@ class SeedRole(StrEnum):
     PHASE10_G2_PROSPECTIVE_VALIDATION = "phase10_g2_prospective_validation"
     PHASE11A_ORACLE_EVALUATION = "phase11a_oracle_evaluation"
     PHASE11B_PRIME_STAGE1_DEVELOPMENT = "phase11b_prime_stage1_development"
+    PHASE11_BEAM_ADJUDICATION = "phase11_beam_adjudication"
     BLIND_CONFIRMATION = "blind_confirmation"
     MODEL_SELECTION = "model_selection"
     HISTORICAL_DIAGNOSTIC = "historical_diagnostic"
@@ -222,6 +227,13 @@ def validate_seed_for_role(seed: int, role: SeedRole | str) -> None:
                 "serve the Phase 11B' six-round stage-1 development family."
             )
 
+    elif role == SeedRole.PHASE11_BEAM_ADJUDICATION:
+        if seed != PHASE11_BEAM_ADJUDICATION_SEED:
+            raise ValueError(
+                f"Seed {seed} is not authorized for Phase 11 beam adjudication "
+                f"(owned seed: {PHASE11_BEAM_ADJUDICATION_SEED})."
+            )
+
     elif role == SeedRole.PROSPECTIVE_VALIDATION:
         if seed == QUARANTINED_PHASE10_SEED:
             raise ValueError(
@@ -238,6 +250,11 @@ def validate_seed_for_role(seed: int, role: SeedRole | str) -> None:
             raise ValueError(
                 f"Seed {seed} is an opened historical evaluation seed and cannot serve as prospective validation."
             )
+        if seed == PHASE11_BEAM_ADJUDICATION_SEED:
+            raise ValueError(
+                f"Seed {seed} is RETIRED from Phase 11 beam adjudication (permanently opened development cohort) "
+                "and cannot serve as prospective validation."
+            )
         if seed in HISTORICAL_SEEDS or (seed in PROTECTED_RESEARCH_SEEDS and seed != PHASE10_PROSPECTIVE_SEED):
             raise ValueError(
                 f"Seed {seed} has already been used in historical training/validation and cannot serve as prospective validation."
@@ -249,6 +266,11 @@ def validate_seed_for_role(seed: int, role: SeedRole | str) -> None:
                 f"Seed {seed} is RETIRED from the blind confirmation role. "
                 "Reason: Published in user-facing tutorials and CLI defaults. "
                 "The Phase 12 blind seed remains TBD until final protocol freeze."
+            )
+        if seed == PHASE11_BEAM_ADJUDICATION_SEED:
+            raise ValueError(
+                f"Seed {seed} is RETIRED from Phase 11 beam adjudication (opened development cohort) "
+                "and cannot serve as blind confirmation."
             )
         if seed in PROTECTED_RESEARCH_SEEDS or seed == QUARANTINED_PHASE10_SEED:
             raise ValueError(

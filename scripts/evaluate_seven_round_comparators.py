@@ -28,7 +28,9 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 import statistics
+import subprocess
 import sys
 import time
 from collections.abc import Sequence
@@ -36,11 +38,30 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import numpy
+import pycryptosat
+
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
 
 import torch  # noqa: E402
+
+
+def _get_git_commit() -> str:
+    """Retrieve current Git commit hash or return 'unknown'."""
+    try:
+        res = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=REPOSITORY_ROOT,
+        )
+        return res.stdout.strip()
+    except Exception:
+        return "unknown"
+
 
 from neural_sat_speck.attacks.classical_ranking import (  # noqa: E402
     ClassicalDistributionTable,
@@ -168,11 +189,13 @@ REQUIRED_RECORD_FIELDS = {
     "preprocessing_seconds",
     "ranking_screening_sorting_seconds",
     "solver_seconds",
+    "rebuilding_seconds",
     "verification_seconds",
     "counts_as_verified_recovery",
     "counts_as_unconditional_failure",
     "is_resolved_sat_state",
     "failure_domain",
+    "late_verified_recovery",
 }
 
 
@@ -194,7 +217,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--methods",
         nargs="+",
         choices=METHOD_CHOICES,
-        default=list(COMPARATOR_METHODS),
+        default=None,
         help="Methods to evaluate (default: all 6 comparators)",
     )
     parser.add_argument(
@@ -317,12 +340,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         args.dataset = DEFAULT_DATASET_PATH
 
     # Normalize method aliases to canonical names while preserving user order
-    normalized_methods: list[str] = []
-    for m in args.methods:
-        canonical = METHOD_ALIASES.get(m, m)
-        if canonical not in normalized_methods:
-            normalized_methods.append(canonical)
-    args.methods = normalized_methods
+    if args.methods is not None:
+        normalized_methods: list[str] = []
+        for m in args.methods:
+            canonical = METHOD_ALIASES.get(m, m)
+            if canonical not in normalized_methods:
+                normalized_methods.append(canonical)
+        args.methods = normalized_methods
 
     if args.resume and args.output is None:
         raise SystemExit("Error: --resume requires an explicit --output path.")
@@ -443,6 +467,10 @@ def compute_method_summary(
             ),
             3,
         ),
+        "total_rebuilding_seconds": round(
+            sum(r.get("rebuilding_seconds", 0.0) for r in records),
+            3,
+        ),
         "total_verification_seconds": round(
             sum(
                 r.get(
@@ -526,6 +554,8 @@ def main(argv: list[str] | None = None) -> int:
     # Validate or compute hashes
     dataset_hash = dataset_info["sha256"]
     dataset_id = dataset_info["dataset_id"]
+    shard = load_attack_shard(args.dataset, expected_dataset_id=dataset_id)
+    dataset_instance_ids = {inst.instance_id for inst in shard.instances}
     stage1_hash = _sha256_file(args.stage1_model)
     stage2_hash = _sha256_file(args.stage2_model)
     classical_hash = _sha256_file(args.classical_dist)
@@ -536,58 +566,9 @@ def main(argv: list[str] | None = None) -> int:
         else (args.m1 * args.m2)
     )
 
-    metadata: dict[str, Any] = {
-        "schema_version": SCHEMA_VERSION,
-        "protocol_manifest_path": str(args.protocol_manifest) if args.protocol_manifest else None,
-        "prospective": args.prospective,
-        "protocol_status": manifest_data.get("protocol_status") if manifest_data else "UNSPECIFIED_DEVELOPMENT",
-        "dataset_path": str(args.dataset),
-        "dataset_sha256": dataset_hash,
-        "dataset_id": dataset_id,
-        "stage1_model_path": str(args.stage1_model),
-        "stage1_model_sha256": stage1_hash,
-        "stage2_model_path": str(args.stage2_model),
-        "stage2_model_sha256": stage2_hash,
-        "classical_dist_path": str(args.classical_dist),
-        "classical_dist_sha256": classical_hash,
-        "rounds": ROUNDS,
-        "ranking_differential_pairs": RANKING_DIFFERENTIAL_PAIRS,
-        "ranking_total_observations": RANKING_TOTAL_OBSERVATIONS,
-        "sat_observations_4obs": SAT_OBSERVATIONS_4OBS,
-        "sat_observations_all": SAT_OBSERVATIONS_ALL,
-        "sat_observations_by_method": {
-            "hierarchical_neural_screened": SAT_OBSERVATIONS_4OBS,
-            "hierarchical_neural_full": SAT_OBSERVATIONS_4OBS,
-            "hierarchical_neural_classical": SAT_OBSERVATIONS_4OBS,
-            "random_sat": SAT_OBSERVATIONS_4OBS,
-            "sat_only_4obs": SAT_OBSERVATIONS_4OBS,
-            "sat_only_all_observations": SAT_OBSERVATIONS_ALL,
-        },
-        "formula_metrics_4obs": {
-            "variables": 2368,
-            "cnf_clauses": 3350,
-            "xor_clauses": 1632,
-            "total_clauses": 4982,
-        },
-        "formula_metrics_all_observations": {
-            "variables": 61888,
-            "cnf_clauses": 90274,
-            "xor_clauses": 43296,
-            "total_clauses": 133570,
-        },
-        "verification_pairs": VERIFICATION_PAIRS,
-        "verification_seed": VERIFICATION_SEED,
-        "m1": args.m1,
-        "m2": args.m2,
-        "candidate_budget": effective_candidate_budget,
-        "solver_timeout": args.timeout,
-        "global_timeout": args.global_timeout,
-        "device": str(device_obj),
-        "methods": args.methods,
-    }
-
     # Load existing results if resuming (fail-closed on error or mismatch)
     records_by_method: dict[str, list[dict[str, Any]]] = {}
+
     if args.resume:
         if not output_path.exists():
             raise SystemExit(
@@ -626,6 +607,32 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(
                 f"Error: resume file schema_version mismatch: expected {SCHEMA_VERSION!r}, "
                 f"found {loaded_metadata.get('schema_version')!r}."
+            )
+
+        if loaded_metadata.get("prospective") != args.prospective:
+            raise SystemExit(
+                f"Error: --resume prospective flag mismatch: expected {args.prospective!r}, "
+                f"found {loaded_metadata.get('prospective')!r}."
+            )
+        if loaded_metadata.get("dataset_id") != dataset_id:
+            raise SystemExit(
+                f"Error: --resume dataset_id mismatch: expected {dataset_id!r}, "
+                f"found {loaded_metadata.get('dataset_id')!r}."
+            )
+        expected_manifest_str = str(args.protocol_manifest) if args.protocol_manifest else None
+        if loaded_metadata.get("protocol_manifest_path") != expected_manifest_str:
+            raise SystemExit(
+                f"Error: --resume protocol_manifest_path mismatch: expected {expected_manifest_str!r}, "
+                f"found {loaded_metadata.get('protocol_manifest_path')!r}."
+            )
+        loaded_methods = [
+            METHOD_ALIASES.get(m, m) for m in loaded_metadata.get("methods", [])
+        ]
+        if args.methods is None:
+            args.methods = list(loaded_methods)
+        elif not set(args.methods).issubset(set(loaded_methods)):
+            raise SystemExit(
+                f"Error: --resume methods {args.methods} must be a subset of resumed file methods {loaded_methods}."
             )
 
         config_checks = [
@@ -676,6 +683,10 @@ def main(argv: list[str] | None = None) -> int:
                     raise SystemExit(
                         f"Error: record in method {m_name} is not an object."
                     )
+                if rec.get("method") != m_name:
+                    raise SystemExit(
+                        f"Error: record method {rec.get('method')!r} does not match bucket {m_name!r}."
+                    )
                 missing_rec_fields = sorted(
                     REQUIRED_RECORD_FIELDS - set(rec.keys())
                 )
@@ -685,20 +696,119 @@ def main(argv: list[str] | None = None) -> int:
                         f"in method {m_name!r}: missing {missing_rec_fields}."
                     )
                 inst_id = rec["instance_id"]
+                if inst_id not in dataset_instance_ids:
+                    raise SystemExit(
+                        f"Error: record instance_id {inst_id!r} in method {m_name!r} not found in dataset {args.dataset}."
+                    )
                 if inst_id in seen_instances:
                     raise SystemExit(
                         f"Error: duplicate record for instance {inst_id!r} in method {m_name!r}."
                     )
                 seen_instances.add(inst_id)
 
+        # Preserve every method bucket from previous run
         records_by_method = {
-            m: list(records_by_method_raw.get(m, [])) for m in args.methods
+            m: list(records_by_method_raw.get(m, [])) for m in records_by_method_raw
         }
+        for m in args.methods:
+            records_by_method.setdefault(m, [])
+
+        metadata = dict(loaded_metadata)
+        resume_events = list(metadata.get("resume_events", []))
+        resume_event = {
+            "resumed_from": str(output_path),
+            "resumed_at": datetime.now(UTC).isoformat(),
+            "resumed_git_commit": _get_git_commit(),
+            "resumed_methods": list(args.methods),
+            "command_line": sys.argv,
+            "prior_instance_count_by_method": {
+                m: len(records_by_method_raw.get(m, [])) for m in records_by_method_raw
+            },
+        }
+        resume_events.append(resume_event)
+        metadata["resume_events"] = resume_events
+        metadata["resume_provenance"] = resume_event
+        metadata["git_commit"] = _get_git_commit()
+        metadata["command_line"] = sys.argv
+
         print(
             f"Resuming from {output_path} with "
             f"{sum(len(r) for r in records_by_method.values())} validated records across "
             f"{len(records_by_method)} methods."
         )
+    else:
+        if args.methods is None:
+            args.methods = list(COMPARATOR_METHODS)
+        elif args.prospective and set(args.methods) != set(COMPARATOR_METHODS):
+            raise SystemExit(
+                f"Error: fresh prospective launch requires all {len(COMPARATOR_METHODS)} methods; "
+                f"got {args.methods}. Resume mode (--resume) is required to run a subset."
+            )
+
+        metadata: dict[str, Any] = {
+            "schema_version": SCHEMA_VERSION,
+            "protocol_manifest_path": str(args.protocol_manifest) if args.protocol_manifest else None,
+            "prospective": args.prospective,
+            "protocol_status": manifest_data.get("protocol_status") if manifest_data else "UNSPECIFIED_DEVELOPMENT",
+            "dataset_path": str(args.dataset),
+            "dataset_sha256": dataset_hash,
+            "dataset_id": dataset_id,
+            "stage1_model_path": str(args.stage1_model),
+            "stage1_model_sha256": stage1_hash,
+            "stage2_model_path": str(args.stage2_model),
+            "stage2_model_sha256": stage2_hash,
+            "classical_dist_path": str(args.classical_dist),
+            "classical_dist_sha256": classical_hash,
+            "rounds": ROUNDS,
+            "ranking_differential_pairs": RANKING_DIFFERENTIAL_PAIRS,
+            "ranking_total_observations": RANKING_TOTAL_OBSERVATIONS,
+            "sat_observations_4obs": SAT_OBSERVATIONS_4OBS,
+            "sat_observations_all": SAT_OBSERVATIONS_ALL,
+            "sat_observations_by_method": {
+                "hierarchical_neural_screened": SAT_OBSERVATIONS_4OBS,
+                "hierarchical_neural_full": SAT_OBSERVATIONS_4OBS,
+                "hierarchical_neural_classical": SAT_OBSERVATIONS_4OBS,
+                "random_sat": SAT_OBSERVATIONS_4OBS,
+                "sat_only_4obs": SAT_OBSERVATIONS_4OBS,
+                "sat_only_all_observations": SAT_OBSERVATIONS_ALL,
+            },
+            "formula_metrics_4obs": {
+                "variables": 2368,
+                "cnf_clauses": 3350,
+                "xor_clauses": 1632,
+                "total_clauses": 4982,
+            },
+            "formula_metrics_all_observations": {
+                "variables": 61888,
+                "cnf_clauses": 90274,
+                "xor_clauses": 43296,
+                "total_clauses": 133570,
+            },
+            "verification_pairs": VERIFICATION_PAIRS,
+            "verification_seed": VERIFICATION_SEED,
+            "m1": args.m1,
+            "m2": args.m2,
+            "candidate_budget": effective_candidate_budget,
+            "solver_timeout": args.timeout,
+            "global_timeout": args.global_timeout,
+            "device": str(device_obj),
+            "methods": args.methods,
+            "git_commit": _get_git_commit(),
+            "command_line": sys.argv,
+            "environment_provenance": {
+                "platform": platform.platform(),
+                "python_version": sys.version,
+                "numpy_version": getattr(numpy, "__version__", "unknown"),
+                "torch_version": getattr(torch, "__version__", "unknown"),
+                "pycryptosat_version": getattr(pycryptosat, "__version__", "unknown"),
+            },
+            "code_provenance": {
+                "runner_script": _sha256_file(Path(__file__).resolve()),
+                "manifest_validator": _sha256_file(REPOSITORY_ROOT / "src/neural_sat_speck/protocol/manifest_validator.py"),
+            },
+            "resume_provenance": None,
+            "resume_events": [],
+        }
 
     for m in args.methods:
         records_by_method.setdefault(m, [])
@@ -721,8 +831,7 @@ def main(argv: list[str] | None = None) -> int:
         "Offline model initialization is recorded separately in model_initialization_seconds."
     )
 
-    # Load dataset
-    shard = load_attack_shard(args.dataset, expected_dataset_id=dataset_id)
+    # Select instances from loaded shard
     selected_instances = shard.instances[args.start : args.start + args.instances]
     if not selected_instances:
         raise SystemExit("No instances selected for evaluation.")
@@ -808,6 +917,7 @@ def main(argv: list[str] | None = None) -> int:
                         "preprocessing_seconds": round(preprocessing_seconds, 6),
                         "ranking_screening_sorting_seconds": 0.0,
                         "solver_seconds": 0.0,
+                        "rebuilding_seconds": 0.0,
                         "verification_seconds": 0.0,
                     }
                 else:
@@ -832,6 +942,7 @@ def main(argv: list[str] | None = None) -> int:
                         res.ranking_seconds, 6
                     )
                     rec["solver_seconds"] = round(res.solver_seconds, 6)
+                    rec["rebuilding_seconds"] = round(res.rebuilding_seconds, 6)
                     rec["verification_seconds"] = round(
                         res.verification_seconds, 6
                     )
@@ -874,13 +985,14 @@ def main(argv: list[str] | None = None) -> int:
                         "preprocessing_seconds": round(preprocessing_seconds, 6),
                         "ranking_screening_sorting_seconds": 0.0,
                         "solver_seconds": 0.0,
+                        "rebuilding_seconds": 0.0,
                         "verification_seconds": 0.0,
                     }
                 else:
                     eff_timeout = min(args.timeout, remaining)
                     t_run_start = time.perf_counter()
                     res = run_hierarchical_multi_round_attack(
-                        instance,
+                         instance,
                         rounds=ROUNDS,
                         stages=stages,
                         known_pairs=known_4,
@@ -898,6 +1010,7 @@ def main(argv: list[str] | None = None) -> int:
                         res.ranking_seconds, 6
                     )
                     rec["solver_seconds"] = round(res.solver_seconds, 6)
+                    rec["rebuilding_seconds"] = round(res.rebuilding_seconds, 6)
                     rec["verification_seconds"] = round(
                         res.verification_seconds, 6
                     )
@@ -940,6 +1053,7 @@ def main(argv: list[str] | None = None) -> int:
                         "preprocessing_seconds": round(preprocessing_seconds, 6),
                         "ranking_screening_sorting_seconds": 0.0,
                         "solver_seconds": 0.0,
+                        "rebuilding_seconds": 0.0,
                         "verification_seconds": 0.0,
                     }
                 else:
@@ -964,6 +1078,7 @@ def main(argv: list[str] | None = None) -> int:
                         res.ranking_seconds, 6
                     )
                     rec["solver_seconds"] = round(res.solver_seconds, 6)
+                    rec["rebuilding_seconds"] = round(res.rebuilding_seconds, 6)
                     rec["verification_seconds"] = round(
                         res.verification_seconds, 6
                     )
@@ -997,6 +1112,7 @@ def main(argv: list[str] | None = None) -> int:
                         "preprocessing_seconds": round(preprocessing_seconds, 6),
                         "ranking_screening_sorting_seconds": 0.0,
                         "solver_seconds": 0.0,
+                        "rebuilding_seconds": 0.0,
                         "verification_seconds": 0.0,
                     }
                 else:
@@ -1035,6 +1151,7 @@ def main(argv: list[str] | None = None) -> int:
                         "timing_seconds": {
                             "ranking": 0.0,
                             "solver": recovery_res.solver_seconds,
+                            "rebuilding": recovery_res.rebuilding_seconds,
                             "verification": recovery_res.verification_seconds,
                             "total": wall_sec,
                         },
@@ -1042,6 +1159,7 @@ def main(argv: list[str] | None = None) -> int:
                         "preprocessing_seconds": round(preprocessing_seconds, 6),
                         "ranking_screening_sorting_seconds": 0.0,
                         "solver_seconds": round(recovery_res.solver_seconds, 6),
+                        "rebuilding_seconds": round(recovery_res.rebuilding_seconds, 6),
                         "verification_seconds": round(
                             recovery_res.verification_seconds, 6
                         ),
@@ -1069,6 +1187,7 @@ def main(argv: list[str] | None = None) -> int:
                         "timing_seconds": {
                             "ranking": 0.0,
                             "solver": 0.0,
+                            "rebuilding": 0.0,
                             "verification": 0.0,
                             "total": 0.0,
                         },
@@ -1076,6 +1195,7 @@ def main(argv: list[str] | None = None) -> int:
                         "preprocessing_seconds": round(preprocessing_seconds, 6),
                         "ranking_screening_sorting_seconds": 0.0,
                         "solver_seconds": 0.0,
+                        "rebuilding_seconds": 0.0,
                         "verification_seconds": 0.0,
                     }
                 else:
@@ -1108,6 +1228,7 @@ def main(argv: list[str] | None = None) -> int:
                         "timing_seconds": {
                             "ranking": 0.0,
                             "solver": recovery_res.solver_seconds,
+                            "rebuilding": recovery_res.rebuilding_seconds,
                             "verification": recovery_res.verification_seconds,
                             "total": wall_sec,
                         },
@@ -1115,6 +1236,7 @@ def main(argv: list[str] | None = None) -> int:
                         "preprocessing_seconds": round(preprocessing_seconds, 6),
                         "ranking_screening_sorting_seconds": 0.0,
                         "solver_seconds": round(recovery_res.solver_seconds, 6),
+                        "rebuilding_seconds": round(recovery_res.rebuilding_seconds, 6),
                         "verification_seconds": round(
                             recovery_res.verification_seconds, 6
                         ),
@@ -1142,6 +1264,7 @@ def main(argv: list[str] | None = None) -> int:
                         "timing_seconds": {
                             "ranking": 0.0,
                             "solver": 0.0,
+                            "rebuilding": 0.0,
                             "verification": 0.0,
                             "total": 0.0,
                         },
@@ -1149,6 +1272,7 @@ def main(argv: list[str] | None = None) -> int:
                         "preprocessing_seconds": round(preprocessing_seconds, 6),
                         "ranking_screening_sorting_seconds": 0.0,
                         "solver_seconds": 0.0,
+                        "rebuilding_seconds": 0.0,
                         "verification_seconds": 0.0,
                     }
                 else:
@@ -1181,6 +1305,7 @@ def main(argv: list[str] | None = None) -> int:
                         "timing_seconds": {
                             "ranking": 0.0,
                             "solver": recovery_res.solver_seconds,
+                            "rebuilding": recovery_res.rebuilding_seconds,
                             "verification": recovery_res.verification_seconds,
                             "total": wall_sec,
                         },
@@ -1188,6 +1313,7 @@ def main(argv: list[str] | None = None) -> int:
                         "preprocessing_seconds": round(preprocessing_seconds, 6),
                         "ranking_screening_sorting_seconds": 0.0,
                         "solver_seconds": round(recovery_res.solver_seconds, 6),
+                        "rebuilding_seconds": round(recovery_res.rebuilding_seconds, 6),
                         "verification_seconds": round(
                             recovery_res.verification_seconds, 6
                         ),
@@ -1196,10 +1322,24 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError(f"Unknown method {method!r}")
 
             method_wall_sec = time.perf_counter() - method_started
+            late_verified_recovery = False
+            if method_wall_sec >= cutoff_seconds:
+                if rec.get("success", False):
+                    late_verified_recovery = True
+                    rec["success"] = False
+                    rec["recovered_master_key"] = None
+                rec["status"] = "global_timeout"
+                rec["failure_cause"] = "global_timeout"
+
             classified = classify_attack_outcome(
                 rec["status"],
                 success=bool(rec["success"]),
-                unresolved_timeouts=1 if rec["status"] == "solver_timeout" else 0,
+                unresolved_timeouts=1
+                if rec.get("status") in (
+                    "solver_timeout",
+                    "unsuccessful_with_unresolved_timeouts",
+                )
+                else 0,
             )
             rec.update(
                 {
@@ -1216,6 +1356,7 @@ def main(argv: list[str] | None = None) -> int:
                     "counts_as_unconditional_failure": classified["counts_as_unconditional_failure"],
                     "is_resolved_sat_state": classified["is_resolved_sat_state"],
                     "failure_domain": classified["failure_domain"],
+                    "late_verified_recovery": late_verified_recovery,
                 }
             )
 
@@ -1233,8 +1374,16 @@ def main(argv: list[str] | None = None) -> int:
         }
         checkpoint_data = {
             "metadata": metadata,
-            "evidence_class": "DEVELOPMENT_DIAGNOSTIC",
-            "protocol_status": "PROPOSED_DEVELOPMENT_ONLY",
+            "evidence_class": (
+                "PROSPECTIVE_EVALUATION"
+                if args.prospective
+                else "DEVELOPMENT_DIAGNOSTIC"
+            ),
+            "protocol_status": (
+                manifest_data.get("protocol_status")
+                if manifest_data
+                else "PROPOSED_DEVELOPMENT_ONLY"
+            ),
             "generated_at": datetime.now(UTC).isoformat(),
             "summary_by_method": summary_by_method,
             "records_by_method": records_by_method,

@@ -235,7 +235,7 @@ def test_retired_seed_rejection_in_prospective() -> None:
         validate_manifest_for_prospective_execution,
     )
 
-    for retired_seed in (98001, 97001, 99001, 101001, 201001, 300001):
+    for retired_seed in (98001, 97001, 99001, 101001, 201001, 300001, 406737):
         data = _load_manifest_copy()
         data["protocol_status"] = "FROZEN_AUTHORIZED"
         data["seed_governance"]["protected_dataset_seed"] = retired_seed
@@ -314,3 +314,84 @@ def test_classify_attack_outcome_mapping() -> None:
     assert res_exh_unres["category"] == "unsuccessful_with_unresolved_timeouts"
     assert res_exh_unres["is_resolved_sat_state"] is False
     assert res_exh_unres["failure_domain"] == "solver"
+
+
+def test_prospective_manifest_rejects_seed_406737() -> None:
+    """A prospective protocol manifest attempting to assign seed 406737 must fail closed."""
+    from neural_sat_speck.protocol.manifest_validator import (
+        validate_manifest_for_prospective_execution,
+    )
+
+    data = _load_manifest_copy()
+    data["protocol_status"] = "FROZEN_AUTHORIZED"
+    data["seed_governance"]["protected_dataset_seed"] = 406737
+    data["seed_governance"]["authorization"] = {
+        "authorized_by": "COMP6002 Project Lead",
+        "authorization_decision": "D-030",
+        "authorized_at": "2026-09-19T14:00:00Z",
+    }
+    data["protected_dataset"] = {
+        "dataset_path": "datasets/phase11_beam_adjudication_r7/attack_instances.json",
+        "dataset_id": "speck32_64_attack_phase11_beam_adjudication_r7",
+        "sha256": "09df5426f07ddd9653b6fdebd9d2b0949a8e14255f30687d97221334bfb575d8",
+        "seed": 406737,
+        "sample_size_n": 128,
+        "role": "PROSPECTIVE_EVALUATION",
+        "rounds": 7,
+        "ranking_differential_pairs": 64,
+        "generation_config_hash": "b" * 64,
+        "schema": "neural_sat_speck.attack_shard.v1",
+    }
+    with pytest.raises(ManifestValidationError, match="RETIRED_OR_OPENED_SEEDS"):
+        validate_manifest_for_prospective_execution(data)
+
+
+def test_prospective_dataset_validation_rejects_seed_406737() -> None:
+    """Prospective dataset validation must reject seed 406737 even with a valid on-disk file."""
+    from neural_sat_speck.protocol.manifest_validator import (
+        verify_attack_dataset_integrity,
+    )
+
+    dataset_path = Path("datasets/phase11_beam_adjudication_r7/attack_instances.json")
+    assert dataset_path.exists()
+
+    with pytest.raises(ManifestValidationError, match="retired/opened seed 406737"):
+        verify_attack_dataset_integrity(dataset_path, is_prospective=True)
+
+
+def test_development_dataset_inspection_allowed_without_prospective_status() -> None:
+    """The development adjudication artifact can be inspected and reproduced in development mode."""
+    from neural_sat_speck.protocol.manifest_validator import (
+        verify_attack_dataset_integrity,
+    )
+
+    dataset_path = Path("datasets/phase11_beam_adjudication_r7/attack_instances.json")
+    assert dataset_path.exists()
+
+    info = verify_attack_dataset_integrity(dataset_path, is_prospective=False)
+    assert info["is_prospective"] is False
+    assert info["seed"] == 406737
+    assert info["instance_count"] == 64
+    assert info["sha256"] == "09df5426f07ddd9653b6fdebd9d2b0949a8e14255f30687d97221334bfb575d8"
+
+
+def test_seed_policy_governance_for_406737() -> None:
+    """seed_policy must reject 406737 for prospective/blind roles but allow development adjudication."""
+    from neural_sat_speck.data.seed_policy import (
+        PHASE11_BEAM_ADJUDICATION_SEED,
+        SeedRole,
+        validate_seed_for_role,
+    )
+
+    assert PHASE11_BEAM_ADJUDICATION_SEED == 406737
+
+    # Rejected for prospective validation
+    with pytest.raises(ValueError, match="RETIRED from Phase 11 beam adjudication"):
+        validate_seed_for_role(406737, SeedRole.PROSPECTIVE_VALIDATION)
+
+    # Rejected for blind confirmation
+    with pytest.raises(ValueError, match="RETIRED from Phase 11 beam adjudication"):
+        validate_seed_for_role(406737, SeedRole.BLIND_CONFIRMATION)
+
+    # Allowed for its specific development role
+    validate_seed_for_role(406737, SeedRole.PHASE11_BEAM_ADJUDICATION)

@@ -95,8 +95,21 @@ def verify_record_integrity(r: dict[str, Any]) -> bool:
     status = r.get("status")
     failure_domain = r.get("failure_domain")
     key = r.get("recovered_master_key")
+    late_verified = bool(r.get("late_verified_recovery", False))
+    cutoff = float(r.get("cutoff_seconds", 300.0))
+    wall_sec = float(r.get("method_wall_seconds", r.get("wall_seconds", 0.0)))
 
     if success:
+        if wall_sec >= cutoff:
+            raise ValueError(
+                f"Contradictory record: success=True but method_wall_seconds ({wall_sec}) >= cutoff ({cutoff}) "
+                f"for instance {r.get('instance_id')}"
+            )
+        if late_verified:
+            raise ValueError(
+                f"Contradictory record: success=True but late_verified_recovery=True "
+                f"for instance {r.get('instance_id')}"
+            )
         if not counts_recovery:
             raise ValueError(
                 f"Contradictory record: success=True but counts_as_verified_recovery=False "
@@ -129,6 +142,22 @@ def verify_record_integrity(r: dict[str, Any]) -> bool:
                 f"Contradictory record: success=False but counts_as_verified_recovery=True "
                 f"for instance {r.get('instance_id')}"
             )
+        if late_verified:
+            if status != "global_timeout":
+                raise ValueError(
+                    f"Contradictory record: late_verified_recovery=True but status={status!r} != 'global_timeout' "
+                    f"for instance {r.get('instance_id')}"
+                )
+            if not counts_fail:
+                raise ValueError(
+                    f"Contradictory record: late_verified_recovery=True but counts_as_unconditional_failure=False "
+                    f"for instance {r.get('instance_id')}"
+                )
+            if failure_domain != "envelope":
+                raise ValueError(
+                    f"Contradictory record: late_verified_recovery=True but failure_domain={failure_domain!r} != 'envelope' "
+                    f"for instance {r.get('instance_id')}"
+                )
         return False
 
 

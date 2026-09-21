@@ -94,6 +94,7 @@ class MultiRoundRecoveryResult:
     solver_seconds: float
     verification_seconds: float
     total_seconds: float
+    rebuilding_seconds: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -113,6 +114,7 @@ class MultiRoundRecoveryResult:
             ),
             "timing_seconds": {
                 "solver": self.solver_seconds,
+                "rebuilding": self.rebuilding_seconds,
                 "verification": self.verification_seconds,
                 "total": self.total_seconds,
             },
@@ -158,8 +160,8 @@ def _validate_timeout(time_limit: float | None, name: str = "solver_timeout") ->
     if time_limit is not None:
         if isinstance(time_limit, bool) or not isinstance(time_limit, (int, float)):
             raise TypeError(f"{name} must be a number or None")
-        if time_limit <= 0:
-            raise ValueError(f"{name} must be positive")
+        if time_limit < 0:
+            raise ValueError(f"{name} must be non-negative")
     return float(time_limit) if time_limit is not None else None
 
 
@@ -205,13 +207,32 @@ def run_multi_round_key_recovery(
                 "every candidate must assume the same number of round keys"
             )
 
+    started = perf_counter()
+    if g_timeout is not None and g_timeout <= 0.0:
+        return MultiRoundRecoveryResult(
+            strategy=strategy,
+            status=STATUS_GLOBAL_TIMEOUT,
+            success=False,
+            rounds=rounds,
+            assumed_round_keys=assumed,
+            residual_rounds=rounds - assumed,
+            candidates_attempted=0,
+            solver_calls=0,
+            attempts=(),
+            recovered_master_key=None,
+            solver_seconds=0.0,
+            verification_seconds=0.0,
+            total_seconds=0.0,
+            rebuilding_seconds=0.0,
+        )
+
     attempts: list[MultiRoundAttempt] = []
     recovered: MasterKey | None = None
     status = STATUS_EXHAUSTED_WITHOUT_UNRESOLVED
     success = False
     solver_seconds = 0.0
+    rebuilding_seconds = 0.0
     verification_seconds = 0.0
-    started = perf_counter()
     global_deadline = (started + g_timeout) if g_timeout is not None else None
 
     current_model = model
@@ -287,6 +308,7 @@ def run_multi_round_key_recovery(
             else:
                 current_model = SpeckSatModel.from_known_pairs(known, rounds=rounds)
             rebuild_seconds = perf_counter() - rebuild_start
+            rebuilding_seconds += rebuild_seconds
             solver_seconds += rebuild_seconds
 
             if global_deadline is not None and perf_counter() >= global_deadline:
@@ -316,6 +338,7 @@ def run_multi_round_key_recovery(
         attempts=tuple(attempts),
         recovered_master_key=recovered,
         solver_seconds=solver_seconds,
+        rebuilding_seconds=rebuilding_seconds,
         verification_seconds=verification_seconds,
         total_seconds=perf_counter() - started,
     )
@@ -418,6 +441,24 @@ def run_multi_round_sat_only_recovery(
     g_timeout = _validate_timeout(global_timeout, "global_timeout")
 
     started = perf_counter()
+    if g_timeout is not None and g_timeout <= 0.0:
+        return MultiRoundRecoveryResult(
+            strategy=strategy,
+            status=STATUS_GLOBAL_TIMEOUT,
+            success=False,
+            rounds=rounds,
+            assumed_round_keys=0,
+            residual_rounds=rounds,
+            candidates_attempted=0,
+            solver_calls=0,
+            attempts=(),
+            recovered_master_key=None,
+            solver_seconds=0.0,
+            rebuilding_seconds=0.0,
+            verification_seconds=0.0,
+            total_seconds=0.0,
+        )
+
     eff_timeout = timeout
     if g_timeout is not None:
         eff_timeout = min(timeout, g_timeout) if timeout is not None else g_timeout
@@ -484,6 +525,7 @@ def run_multi_round_sat_only_recovery(
         attempts=(attempt,),
         recovered_master_key=recovered,
         solver_seconds=solver_seconds,
+        rebuilding_seconds=0.0,
         verification_seconds=verification_seconds,
         total_seconds=perf_counter() - started,
     )

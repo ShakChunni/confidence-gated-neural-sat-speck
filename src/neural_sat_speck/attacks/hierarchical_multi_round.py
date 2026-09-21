@@ -119,8 +119,8 @@ def _validate_timeout(timeout: object, name: str = "solver_timeout") -> float | 
         return None
     if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
         raise TypeError(f"{name} must be a number or None")
-    if timeout <= 0:
-        raise ValueError(f"{name} must be positive")
+    if timeout < 0:
+        raise ValueError(f"{name} must be non-negative")
     return float(timeout)
 
 
@@ -274,6 +274,7 @@ class HierarchicalAttackResult:
     total_seconds: float
     failure_cause: str | None
     attempted_paths: tuple[tuple[int, ...], ...] = ()
+    rebuilding_seconds: float = 0.0
 
     def __post_init__(self) -> None:
         """Enforce the result's accounting and outcome invariants."""
@@ -284,7 +285,9 @@ class HierarchicalAttackResult:
             raise TypeError("success must be a boolean")
         if not isinstance(self.status, str) or not self.status:
             raise ValueError("status must be a non-empty string")
-        if not isinstance(self.stages, tuple) or not self.stages:
+        if not isinstance(self.stages, tuple) or (
+            not self.stages and self.status != STATUS_GLOBAL_TIMEOUT
+        ):
             raise ValueError("stages must be a non-empty tuple of diagnostics")
         for stage in self.stages:
             if not isinstance(stage, StageDiagnostic):
@@ -294,6 +297,7 @@ class HierarchicalAttackResult:
             _validate_master_key(self.recovered_master_key)
         _validate_seconds(self.ranking_seconds, "ranking_seconds")
         _validate_seconds(self.solver_seconds, "solver_seconds")
+        _validate_seconds(self.rebuilding_seconds, "rebuilding_seconds")
         _validate_seconds(self.verification_seconds, "verification_seconds")
         _validate_seconds(self.total_seconds, "total_seconds")
         if not isinstance(self.attempted_paths, tuple):
@@ -333,6 +337,7 @@ class HierarchicalAttackResult:
             "timing_seconds": {
                 "ranking": self.ranking_seconds,
                 "solver": self.solver_seconds,
+                "rebuilding": self.rebuilding_seconds,
                 "verification": self.verification_seconds,
                 "total": self.total_seconds,
             },
@@ -525,6 +530,22 @@ def run_hierarchical_multi_round_attack(
     timeout = _validate_timeout(solver_timeout, "solver_timeout")
     g_timeout = _validate_timeout(global_timeout, "global_timeout")
     started = time.perf_counter()
+    if g_timeout is not None and g_timeout <= 0.0:
+        return HierarchicalAttackResult(
+            strategy=HIERARCHICAL_ATTACK_STRATEGY,
+            success=False,
+            status=STATUS_GLOBAL_TIMEOUT,
+            stages=(),
+            candidates_attempted=0,
+            recovered_master_key=None,
+            ranking_seconds=0.0,
+            solver_seconds=0.0,
+            verification_seconds=0.0,
+            total_seconds=0.0,
+            failure_cause=FAILURE_CAUSE_GLOBAL_TIMEOUT,
+            attempted_paths=(),
+            rebuilding_seconds=0.0,
+        )
     deadline = (started + g_timeout) if g_timeout is not None else None
     ranking_seconds = 0.0
     timed_out_globally = False
@@ -632,6 +653,7 @@ def run_hierarchical_multi_round_attack(
 
     # Exact verification: one fresh isolated model, candidates in tuple order.
     solver_seconds = 0.0
+    rebuilding_seconds = 0.0
     verification_seconds = 0.0
     candidates_attempted = 0
     recovered: MasterKey | None = None
@@ -686,6 +708,7 @@ def run_hierarchical_multi_round_attack(
                 candidates_attempted = recovery.candidates_attempted
                 recovered = recovery.recovered_master_key
                 solver_seconds = float(recovery.solver_seconds)
+                rebuilding_seconds = float(recovery.rebuilding_seconds)
                 verification_seconds = float(recovery.verification_seconds)
                 attempted_tuples = tuple(
                     prefix for prefix, _ in effective_paths[:candidates_attempted]
@@ -724,6 +747,7 @@ def run_hierarchical_multi_round_attack(
         total_seconds=time.perf_counter() - started,
         failure_cause=failure_cause,
         attempted_paths=attempted_tuples,
+        rebuilding_seconds=rebuilding_seconds,
     )
 
 

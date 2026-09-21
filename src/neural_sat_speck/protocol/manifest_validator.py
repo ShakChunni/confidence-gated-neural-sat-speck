@@ -43,6 +43,7 @@ RETIRED_OR_OPENED_SEEDS: frozenset[int] = frozenset({
     101001,
     201001,
     300001,
+    406737,
 })
 
 EXPECTED_METHODS = {
@@ -201,7 +202,15 @@ def classify_attack_outcome(
         cat = "solver_exception"
     elif status in ("indeterminate", "solver_unknown"):
         cat = "solver_unknown"
-    elif status in ("unsat", "candidates_exhausted"):
+    elif status == "unsuccessful_with_unresolved_timeouts":
+        cat = "unsuccessful_with_unresolved_timeouts"
+    elif status in (
+        "unsat",
+        "proven_unsat",
+        "candidates_exhausted",
+        "candidates_exhausted_without_unresolved",
+        "candidates_exhausted_without_unresolved_attempts",
+    ):
         if unresolved_timeouts > 0:
             cat = "unsuccessful_with_unresolved_timeouts"
         else:
@@ -872,6 +881,21 @@ def validate_manifest_for_prospective_execution(
             raise ManifestValidationError(
                 f"CLI argument m2={getattr(cli_args, 'm2')} does not match manifest {envelope['m2_stage2_beam_width']}"
             )
+        cand_budget = getattr(cli_args, "candidate_budget", None)
+        if cand_budget is not None and cand_budget != envelope["candidate_budget_max_tuples"]:
+            raise ManifestValidationError(
+                f"CLI argument candidate_budget={cand_budget} does not match manifest {envelope['candidate_budget_max_tuples']}"
+            )
+        batch_size = getattr(cli_args, "batch_size", None)
+        if batch_size is not None and batch_size != envelope.get("batch_size", 1024):
+            raise ManifestValidationError(
+                f"CLI argument batch_size={batch_size} does not match manifest {envelope.get('batch_size')}"
+            )
+        threads = getattr(cli_args, "threads", None)
+        if threads is not None and threads != envelope.get("threads", 1):
+            raise ManifestValidationError(
+                f"CLI argument threads={threads} does not match manifest {envelope.get('threads')}"
+            )
         if getattr(cli_args, "timeout", None) != envelope["per_candidate_solver_timeout_seconds"]:
             raise ManifestValidationError(
                 f"CLI timeout={getattr(cli_args, 'timeout')} does not match manifest {envelope['per_candidate_solver_timeout_seconds']}"
@@ -880,6 +904,24 @@ def validate_manifest_for_prospective_execution(
             raise ManifestValidationError(
                 f"CLI global_timeout={getattr(cli_args, 'global_timeout')} does not match manifest {envelope['global_method_cutoff_seconds']}"
             )
+        expected_manifest_methods = {
+            m["method_id"] for m in manifest_data.get("comparator_methods", [])
+        }
+        cli_methods = getattr(cli_args, "methods", None)
+        is_resume = bool(getattr(cli_args, "resume", False))
+        if cli_methods is not None:
+            cli_methods_set = set(cli_methods)
+            if not is_resume:
+                if cli_methods_set != expected_manifest_methods:
+                    raise ManifestValidationError(
+                        f"Fresh prospective launch requires all {len(expected_manifest_methods)} methods; "
+                        f"got {cli_methods_set}. Resume mode (--resume) is required to run a subset."
+                    )
+            else:
+                if not cli_methods_set.issubset(expected_manifest_methods):
+                    raise ManifestValidationError(
+                        f"Resumed prospective run methods {cli_methods_set} must be a subset of {expected_manifest_methods}"
+                    )
         dataset_arg = getattr(cli_args, "dataset", None)
         if dataset_arg is not None:
             verify_attack_dataset_integrity(
