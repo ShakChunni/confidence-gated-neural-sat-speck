@@ -1,0 +1,24 @@
+{
+  "dataset_id": "speck32_64_attack_phase11_prospective_r7",
+  "evidence_class": "PROSPECTIVE_EVALUATION",
+  "protocol_id": "speck32_64_seven_round_comparative_protocol_v1",
+  "authorization_decision": "D-031",
+  "authorized_by": "F.M. Ashfaq, Project Author and Supervisor",
+  "seed": 669981,
+  "seed_source": "secrets.SystemRandom",
+  "sample_size_n": 128,
+  "rounds": 7,
+  "ranking_differential_pairs": 64,
+  "input_difference": [
+    64,
+    0
+  ],
+  "generated_at": "2026-09-21T07:09:57.563093+00:00",
+  "git_commit": "5639b71a02fb7b7d2cbf06af473da0c5e1110f9f",
+  "file_name": "prospective_evaluation.json",
+  "file_sha256": "4c21a1d463d08672b9e28ec25aa97706872e890a0cf5dd92d2155a833f6a5219",
+  "data_checksum": "5959c34d3780f8ad92ee4847270d6fc6a27f54ba550032a0554ea42db51ead8f",
+  "generation_config_hash": "7e3bd515fd304da6a117eba81c17e6504b8e9ee93ffdad5f7bc846c19fdb9131",
+  "schema": "neural_sat_speck.attack_shard.v1",
+  "status": "FROZEN_PROSPECTIVE_EVALUATION"
+}
