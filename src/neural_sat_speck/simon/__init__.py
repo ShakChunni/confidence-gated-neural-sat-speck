@@ -1,5 +1,14 @@
 """Scalar SIMON32/64 reference components."""
 
+from .attack_instance import (
+    DEFAULT_SIMON_INPUT_DIFFERENCE,
+    SimonAttackInstance,
+    SimonAttackInstanceConfig,
+    SimonAttackPair,
+    generate_simon_attack_instances,
+    load_simon_attack_instances,
+    save_simon_attack_instances,
+)
 from .cipher import (
     SIMON32_64_BLOCK_WORD_COUNT,
     SIMON32_64_KAT_CIPHERTEXT,
@@ -29,9 +38,12 @@ from .primitives import (
     rotate_right,
     simon_f,
 )
+from .sat_model import SimonSatModel
+from .verification import SimonVerificationResult, verify_simon_master_key
 
 __all__ = [
     "Block",
+    "DEFAULT_SIMON_INPUT_DIFFERENCE",
     "SIMON32_64_BLOCK_WORD_COUNT",
     "SIMON32_64_CONSTANT_C",
     "SIMON32_64_KAT_CIPHERTEXT",
@@ -41,6 +53,11 @@ __all__ = [
     "SIMON32_64_ROUND_COUNT",
     "SIMON32_64_Z0",
     "SIMON32_64_Z0_PERIOD",
+    "SimonAttackInstance",
+    "SimonAttackInstanceConfig",
+    "SimonAttackPair",
+    "SimonSatModel",
+    "SimonVerificationResult",
     "WORD_BITS",
     "WORD_MASK",
     "WORD_MODULUS",
@@ -49,9 +66,13 @@ __all__ = [
     "encrypt_block",
     "encrypt_round",
     "expand_key",
+    "generate_simon_attack_instances",
+    "load_simon_attack_instances",
     "mask_word",
     "partial_decrypt_final_round",
     "rotate_left",
     "rotate_right",
+    "save_simon_attack_instances",
     "simon_f",
+    "verify_simon_master_key",
 ]

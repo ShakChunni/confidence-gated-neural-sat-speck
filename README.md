@@ -17,8 +17,8 @@ reduced-round scientific study, not a claim to break deployed full-round SPECK.
 | Corrected Phase 7, seed `98001`, `N=64` | B1 `58/64`; B0 `50/64`; paired exact McNemar `p=0.0768`; isolated SAT-only `0/64` at 10 s | `RETROSPECTIVE`: B1 is promising, not confirmed superior. |
 | Phase 10 prospective validation, seed `101001`, `N=64` | G1 failure-risk AUC `0.7759`; Sequential-32 `64/64`; adaptive policy `63/64` | `PROSPECTIVE_VALIDATION`: useful discrimination, no operational advantage over the static policy. |
 | Phase 10-G2 prospective validation, seed `201001`, `N=256` | G2 AUC `0.8513` versus G1 `0.7194`; paired delta `0.1319`, `p=0.02688`; frozen trusted-region target missed | `PROSPECTIVE_VALIDATION`: improved discrimination, negative threshold transport. Six-round model search is closed. |
-| Phase 11A frozen seven-round oracle gate, seed `300001`, `N=64` | `0/64`, all 64 timed out at 10 s | Frozen `NEGATIVE`/RED result for the specified backend and envelope. Phase 11B/11C remain blocked. |
-| Phase 11B′ hierarchical evaluation on opened seed `300001` | `13/16` verified, Wilson 95% CI approximately `[0.570, 0.934]` | `DEVELOPMENT` only. It does not overturn the frozen RED gate or authorize protected work. |
+| Phase 11 prospective evaluation, seed `669981`, `N=128` (D-031) | Screened `110/128` (85.94%, Wilson [0.7886, 0.9092], PAR-2 178.31 s); Classical hybrid `111/128` (86.72%, Wilson [0.7976, 0.9154], PAR-2 143.24 s); Full neural `0/128` (ranking exhausted 300 s budget, 0 SAT attempts); Random SAT `0/128`; SAT-only 4-obs and all-obs `0/128`. Primary contrast paired risk difference +85.94% [78.29%, 90.92%], exact McNemar $p = 1.54 \times 10^{-33}$. Candidate reduction 29.9% overall (304.4 vs 213.3) and 52.3% on recoveries (186.6 vs 89.1; median 144 vs 38). | `PROSPECTIVE_VALIDATION`: the predeclared RQ1 contrast favoured neural guidance over SAT-only at 7 rounds under the common resource envelope. The classical Stage-2 hybrid had similar recovery with lower runtime and fewer candidate attempts. |
+| Phase 11A frozen seven-round oracle gate, seed `300001`, `N=64` | `0/64`, all 64 timed out at 10 s | Frozen `NEGATIVE`/RED result for the specified backend and envelope. |
 | Six-round sparse statistical comparator on opened seed `98001` | Top-4 containment `64/64`, mean sorted rank `1.75`, mean ranking time approximately `0.545 s` | `RETROSPECTIVE`: the observed result is stronger than B0/B1 on this family and rules out a six-round neural-superiority narrative. |
 | Matched screening and controlled solver audits | Screening retained the recorded top-32 ordering in `4/4` true-prefix cases with mean paired speedup `30.60x`; revised native matrix settings solved `2/3` opened diagnostics within 60 s versus `0/3` for each default treatment | `ENGINEERING/DIAGNOSTIC`: useful controls, not prospective recovery claims or universal causal conclusions. |
 
@@ -26,10 +26,10 @@ Every reported recovered master key must pass independent fresh-pair verificatio
 
 ## Governance and stop boundary
 
-- Seeds `98001`, `101001`, `201001`, and `300001` are opened/retired for their recorded roles; `97001` and `99001` remain quarantined or retired.
+- Seeds `98001`, `101001`, `201001`, `300001`, `406737`, and `669981` are opened/retired for their recorded roles; `97001` and `99001` remain quarantined or retired.
 - Do not generate or open a Phase 12 blind seed without an entirely frozen protocol and explicit author approval.
-- Do not run a protected seven-round campaign from the current Phase 11B′ document. A September 2026 audit found a conflict between D-026 and higher-priority `AGENTS.md`/`PLAN.md`; D-027 places the proposed freeze and authorization on hold.
-- The hierarchical evaluation used the ordinary Python `pycryptosat` wrapper path. A separate engineering diagnostic used the native CryptoMiniSat binary with explicit Gaussian-elimination settings. Those results and causal claims must remain separate.
+- Phase 11 seven-round SPECK comparative evaluation is completed and locked. No further modifications to seven-round SPECK protocols, models, or datasets are permitted.
+- The hierarchical evaluation used the ordinary Python `pycryptosat` wrapper path under strict per-method solver isolation. Engineering diagnostics on native Gaussian-elimination settings remain separate.
 
 Start with:
 
@@ -83,13 +83,9 @@ discrimination did not yield a better fixed policy, a credible classical ranker 
 reverse the apparent neural advantage, and solver configuration can move the
 observed seven-round boundary.
 
-The remaining publication-critical experiment is one frozen, unseen seven-round
-comparison. The planned methods are neural-neural hierarchical ranking,
-neural-classical hybrid ranking, the strongest feasible fully classical hierarchy,
-random tuple order, and SAT-only recovery. The existing method named
-`hierarchical_classical` is scientifically a hybrid because Stage 1 is neural; paper
-text and future records must label it accordingly. The experiment must use one
-global cutoff, isolated solvers, complete timing, and no post-open tuning.
+The seven-round SPECK comparative evaluation is complete and frozen (D-031, $N=128$, Seed `669981`), prospectively confirming that neural subkey guidance provides an operational advantage over SAT-only and random baselines ($85.94\%$ vs $0.00\%$, McNemar $p = 1.54 \times 10^{-33}$), while a classical difference distribution table at Stage 2 matches recovery ($86.72\%$) with 32% lower runtime and 52% candidate reduction on recoveries. Full unpruned neural ranking failed due to runtime exhaustion during scoring (0 SAT attempts). The SPECK publication account is closed.
+
+The SIMON32/64 reference, two-key SAT pilot, and [predeclared demo operating-window study](docs/SIMON_OPERATING_WINDOW_PROTOCOL.md) are complete. At nine rounds with four known observations, unguided SAT timed out on 8/8 demo keys at a ten-second solve limit, while two correct trailing-key assumptions recovered 8/8. A separate [300-second online SAT-only control](docs/SIMON_300S_SAT_CONTROL_PROTOCOL.md) then recovered all eight of those same demo keys without any subkey assumption (median 49.57 s). The [paper evidence note](docs/SIMON_FEASIBILITY_EVIDENCE.md) gives the grid, complete timing, hashes, and limits. This is a useful negative feasibility check for that exact setting, not an end to the approved cross-cipher study. The next task is to fix an information- and resource-matched SIMON comparison, then complete the empirical depth map, controlled backend study, artifact, and cross-cipher paper synthesis. Neural training and protected evaluation keep their separate gates.
 
 The working paper title is **From Neural Ranking to Verified Key Recovery: A
 Controlled Study of Classical, Neural, and XOR-SAT Guidance on Reduced-Round
