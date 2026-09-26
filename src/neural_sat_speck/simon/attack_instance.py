@@ -170,6 +170,13 @@ class SimonAttackInstanceConfig:
         if self.pair_count <= 0:
             raise ValueError("pair_count must be positive")
 
+        if isinstance(self.verification_pair_count, bool) or not isinstance(
+            self.verification_pair_count, int
+        ):
+            raise TypeError("verification_pair_count must be an integer")
+        if self.verification_pair_count <= 0:
+            raise ValueError("verification_pair_count must be positive")
+
         _validate_round_count(self.rounds)
 
         if isinstance(self.seed, bool) or not isinstance(self.seed, int):
@@ -191,6 +198,8 @@ class SimonAttackInstanceConfig:
             raise ValueError(
                 f"Demo split role requires CLI_DEMO_SEED ({CLI_DEMO_SEED}), got {self.seed}"
             )
+        if self.split_role == "development" and self.seed == CLI_DEMO_SEED:
+            raise ValueError("Development split role cannot reuse the demo seed")
 
 
 def generate_simon_attack_instances(

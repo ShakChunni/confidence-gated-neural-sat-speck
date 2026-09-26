@@ -88,6 +88,72 @@ def test_partial_decrypt_final_round_matches_prior_round() -> None:
     assert partial_decrypt_final_round(c7, k6) == c6
 
 
+def test_simon_pair_difference_needs_candidate_sensitive_descent() -> None:
+    """One inverse makes the pair difference key-invariant; a second can separate keys."""
+    plaintext_a = SIMON32_64_KAT_PLAINTEXT
+    plaintext_b = (plaintext_a[0], plaintext_a[1] ^ 0x0040)
+    ciphertexts = (
+        encrypt_block(plaintext_a, SIMON32_64_KAT_KEY, 9),
+        encrypt_block(plaintext_b, SIMON32_64_KAT_KEY, 9),
+    )
+    assert ciphertexts == (
+        oracle_simon32_64_encrypt(plaintext_a, SIMON32_64_KAT_KEY, 9),
+        oracle_simon32_64_encrypt(plaintext_b, SIMON32_64_KAT_KEY, 9),
+    )
+
+    immediate_states = set()
+    immediate_differences = set()
+    descended_differences = set()
+    for candidate in (0, 1, 2, 3, 0x1234, 0xFFFF):
+        one_inverse = tuple(decrypt_round(ct, candidate) for ct in ciphertexts)
+        oracle_one_inverse = tuple(
+            oracle_simon32_64_decrypt(ct, (0, 0, 0, candidate), 1)
+            for ct in ciphertexts
+        )
+        assert one_inverse == oracle_one_inverse
+        immediate_states.add(one_inverse)
+
+        two_inverses = tuple(decrypt_round(state, 0) for state in one_inverse)
+        oracle_two_inverses = tuple(
+            oracle_simon32_64_decrypt(state, (0, 0, 0, 0), 1)
+            for state in oracle_one_inverse
+        )
+        assert two_inverses == oracle_two_inverses
+
+        immediate_differences.add(tuple(a ^ b for a, b in zip(*one_inverse, strict=True)))
+        descended_differences.add(tuple(a ^ b for a, b in zip(*two_inverses, strict=True)))
+
+    assert len(immediate_states) > 1
+    assert len(immediate_differences) == 1
+    assert len(descended_differences) > 1
+
+
+def test_direct_pair_ranking_difference_has_r_minus_two_then_r_minus_three_depth() -> None:
+    """Check the exact differential depths for a direct nine-round attack pair."""
+    plaintext_a = SIMON32_64_KAT_PLAINTEXT
+    plaintext_b = (plaintext_a[0], plaintext_a[1] ^ 0x0040)
+    plaintexts = (plaintext_a, plaintext_b)
+    ciphertexts = tuple(encrypt_block(pt, SIMON32_64_KAT_KEY, 9) for pt in plaintexts)
+    round_keys = expand_key(SIMON32_64_KAT_KEY, 9)
+
+    def pair_difference(states: tuple[tuple[int, int], ...]) -> tuple[int, int]:
+        return tuple(a ^ b for a, b in zip(*states, strict=True))
+
+    after_final = tuple(decrypt_round(ct, round_keys[8]) for ct in ciphertexts)
+    stage_one = tuple(decrypt_round(state, 0) for state in after_final)
+    seven_round_reference = tuple(
+        oracle_simon32_64_encrypt(pt, SIMON32_64_KAT_KEY, 7) for pt in plaintexts
+    )
+    assert pair_difference(stage_one) == pair_difference(seven_round_reference)
+
+    after_penultimate = tuple(decrypt_round(state, round_keys[7]) for state in after_final)
+    stage_two = tuple(decrypt_round(state, 0) for state in after_penultimate)
+    six_round_reference = tuple(
+        oracle_simon32_64_encrypt(pt, SIMON32_64_KAT_KEY, 6) for pt in plaintexts
+    )
+    assert pair_difference(stage_two) == pair_difference(six_round_reference)
+
+
 def test_deterministic_random_round_trips() -> None:
     rng = random.Random(0x6002)
     for _ in range(32):

@@ -134,6 +134,41 @@ def test_demo_role_requires_cli_demo_seed() -> None:
         )
 
 
+def test_development_role_cannot_relabel_opened_demo_seed() -> None:
+    with pytest.raises(ValueError, match="cannot reuse the demo seed"):
+        SimonAttackInstanceConfig(
+            instance_count=2,
+            pair_count=4,
+            rounds=9,
+            seed=CLI_DEMO_SEED,
+            split_role="development",
+        )
+
+
+@pytest.mark.parametrize("count", [0, -1])
+def test_zero_or_negative_fresh_verification_count_is_rejected(count: int) -> None:
+    with pytest.raises(ValueError, match="verification_pair_count must be positive"):
+        SimonAttackInstanceConfig(
+            instance_count=1,
+            pair_count=2,
+            rounds=9,
+            seed=CLI_DEMO_SEED,
+            verification_pair_count=count,
+        )
+
+
+@pytest.mark.parametrize("count", [True, 1.5, "2"])
+def test_noninteger_verification_count_is_rejected(count) -> None:
+    with pytest.raises(TypeError, match="verification_pair_count must be an integer"):
+        SimonAttackInstanceConfig(
+            instance_count=1,
+            pair_count=2,
+            rounds=9,
+            seed=CLI_DEMO_SEED,
+            verification_pair_count=count,
+        )
+
+
 def test_ground_truth_isolation_properties() -> None:
     config = SimonAttackInstanceConfig(
         instance_count=2,
