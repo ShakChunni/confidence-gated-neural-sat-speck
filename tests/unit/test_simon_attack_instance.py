@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import tempfile
+from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -25,6 +29,7 @@ from neural_sat_speck.simon.attack_instance import (
 )
 from neural_sat_speck.simon.cipher import encrypt_block
 from neural_sat_speck.simon.key_schedule import expand_key
+from tests.fixtures.simon_reference_oracle import oracle_simon32_64_encrypt
 
 
 def test_demo_instance_generation_is_deterministic() -> None:
@@ -83,9 +88,98 @@ def test_fresh_verification_pairs_are_independently_valid() -> None:
     instances = generate_simon_attack_instances(config)
     for inst in instances:
         assert len(inst.verification_pairs) == 3
+        all_plaintexts = [pt for pt, _ in inst.known_pairs + inst.verification_pairs]
+        assert len(all_plaintexts) == len(set(all_plaintexts))
         # Ensure verification plaintexts are encrypted under the master key
         for pt, ct in inst.verification_pairs:
             assert encrypt_block(pt, inst.master_key, inst.rounds) == ct
+
+
+def test_generator_rejects_attack_and_verification_plaintext_collisions(monkeypatch) -> None:
+    """Scripted RNG forces both kinds of collision before distinct draws."""
+    from neural_sat_speck.simon import attack_instance as module
+
+    draws = iter((
+        10, 20, 30, 40,  # master key
+        1, 2,             # accepted pair: (1,2), (1,66)
+        1, 66,            # rejected second pair, duplicates first pair
+        3, 4,             # accepted pair: (3,4), (3,68)
+        1, 2,             # rejected verification plaintext from first pair
+        3, 68,            # rejected verification plaintext from second pair
+        5, 6,             # accepted first verification plaintext
+        5, 6,             # rejected duplicate verification plaintext
+        7, 8,             # accepted second verification plaintext
+    ))
+
+    class ScriptedRandom:
+        def __init__(self, seed: int) -> None:
+            assert seed == CLI_DEMO_SEED
+
+        def randrange(self, stop: int) -> int:
+            assert stop == 1 << 16
+            return next(draws)
+
+    monkeypatch.setattr(module, "random", SimpleNamespace(Random=ScriptedRandom))
+    instance, = generate_simon_attack_instances(SimonAttackInstanceConfig(
+        instance_count=1,
+        pair_count=2,
+        rounds=9,
+        seed=CLI_DEMO_SEED,
+        verification_pair_count=2,
+    ))
+    plaintexts = [pt for pt, _ in instance.known_pairs + instance.verification_pairs]
+    assert plaintexts == [(1, 2), (1, 66), (3, 4), (3, 68), (5, 6), (7, 8)]
+    assert len(plaintexts) == len(set(plaintexts))
+    for pt, ct in instance.known_pairs + instance.verification_pairs:
+        assert ct == oracle_simon32_64_encrypt(pt, instance.master_key, instance.rounds)
+    with pytest.raises(StopIteration):
+        next(draws)
+
+
+def test_instance_rejects_overlap_after_deserialization_or_manual_construction() -> None:
+    instance, = generate_simon_attack_instances(SimonAttackInstanceConfig(
+        instance_count=1, pair_count=1, rounds=9, seed=CLI_DEMO_SEED,
+    ))
+    with pytest.raises(ValueError, match="plaintexts must be distinct"):
+        replace(instance, verification_pairs=(instance.known_pairs[0],))
+    with pytest.raises(ValueError, match="plaintexts must be distinct"):
+        replace(instance, pairs=(instance.pairs[0], instance.pairs[0]))
+
+
+@pytest.mark.parametrize("input_difference", [(0, 0), (1 << 16, 0)])
+def test_zero_effective_input_difference_is_rejected(input_difference) -> None:
+    with pytest.raises(ValueError, match="input_difference must be nonzero"):
+        SimonAttackInstanceConfig(
+            instance_count=1, pair_count=1, rounds=9, seed=CLI_DEMO_SEED,
+            input_difference=input_difference,
+        )
+
+
+def test_impossible_unique_plaintext_request_is_rejected() -> None:
+    with pytest.raises(ValueError, match="exceed the 32-bit block domain"):
+        SimonAttackInstanceConfig(
+            instance_count=1, pair_count=1 << 31, rounds=9, seed=CLI_DEMO_SEED,
+        )
+
+
+@pytest.mark.parametrize(
+    ("rounds", "expected_sha256"),
+    [
+        (8, "8a762dee8ab2f4d0e8e96c10f9f3fb3e00a681fa419bfd18104570cadb1f16e8"),
+        (9, "b294ee5fed9e0b6ae79437ef976da67b5e061b5f3318858948fd9bfcea98bca4"),
+        (10, "e4e9b03e21a67c28d7764ab8e759f6c7bb2d8377f32c89e164946e45b3357718"),
+    ],
+)
+def test_opened_demo_instances_replay_unchanged(rounds: int, expected_sha256: str) -> None:
+    instances = generate_simon_attack_instances(SimonAttackInstanceConfig(
+        instance_count=8, pair_count=8, rounds=rounds, seed=CLI_DEMO_SEED,
+    ))
+    payload = json.dumps(
+        [instance.to_dict() for instance in instances],
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    assert hashlib.sha256(payload).hexdigest() == expected_sha256
 
 
 @pytest.mark.parametrize(

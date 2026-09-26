@@ -91,6 +91,10 @@ class SimonAttackInstance:
                 f"split_role {self.split_role!r} not in permitted SIMON roles: "
                 f"{sorted(PERMITTED_SIMON_ROLES)}"
             )
+        plaintexts = [pt for pair in self.pairs for pt in (pair.plaintext0, pair.plaintext1)]
+        plaintexts.extend(pt for pt, _ in self.verification_pairs)
+        if len(plaintexts) != len(set(plaintexts)):
+            raise ValueError("Attack and verification plaintexts must be distinct")
 
     @property
     def known_pairs(self) -> tuple[KnownPair, ...]:
@@ -177,6 +181,11 @@ class SimonAttackInstanceConfig:
         if self.verification_pair_count <= 0:
             raise ValueError("verification_pair_count must be positive")
 
+        if _normalise_block(self.input_difference) == (0, 0):
+            raise ValueError("input_difference must be nonzero for distinct pair plaintexts")
+        if 2 * self.pair_count + self.verification_pair_count > 1 << 32:
+            raise ValueError("Requested distinct plaintexts exceed the 32-bit block domain")
+
         _validate_round_count(self.rounds)
 
         if isinstance(self.seed, bool) or not isinstance(self.seed, int):
@@ -209,7 +218,7 @@ def generate_simon_attack_instances(
 
     Each instance receives an independent random master key, the requested
     number of differential plaintext pairs under input_difference, and
-    fresh independent verification pairs.
+    fresh verification pairs with plaintexts disjoint from attack pairs.
     """
     rng = random.Random(config.seed)
     diff = _normalise_block(config.input_difference)
@@ -224,9 +233,14 @@ def generate_simon_attack_instances(
         )
 
         pairs: list[SimonAttackPair] = []
+        used_plaintexts: set[Block] = set()
         for _ in range(config.pair_count):
-            pt0 = (rng.randrange(1 << 16), rng.randrange(1 << 16))
-            pt1 = (mask_word(pt0[0] ^ diff[0]), mask_word(pt0[1] ^ diff[1]))
+            while True:
+                pt0 = (rng.randrange(1 << 16), rng.randrange(1 << 16))
+                pt1 = (mask_word(pt0[0] ^ diff[0]), mask_word(pt0[1] ^ diff[1]))
+                if pt0 not in used_plaintexts and pt1 not in used_plaintexts:
+                    used_plaintexts.update((pt0, pt1))
+                    break
             ct0 = encrypt_block(pt0, master_key, config.rounds)
             ct1 = encrypt_block(pt1, master_key, config.rounds)
             pairs.append(
@@ -240,7 +254,11 @@ def generate_simon_attack_instances(
 
         verif_pairs: list[KnownPair] = []
         for _ in range(config.verification_pair_count):
-            vpt = (rng.randrange(1 << 16), rng.randrange(1 << 16))
+            while True:
+                vpt = (rng.randrange(1 << 16), rng.randrange(1 << 16))
+                if vpt not in used_plaintexts:
+                    used_plaintexts.add(vpt)
+                    break
             vct = encrypt_block(vpt, master_key, config.rounds)
             verif_pairs.append((vpt, vct))
 
