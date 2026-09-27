@@ -27,6 +27,10 @@ _CHECKPOINTS = {
         "f4e780e484f998ac7e3f05ff78adf47e9dcc1a7a405c9aec92bb06a2761a65fc",
         "7287301b72b3ac941b7f49a83343bd2afac6bbc36c84dbb6305902677794b7d3",
     ),
+    9: (
+        "2363b843592529fe9409dc25dbc0f50c20565973a4a23e54e5478a03113a7070",
+        "35d6a193d376444200fbd071c5c3e387576535105d75718788b03fa75c50714a",
+    ),
 }
 
 
@@ -39,13 +43,13 @@ def _sha256(path: Path) -> str:
 
 
 def load_published_vv_checkpoint(path: Path | str, rounds: int) -> tuple[Any, dict[str, Any]]:
-    """Load VV7/VV8 safely in a compatible TensorFlow/Keras environment.
+    """Load VV7/VV8/VV9 safely in a compatible TensorFlow/Keras environment.
 
     ``tensorflow`` and ``h5py`` are optional dependencies, imported only here.
     The source HDF5 is never edited. Fail closed on provenance or weight drift.
     """
     if rounds not in _CHECKPOINTS:
-        raise ValueError("only published VV7 and VV8 checkpoints are supported")
+        raise ValueError("only published VV7, VV8, and VV9 checkpoints are supported")
     try:
         import h5py
         import tensorflow as tf

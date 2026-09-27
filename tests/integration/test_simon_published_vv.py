@@ -13,8 +13,8 @@ from neural_sat_speck.simon.published_vv import load_published_vv_checkpoint
 
 
 def test_published_vv_loader_rejects_unapproved_round() -> None:
-    with pytest.raises(ValueError, match="VV7 and VV8"):
-        load_published_vv_checkpoint("unused.h5", 9)
+    with pytest.raises(ValueError, match="VV7, VV8, and VV9"):
+        load_published_vv_checkpoint("unused.h5", 10)
 
 
 @pytest.fixture(scope="module")
@@ -27,7 +27,7 @@ def checkpoint_directory() -> Path:
     return Path(raw)
 
 
-@pytest.mark.parametrize("rounds", [7, 8])
+@pytest.mark.parametrize("rounds", [7, 8, 9])
 def test_safe_checkpoint_load_matches_all_original_weights_and_clip_formula(
     checkpoint_directory: Path, rounds: int
 ) -> None:
