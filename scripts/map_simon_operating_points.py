@@ -186,6 +186,8 @@ def evaluate_cell_key(
     assumed_keys: int,
     instance_index: int,
     cutoff_seconds: float,
+    *,
+    worker_cmd: list[str] | None = None,
 ) -> dict[str, Any]:
     instances = get_demo_instances(rounds)
     instance = instances[instance_index]
@@ -208,20 +210,38 @@ def evaluate_cell_key(
     outcome = "worker_exception"
     worker: dict[str, Any] = {}
     stderr = None
+    cmd = worker_cmd or [sys.executable, str(Path(__file__).resolve()), "--worker"]
 
     try:
+        remaining_timeout = max(0.001, cutoff_seconds - (time.perf_counter() - started))
         completed = subprocess.run(
-            [sys.executable, str(Path(__file__).resolve()), "--worker"],
+            cmd,
             input=json.dumps(payload),
             capture_output=True,
             text=True,
-            timeout=cutoff_seconds + 5.0,  # margin for parent watchdog
+            timeout=remaining_timeout,
             check=False,
         )
         stderr = completed.stderr[-2000:] if completed.stderr else None
         if completed.returncode == 0:
-            worker = json.loads(completed.stdout)
-            outcome = str(worker["outcome"])
+            try:
+                worker = json.loads(completed.stdout)
+                worker_outcome = str(worker.get("outcome", "worker_exception"))
+                if worker_outcome == "verified_recovery":
+                    outcome = "verified_recovery"
+                elif worker_outcome == "verification_failure":
+                    outcome = "verification_failure"
+                elif worker_outcome in {"solver_timeout", "unsat_or_timeout"}:
+                    outcome = "solver_timeout"
+                elif worker_outcome == "proven_unsat":
+                    outcome = "proven_unsat"
+                elif worker_outcome == "budget_exhausted":
+                    outcome = "budget_exhausted"
+                else:
+                    outcome = worker_outcome
+            except json.JSONDecodeError:
+                outcome = "worker_exception"
+                stderr = f"JSONDecodeError: stdout={completed.stdout[:500]}"
         else:
             outcome = "worker_exception"
     except subprocess.TimeoutExpired:
@@ -245,6 +265,7 @@ def evaluate_cell_key(
         "assumed_keys": assumed_keys,
         "instance_index": instance_index,
         "instance_id": instance.instance_id,
+        "master_key": list(instance.master_key),
         "cutoff_seconds": cutoff_seconds,
         "online_wall_seconds": online_seconds,
         "cutoff_overshoot_seconds": max(0.0, online_seconds - cutoff_seconds),
@@ -256,29 +277,63 @@ def evaluate_cell_key(
     }
 
 
-def run_map(output: Path, resume: bool = False) -> dict[str, Any]:
-    cells = [
-        # Rounds, observations, assumed_keys, cutoff_seconds, label
-        (9, 4, 0, 300.0, "R9_SAT_only_N4"),
-        (9, 64, 0, 300.0, "R9_SAT_only_N64"),
-        (9, 4, 2, 10.0, "R9_Oracle_A2_N4"),
-        (9, 64, 2, 30.0, "R9_Oracle_A2_N64"),
-        (10, 4, 0, 300.0, "R10_SAT_only_N4"),
-        (10, 64, 0, 300.0, "R10_SAT_only_N64"),
-        (10, 4, 2, 10.0, "R10_Oracle_A2_N4"),
-        (10, 64, 2, 30.0, "R10_Oracle_A2_N64"),
-        (10, 64, 1, 30.0, "R10_Oracle_A1_N64"),
-    ]
+def run_map(
+    output: Path,
+    resume: bool = False,
+    workers: int = 1,
+    profile: str = "full",
+) -> dict[str, Any]:
+    if workers not in (1, 2):
+        raise ValueError("Workers must be 1 or 2 per AGENTS.md hardware governance")
+    if profile not in ("full", "r10_serial"):
+        raise ValueError("unknown operating-point profile")
+
+    if profile == "r10_serial":
+        cells = [
+            (10, 4, 2, 300.0, "R10_Oracle_A2_N4"),
+            (10, 64, 2, 300.0, "R10_Oracle_A2_N64"),
+            (10, 4, 0, 300.0, "R10_SAT_only_N4"),
+            (10, 64, 0, 300.0, "R10_SAT_only_N64"),
+        ]
+    else:
+        cells = [
+            # Rounds, observations, assumed_keys, cutoff_seconds, label
+            # Fast oracle controls first (<2 minutes total)
+            (9, 4, 2, 300.0, "R9_Oracle_A2_N4"),
+            (9, 64, 2, 300.0, "R9_Oracle_A2_N64"),
+            (10, 4, 2, 300.0, "R10_Oracle_A2_N4"),
+            (10, 64, 2, 300.0, "R10_Oracle_A2_N64"),
+            # Solvable unguided SAT anchor (~3-5 minutes)
+            (9, 4, 0, 300.0, "R9_SAT_only_N4"),
+            # Hard/timeout unguided SAT evaluations
+            (10, 4, 0, 300.0, "R10_SAT_only_N4"),
+            (9, 64, 0, 300.0, "R9_SAT_only_N64"),
+            (10, 64, 0, 300.0, "R10_SAT_only_N64"),
+        ]
 
     data: dict[str, Any] = {
         "schema": "simon_operating_points_map.v1",
         "evidence_class": "ENGINEERING_DEMO",
+        "profile": profile,
+        "cells": [list(cell) for cell in cells],
         "seed": CLI_DEMO_SEED,
+        "strict_parent_deadline": True,
+        "workers": workers,
+        "command": " ".join(sys.argv),
+        "solver_configuration": {
+            "backend": "pycryptosat",
+            "native_xor": True,
+            "incremental_assumptions": True,
+        },
         "environment": {
             "python": sys.version.split()[0],
             "platform": platform.platform(),
             "machine": platform.machine(),
             "git_head": _git_head(),
+        },
+        "cohort_master_keys": {
+            str(r): [list(inst.master_key) for inst in get_demo_instances(r)]
+            for r in (9, 10)
         },
         "started_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "status": "IN_PROGRESS",
@@ -287,8 +342,16 @@ def run_map(output: Path, resume: bool = False) -> dict[str, Any]:
 
     if resume and output.exists():
         existing = json.loads(output.read_text(encoding="utf-8"))
-        if existing.get("schema") == data["schema"]:
-            data = existing
+        required_equal = (
+            "schema", "profile", "cells", "seed", "workers",
+            "strict_parent_deadline", "solver_configuration", "cohort_master_keys",
+        )
+        mismatched = [field for field in required_equal if existing.get(field) != data[field]]
+        if existing.get("environment", {}).get("git_head") != data["environment"]["git_head"]:
+            mismatched.append("environment.git_head")
+        if mismatched:
+            raise ValueError(f"cannot resume with changed operating-point manifest: {mismatched}")
+        data = existing
 
     done_keys = {
         (
@@ -300,22 +363,53 @@ def run_map(output: Path, resume: bool = False) -> dict[str, Any]:
         for r in data["records"]
     }
 
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     for rounds, obs, assumed, cutoff, label in cells:
         print(f"\n--- Running Cell: {label} (R={rounds}, N={obs}, A={assumed}, cutoff={cutoff}s) ---", flush=True)
-        for idx in range(INSTANCE_COUNT):
-            key_tuple = (rounds, obs, assumed, idx)
-            if key_tuple in done_keys:
-                continue
-            rec = evaluate_cell_key(rounds, obs, assumed, idx, cutoff)
-            data["records"].append(rec)
-            done_keys.add(key_tuple)
-            _atomic_write(output, data)
-            print(
-                f"  [{label}] Key {idx}: {rec['outcome']} "
-                f"online={rec['online_wall_seconds']:.2f}s "
-                f"verified={rec['verified_recovery_within_cutoff']}",
-                flush=True,
-            )
+        pending_indices = [
+            idx for idx in range(INSTANCE_COUNT)
+            if (rounds, obs, assumed, idx) not in done_keys
+        ]
+
+        if not pending_indices:
+            print(f"  [{label}] All {INSTANCE_COUNT} keys already completed.", flush=True)
+            continue
+
+        if workers == 1:
+            for idx in pending_indices:
+                key_tuple = (rounds, obs, assumed, idx)
+                rec = evaluate_cell_key(rounds, obs, assumed, idx, cutoff)
+                data["records"].append(rec)
+                done_keys.add(key_tuple)
+                _atomic_write(output, data)
+                _write_checksum_sidecar(output)
+                print(
+                    f"  [{label}] Key {idx}: {rec['outcome']} "
+                    f"online={rec['online_wall_seconds']:.2f}s "
+                    f"verified={rec['verified_recovery_within_cutoff']}",
+                    flush=True,
+                )
+        else:
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                future_to_idx = {
+                    executor.submit(evaluate_cell_key, rounds, obs, assumed, idx, cutoff): idx
+                    for idx in pending_indices
+                }
+                for future in as_completed(future_to_idx):
+                    idx = future_to_idx[future]
+                    key_tuple = (rounds, obs, assumed, idx)
+                    rec = future.result()
+                    data["records"].append(rec)
+                    done_keys.add(key_tuple)
+                    _atomic_write(output, data)
+                    _write_checksum_sidecar(output)
+                    print(
+                        f"  [{label}] Key {idx}: {rec['outcome']} "
+                        f"online={rec['online_wall_seconds']:.2f}s "
+                        f"verified={rec['verified_recovery_within_cutoff']}",
+                        flush=True,
+                    )
 
     data["status"] = "COMPLETE"
     data["finished_at_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -327,8 +421,10 @@ def run_map(output: Path, resume: bool = False) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--profile", choices=["full", "r10_serial"], default="full")
+    parser.add_argument("--output", type=Path, default=None)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--workers", type=int, default=1, choices=[1, 2], help="Worker threads (max 2)")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
@@ -337,7 +433,13 @@ def main() -> None:
         result = worker_solve(payload)
         print(json.dumps(result))
     else:
-        run_map(args.output.resolve(), resume=args.resume)
+        if args.output is not None:
+            output = args.output.resolve()
+        elif args.profile == "r10_serial":
+            output = DEFAULT_OUTPUT.parent / "simon_r10_serial_confirmation.json"
+        else:
+            output = DEFAULT_OUTPUT.resolve()
+        run_map(output, resume=args.resume, workers=args.workers, profile=args.profile)
 
 
 if __name__ == "__main__":

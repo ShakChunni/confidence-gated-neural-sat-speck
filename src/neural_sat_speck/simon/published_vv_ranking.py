@@ -78,7 +78,7 @@ def rank_neural_domain(
     *,
     final_key_candidate: int | None = None,
     screen_pairs: int = 16,
-    full_pairs: int = 32,
+    full_pairs: int | None = None,
     rescore_top: int = 512,
     feature_batch_size: int = 1024,
     inference_batch_size: int = 16384,
@@ -89,7 +89,8 @@ def rank_neural_domain(
     that provenance is checked by :func:`load_published_vv_checkpoint` before
     this function receives it. No truth label or verification pair is accepted.
     """
-    if not 1 <= screen_pairs <= full_pairs <= len(ciphertext_pairs):
+    actual_full_pairs = len(ciphertext_pairs) if full_pairs is None else full_pairs
+    if not 1 <= screen_pairs <= actual_full_pairs <= len(ciphertext_pairs):
         raise ValueError("invalid pair counts")
     if not 1 <= rescore_top <= 1 << 16:
         raise ValueError("invalid rescore width")
@@ -110,7 +111,7 @@ def rank_neural_domain(
     screen_tie_count = int(np.count_nonzero(screen_scores == screen_scores[screen_order[0]]))
     sort_seconds = time.perf_counter() - t0
     full_scores, feature_time, inference_time, aggregation_time = _score_candidates(
-        ciphertext_pairs[:full_pairs], finalists, model,
+        ciphertext_pairs[:actual_full_pairs], finalists, model,
         final_key_candidate=final_key_candidate,
         feature_batch_size=feature_batch_size,
         inference_batch_size=inference_batch_size,
