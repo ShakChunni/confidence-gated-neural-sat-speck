@@ -23,6 +23,8 @@ class NeuralDomainRanking:
     total_seconds: float
     screen_tie_count: int
     full_tie_count: int
+    screen_pairs_used: int = 16
+    full_pairs_used: int = 0
 
 
 def _log_odds_sum(probabilities: np.ndarray, pair_count: int) -> np.ndarray:
@@ -132,4 +134,6 @@ def rank_neural_domain(
         total_seconds=time.perf_counter() - started,
         screen_tie_count=screen_tie_count,
         full_tie_count=full_tie_count,
+        screen_pairs_used=screen_pairs,
+        full_pairs_used=actual_full_pairs,
     )

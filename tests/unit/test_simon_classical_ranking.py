@@ -14,8 +14,36 @@ from neural_sat_speck.simon.classical_ranking import (
     FullPredictedDdt,
     _score_candidates,
     rank_classical_domain,
+    rank_stage1_ondemand,
 )
 from tests.fixtures.simon_reference_oracle import oracle_simon32_64_decrypt
+
+
+def test_ondemand_stage1_removes_temporary_output_on_success_and_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import neural_sat_speck.simon.classical_ranking as classical_module
+
+    monkeypatch.setattr(classical_module.tempfile, "tempdir", str(tmp_path))
+
+    def fake_tool(cmd, **_kwargs):
+        rows = len(cmd) - 3
+        np.ones((rows, 1 << 16), dtype=np.float64).tofile(cmd[2])
+        return type("Result", (), {"stdout": "{}"})()
+
+    monkeypatch.setattr(classical_module.subprocess, "run", fake_tool)
+    pair = (((0, 0), (0, 0x40)),)
+    ranking, _ = rank_stage1_ondemand(pair, screen_pairs=1, rescore_top=4)
+    assert ranking.order.tolist() == [0, 1, 2, 3]
+    assert list(tmp_path.iterdir()) == []
+
+    def fail_tool(_cmd, **_kwargs):
+        raise RuntimeError("forced tool failure")
+
+    monkeypatch.setattr(classical_module.subprocess, "run", fail_tool)
+    with pytest.raises(RuntimeError, match="forced tool failure"):
+        rank_stage1_ondemand(pair, screen_pairs=1, rescore_top=4)
+    assert list(tmp_path.iterdir()) == []
 
 
 def _pairs(count: int) -> tuple[tuple[tuple[int, int], tuple[int, int]], ...]:
@@ -120,3 +148,54 @@ def test_nan_row_and_wrong_stage_fail_explicitly() -> None:
         rank_classical_domain(_pairs(32), InvalidTable())
     with pytest.raises(ValueError, match="depth"):
         rank_classical_domain(_pairs(32), InvalidTable(), final_key_candidate=0)
+
+
+def test_tie_count_and_collision_count_semantics() -> None:
+    """Verify distinct semantics of top-1 candidate tie count vs all-candidate score collisions."""
+    # Case A: Flat table - all scores identical
+    class FlatTable:
+        rounds = 7
+
+        def log_score_row(self, left: int) -> np.ndarray:
+            return np.zeros(1 << 16, dtype=np.float64)
+
+    res_flat = rank_classical_domain(_pairs(32), FlatTable())
+    assert res_flat.screen_tie_count == 1 << 16  # All candidates tied for top-1
+    assert res_flat.screen_collision_count == (1 << 16) - 1  # 65535 adjacent collisions
+    assert res_flat.full_tie_count == 512
+    assert res_flat.full_collision_count == 511
+
+    # Case B: Unique top candidate, collisions only among lower-ranked candidates
+    class UniqueTopTable:
+        rounds = 7
+
+        def log_score_row(self, left: int) -> np.ndarray:
+            # Anchor left difference for pair 0 with candidate 0 is anchor[0]
+            # Set right difference 0 to score 10.0, rest to 0.0
+            row = np.zeros(1 << 16, dtype=np.float64)
+            row[0] = 10.0
+            return row
+
+    res_unique = rank_classical_domain(_pairs(32), UniqueTopTable())
+    # 8 candidates match diff=0 in Feistel inversion and tie for top-1
+    assert res_unique.screen_tie_count == 8
+    # The remaining 65,528 candidates all have score 0.0, yielding 65,534 collisions
+    assert res_unique.screen_collision_count == 65534
+    assert res_unique.screen_tie_count != res_unique.screen_collision_count
+
+
+def test_rank_classical_domain_rescores_all_64_pairs() -> None:
+    """CRITICAL REQUIREMENT: verify rank_classical_domain does NOT default to 32 when given 64 pairs."""
+    accessed_pairs = []
+
+    class CountingTable:
+        rounds = 7
+
+        def log_score_row(self, left: int) -> np.ndarray:
+            accessed_pairs.append(left)
+            return np.zeros(1 << 16, dtype=np.float64)
+
+    pairs_64 = _pairs(64)
+    rank_classical_domain(pairs_64, CountingTable())
+    # All 64 pairs should have their left difference rows accessed for rescoring
+    assert len(accessed_pairs) >= 64, "All 64 pairs must be processed, not truncated to 32!"

@@ -1,0 +1,123 @@
+{
+  "manifest_version": "1.0.0",
+  "protocol_id": "simon32_64_b0_b1_faithful_training_v1",
+  "status": "PROPOSED",
+  "created_at": "2026-09-28T09:42:04Z",
+  "governing_decisions": [
+    "D-029",
+    "D-034",
+    "D-035",
+    "D-037",
+    "D-038"
+  ],
+  "target_cipher": {
+    "cipher_name": "SIMON32/64",
+    "block_bits": 32,
+    "key_bits": 64,
+    "word_bits": 16,
+    "rounds": 9,
+    "input_difference": [0, 64],
+    "input_difference_hex": ["0x0000", "0x0040"]
+  },
+  "architectures": {
+    "b0_distinguisher": {
+      "model_class": "SimonGohrResNet",
+      "module_path": "src/neural_sat_speck/simon/faithful_b1_model.py",
+      "trainable_parameters": 62337,
+      "input_shape": [4, 16],
+      "stem_channels": 32,
+      "num_res_blocks": 4,
+      "dense_dim": 64,
+      "head_type": "speck"
+    },
+    "b1_group_ranker": {
+      "model_class": "SimonPairGroupRanker",
+      "module_path": "src/neural_sat_speck/simon/faithful_b1_model.py",
+      "variant": "b1_mean",
+      "trainable_parameters": 60289,
+      "group_size": 64,
+      "pair_shape": [4, 16],
+      "group_shape": [64, 4, 16],
+      "feature_layout": "(L0, R0, L1, R1) MSB-first bit-sliced",
+      "shared_encoder": "SharedSimonPairEncoder (58,176 params transferred from B0)",
+      "symmetric_aggregation": "permutation_invariant_mean_pooling",
+      "head_variant": "speck_b1",
+      "head": "Linear(64, 32) -> ReLU -> Linear(32, 1), matching the frozen SPECK B1 head"
+    }
+  },
+  "seed_governance": {
+    "train_seed": 880001,
+    "validation_seed": 880002,
+    "seed_role": "SYNTHETIC_TRAINING_ONLY",
+    "key_policy": "one_master_key_per_group; check uniqueness within each split and exact train-validation key intersection before training",
+    "isolation_guarantee": "Different PRNG seeds alone do not prove disjoint master keys. Abort before training if train_keys intersect validation_keys, or if either generated key set contains duplicates. Keep development and unseen attack keys ungenerated until their separate protocol gates; subsequently audit their exact key intersections without using outcomes for selection."
+  },
+  "dataset_specifications": {
+    "pair_construction": "fixed_9_round_direct_pairs",
+    "b0_source": "generate_simon_b0_pairs: 1,000,000 independent-key training pairs at seed 880001 and 100,000 independent-key validation pairs at seed 880002; use the same direct-pair positive and random-plaintext negative policies as B1",
+    "b1_source": "generate_simon_b1_groups: one sampled master key per 64-pair group, with exact key uniqueness/intersection audit before any optimizer step",
+    "input_difference": [0, 64],
+    "positive_pair_policy": "P0 uniform random, P1 = P0 ^ (0x0000, 0x0040), both encrypted under group master key",
+    "negative_pair_policy": "P0 uniform random, P1 independent uniform random, both encrypted under group master key",
+    "group_consistency": "All 64 pairs in a B1 group share the exact same master-key role",
+    "splits": {
+      "train": {
+        "seed": 880001,
+        "group_count": 15625,
+        "group_size": 64,
+        "pair_count": 1000000,
+        "master_key_count": 15625,
+        "positive_groups": 7813,
+        "negative_groups": 7812,
+        "description": "1,000,000 pairs across 15,625 independent master-key groups"
+      },
+      "validation": {
+        "seed": 880002,
+        "group_count": 1562,
+        "group_size": 64,
+        "pair_count": 99968,
+        "master_key_count": 1562,
+        "positive_groups": 781,
+        "negative_groups": 781,
+        "description": "99,968 pairs (~10^5) across 1,562 independent master-key groups"
+      }
+    }
+  },
+  "training_hyperparameters": {
+    "optimizer": "AdamW",
+    "loss_function": "BCEWithLogitsLoss",
+    "compute_device": "cpu",
+    "maximum_total_training_wall_seconds": 21600,
+    "checkpoint_selection": "For B0 and B1 separately, save the epoch with minimum validation BCE; exact ties choose the earlier epoch. Use patience 3 and at most 10 epochs. Do not select by attack-key ranks, recovery, or validation accuracy threshold.",
+    "b0_pretraining": {
+      "epochs": 10,
+      "batch_size_pairs": 256,
+      "learning_rate": 0.001,
+      "weight_decay": 0.0001,
+      "lr_scheduler": "ExponentialLR(gamma=0.95)"
+    },
+    "b1_fine_tuning": {
+      "initialization": "initialize_from_b0",
+      "epochs": 10,
+      "batch_size_groups": 64,
+      "learning_rate": 0.0005,
+      "weight_decay": 0.0001,
+      "lr_scheduler": "ExponentialLR(gamma=0.95)"
+    }
+  },
+  "outcome_independent_stop_and_promotion_rule": {
+    "primary_mandate": "Retain and report a trained runnable B1 model even if distinguishing accuracy is weak (e.g., 50.8%), labeling it descriptive; fail ONLY for genuine engineering defects",
+    "engineering_defect_criteria": [
+      "Loss or model weights become NaN or infinite",
+      "Gradient vanishing across entire architecture (all param.grad == 0)",
+      "Unhandled runtime exception, CUDA OOM, or memory leak",
+      "Checkpoint serialization / deserialization integrity failure"
+    ],
+    "negative_result_preservation": "Finite flat loss and weak distinguishing accuracy are reportable results, not grounds to exclude a runnable model. Preserve the selected checkpoint and evaluate it in the descriptive B1 attack arm without searching for favorable seeds or architectures.",
+    "ranking_eligibility_criteria": [
+      "Model outputs finite, deterministic real scores on candidate-inverted inputs",
+      "Weights and biases contain zero NaN or Inf entries",
+      "Inference on 65,536 candidates completes within local resource allowance"
+    ]
+  }
+}
