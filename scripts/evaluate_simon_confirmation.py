@@ -13,8 +13,10 @@ import argparse
 import hashlib
 import json
 import os
+import subprocess
 import sys
 import time
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -40,6 +42,7 @@ from neural_sat_speck.simon.confirmation_guard import (  # noqa: E402
     validate_and_filter_resume,
     validate_confirmation_manifest,
     verify_disjoint_family_certificate,
+    verify_independent_fresh,
     verify_runtime_provenance,
 )
 from neural_sat_speck.simon.key_schedule import expand_key  # noqa: E402
@@ -60,6 +63,7 @@ def counterbalance_methods(instance_index: int, methods: tuple[str, ...]) -> tup
 
 
 def main() -> int:
+    preflight_started = time.perf_counter()
     parser = argparse.ArgumentParser(
         description="Manifest-enforced execution runner for SIMON32/64 R=10 unseen confirmation."
     )
@@ -97,6 +101,7 @@ def main() -> int:
         action="store_true",
         help="Execute synthetic plumbing check only; does not produce confirmation evidence.",
     )
+    parser.add_argument("--log-dir", type=Path, default=None, help="Directory for durable per-cell monitoring journal.")
     args = parser.parse_args()
 
     print("================================================================================")
@@ -137,8 +142,8 @@ def main() -> int:
             instance_count=1,
             pair_count=64,
             rounds=10,
-            seed=1234567,
-            split_role="confirmation",
+            seed=999999,
+            split_role="demo",
         )
         instances = generate_simon_attack_instances(cfg)
         dataset_sha256 = "0" * 64
@@ -152,6 +157,10 @@ def main() -> int:
             return 3
 
         print(f"[*] Loading confirmation dataset from {args.dataset}...")
+        sidecar = args.dataset.with_name(args.dataset.name + ".sha256")
+        if not sidecar.is_file() or sidecar.read_text().split()[0] != file_sha256(args.dataset):
+            print("[!] DATASET REJECTION: missing or mismatched SHA-256 sidecar", file=sys.stderr)
+            return 3
         instances = load_simon_attack_instances(args.dataset)
         for inst in instances:
             if inst.split_role != "confirmation":
@@ -199,6 +208,18 @@ def main() -> int:
         print("[+] Dry-run preflight checks passed completely. Zero worker executions performed.")
         return 0
 
+    def git_output(*arguments):
+        return subprocess.run(["git", *arguments], cwd=REPOSITORY_ROOT, check=True, capture_output=True, text=True).stdout.strip()
+    run_provenance = json.loads(args.output.read_text()).get("run_provenance", {}) if args.resume and args.output.exists() else {}
+    run_provenance.setdefault("invocations", []).append({
+        "argv": [sys.executable, *sys.argv], "cwd": str(Path.cwd()),
+        "git_head": git_output("rev-parse", "HEAD"),
+        "git_status": git_output("status", "--short"),
+        "started_at": datetime.now(UTC).isoformat(),
+        "common_preflight_wall_seconds": time.perf_counter() - preflight_started,
+        "common_preflight_accounting": "Shared provenance/data integrity checks outside the per-method online cutoff; worker startup/loading/verification remain inside 300s.",
+    })
+
     # 5. Outcome-Bearing Cell Execution Loop
     output_records: list[dict[str, Any]] = list(completed_cells.values())
     control_seed = manifest["random_control_stream"]["control_seed"]
@@ -226,62 +247,78 @@ def main() -> int:
             )
 
             t0 = time.perf_counter()
-            outcome: MethodWorkerOutcome = run_method_worker(
-                method=method,
-                comparison_input=comp_input,
-                global_deadline_seconds=manifest["resource_limits"]["global_deadline_seconds"],
-                candidate_cutoff_soft_seconds=manifest["resource_limits"]["candidate_cutoff_soft_seconds"],
-                ranking_time_limit=manifest["resource_limits"]["ranking_time_limit_seconds"],
-                b1_checkpoint_path=b1_checkpoint if "b1" in method else None,
-                b1_checkpoint_sha256=b1_checkpoint_sha256 if "b1" in method else None,
-                queue_control_seed=control_seed,
-                oracle_trailing_keys=oracle_keys,
-                ddt_7r_path=resolved_paths["ddt_7r"],
-                tool_8r_binary_path=resolved_paths["queried_row_8r_binary"],
-                bao_checkpoint_dir=resolved_paths["bao_vv_directory"],
-                tf_python_path=resolved_paths["tensorflow_python"],
-                use_parent_watchdog=True,
-            )
+            outer_exception = None
+            try:
+                outcome: MethodWorkerOutcome = run_method_worker(
+                    method=method,
+                    comparison_input=comp_input,
+                    global_deadline_seconds=manifest["resource_limits"]["global_deadline_seconds"],
+                    candidate_cutoff_soft_seconds=manifest["resource_limits"]["candidate_cutoff_soft_seconds"],
+                    ranking_time_limit=manifest["resource_limits"]["ranking_time_limit_seconds"],
+                    b1_checkpoint_path=b1_checkpoint if "b1" in method else None,
+                    b1_checkpoint_sha256=b1_checkpoint_sha256 if "b1" in method else None,
+                    queue_control_seed=control_seed,
+                    oracle_trailing_keys=oracle_keys,
+                    ddt_7r_path=resolved_paths["ddt_7r"],
+                    tool_8r_binary_path=resolved_paths["queried_row_8r_binary"],
+                    bao_checkpoint_dir=resolved_paths["bao_vv_directory"],
+                    tf_python_path=resolved_paths["tensorflow_python"],
+                    use_parent_watchdog=True,
+                )
+            except Exception as exc:
+                outer_exception = f"{type(exc).__name__}: {exc}"
+                outcome = MethodWorkerOutcome(
+                    method=method, outcome="exception",
+                    complete_online_wall_seconds=time.perf_counter() - t0,
+                    ranking_wall_seconds=0.0, solving_wall_seconds=0.0,
+                    verification_wall_seconds=0.0, candidates_tested_count=0,
+                    candidates_remaining_count=0, recovered_master_key=None,
+                    verified_on_fresh_pairs=False, candidate_attempts=(),
+                    peak_rss_gib=0.0, error_message=outer_exception,
+                )
             elapsed = time.perf_counter() - t0
 
-            # Independent fresh-verification check on claimed recoveries
+            # Audit verification is separate from the online worker's fresh check.
+            verification_diagnostic = None
             if outcome.outcome == "verified_recovery":
-                if outcome.recovered_master_key is None:
-                    raise RuntimeError(f"Claimed success for {cell} missing recovered key")
-                v_res = verify_simon_master_key(
-                    master_key=outcome.recovered_master_key,
-                    known_pairs=inst.known_pairs,
-                    verification_pairs=inst.verification_pairs[:2],
-                    rounds=10,
-                )
-                if not v_res.verified:
-                    raise RuntimeError(f"Claimed success for {cell} failed harness independent verification")
+                try:
+                    if outcome.recovered_master_key is None:
+                        raise ValueError("Claimed success missing recovered key")
+                    v_res = verify_simon_master_key(
+                        master_key=outcome.recovered_master_key, known_pairs=inst.known_pairs,
+                        verification_pairs=inst.verification_pairs[:2], rounds=10,
+                    )
+                    if outcome.recovered_master_key != inst.master_key or not v_res.verified or not verify_independent_fresh(outcome.recovered_master_key, inst):
+                        raise ValueError("Claimed success failed harness key/independent fresh verification")
+                except Exception as exc:
+                    verification_diagnostic = {"claimed_master_key": outcome.recovered_master_key, "error": f"{type(exc).__name__}: {exc}"}
+                    outcome = replace(outcome, outcome="verification_failure", recovered_master_key=None, verified_on_fresh_pairs=False, error_message=verification_diagnostic["error"])
 
-            rec = {
-                "instance_id": inst.instance_id,
-                "instance_index": inst_idx,
-                "method": method,
-                "outcome": outcome.outcome,
-                "complete_online_wall_seconds": outcome.complete_online_wall_seconds,
-                "ranking_wall_seconds": outcome.ranking_wall_seconds,
-                "solving_wall_seconds": outcome.solving_wall_seconds,
-                "verification_wall_seconds": outcome.verification_wall_seconds,
-                "candidates_tested_count": outcome.candidates_tested_count,
-                "candidates_remaining_count": outcome.candidates_remaining_count,
-                "recovered_master_key": list(outcome.recovered_master_key) if outcome.recovered_master_key else None,
-                "verified_on_fresh_pairs": outcome.verified_on_fresh_pairs,
-                "peak_rss_gib": outcome.peak_rss_gib,
-                "full_pairs_used": outcome.full_pairs_used,
-                "error_message": outcome.error_message,
-                "candidate_attempts": [a.to_dict() for a in outcome.candidate_attempts],
-                "recorded_at": datetime.now(UTC).isoformat(),
-            }
+            rec = outcome.to_dict()
+            if verification_diagnostic is not None:
+                rec["harness_verification_diagnostic"] = verification_diagnostic
+            if outer_exception is not None:
+                rec["telemetry_status"] = "UNAVAILABLE_OUTER_WORKER_EXCEPTION"
+                for field in ("ranking_wall_seconds", "solving_wall_seconds", "verification_wall_seconds"):
+                    rec[field] = None
+            rec.update(instance_id=inst.instance_id, instance_index=inst_idx, recorded_at=datetime.now(UTC).isoformat())
             output_records.append(rec)
             completed_cells[cell] = rec
 
             # Stream save after every cell
-            _save_ledger_atomic(args.output, output_records, execution_identity, evidence_class)
+            _save_ledger_atomic(args.output, output_records, execution_identity, evidence_class, run_provenance)
+            if args.log_dir is not None:
+                args.log_dir.mkdir(parents=True, exist_ok=True)
+                with (args.log_dir / "confirmation_stream.jsonl").open("a") as log:
+                    log.write(json.dumps({key: rec[key] for key in (
+                        "instance_id", "method", "outcome", "complete_online_wall_seconds", "recorded_at",
+                    )}) + "\n")
+                    log.flush()
+                    os.fsync(log.fileno())
             print(f"[+] Completed {cell}: outcome={outcome.outcome} ({elapsed:.2f}s)")
+            if outcome.outcome in ("exception", "verification_failure", "sat_unverified"):
+                print("[!] Infrastructure/integrity issue persisted; suspension requires reviewer inspection.", file=sys.stderr)
+                return 8
 
     # 6. Grid Completion Validation: require exactly N x 9 validated cells
     expected_total_cells = len(instances) * len(methods)
@@ -299,6 +336,8 @@ def main() -> int:
         print("[!] LEDGER MISMATCH: recorded cells do not match expected confirmation grid!", file=sys.stderr)
         return 7
 
+    validate_and_filter_resume(args.output, execution_identity, instances, methods, resume_flag=True)
+
     print(f"[+] All {len(output_records)} cells ({len(instances)} x {len(methods)}) completed and verified. Ledger persisted to {args.output}.")
     return 0
 
@@ -308,10 +347,13 @@ def _save_ledger_atomic(
     records: list[dict[str, Any]],
     execution_identity: dict[str, Any],
     evidence_class: str,
+    run_provenance: dict | None = None,
 ) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_suffix(".tmp")
     data = {
         "evidence_class": evidence_class,
+        "run_provenance": run_provenance or {},
         "execution_identity": execution_identity,
         "completed_count": len(records),
         "updated_at": datetime.now(UTC).isoformat(),

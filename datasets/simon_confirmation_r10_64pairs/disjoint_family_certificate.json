@@ -1,0 +1,21 @@
+{
+  "certificate_version": "1.0.0",
+  "protocol_id": "simon32_64_r10_unseen_confirmation_v1",
+  "confirmation_seed": 8398726052707596859,
+  "selected_instances": 64,
+  "instance_count": 64,
+  "dataset_sha256": "875a2e7d750418ac55d5e7925cf360a3dd17f428680da1dc1adb09b50adc4099",
+  "manifest_sha256": "9dd10d8e5d8c9e63c01684560b0a0780ef68c1b35e88bc9f0c741bd2a1081ccd",
+  "prior_roles_checked": [
+    "demo_seed_999999_p4",
+    "demo_seed_999999_p8",
+    "demo_seed_999999_p32",
+    "demo_seed_999999_p64",
+    "development_seed_260926_p32",
+    "development_seed_260926_p64",
+    "synthetic_training_seed_880001",
+    "synthetic_training_seed_880002"
+  ],
+  "intersection_count": 0,
+  "disjoint_family_verified": true
+}

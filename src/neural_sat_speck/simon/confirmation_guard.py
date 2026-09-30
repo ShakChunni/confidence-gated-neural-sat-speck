@@ -24,7 +24,15 @@ from neural_sat_speck.simon.attack_instance import (
     generate_simon_attack_instances,
 )
 from neural_sat_speck.simon.comparison_input import (
+    SimonComparisonInput,
+)
+from neural_sat_speck.simon.comparison_input import (
     derive_confirmation_queue_seed as derive_confirmation_queue_seed,
+)
+from neural_sat_speck.simon.confirmation_profile import (
+    FROZEN_SCIENTIFIC_SHA256,
+    scientific_digest,
+    verify_execution_pins,
 )
 from neural_sat_speck.simon.verification import verify_simon_master_key
 
@@ -136,9 +144,9 @@ def validate_confirmation_manifest(manifest_raw: dict[str, Any] | str | Path) ->
         raise TypeError("manifest_raw must be a dict, str, or Path")
 
     # 1. Header and Approval Status
-    if manifest.get("manifest_version") != "1.1.0":
+    if manifest.get("manifest_version") != "1.2.0":
         raise ConfirmationPreflightError(
-            f"Unsupported manifest_version: {manifest.get('manifest_version')!r}; expected '1.1.0'"
+            f"Unsupported manifest_version: {manifest.get('manifest_version')!r}; expected '1.2.0'"
         )
     if manifest.get("protocol_id") != "simon32_64_r10_unseen_confirmation_v1":
         raise ConfirmationPreflightError(f"Invalid protocol_id: {manifest.get('protocol_id')!r}")
@@ -151,9 +159,17 @@ def validate_confirmation_manifest(manifest_raw: dict[str, Any] | str | Path) ->
     if manifest.get("confirmation_execution_authorized") is not True:
         raise ConfirmationPreflightError("confirmation_execution_authorized must be explicitly True")
 
+    readiness = manifest.get("execution_readiness", {})
+    if readiness.get("open_approval_gates") != [] or readiness.get("preparation_blockers") != []:
+        raise ConfirmationPreflightError("Confirmation approval gates or preparation blockers remain open")
+    if readiness.get("status") != "AUTHORIZED_FROZEN_CONFIRMATION":
+        raise ConfirmationPreflightError("Confirmation execution readiness is not authorized and frozen")
+
     # 2. Seed Governance
     seed_gov = manifest.get("seed_governance", {})
     seed = seed_gov.get("seed")
+    if seed_gov.get("seed_status") != "APPROVED_FRESH_CONFIRMATION":
+        raise ConfirmationPreflightError("Confirmation seed is not registered and approved")
     if seed is None or isinstance(seed, bool) or not isinstance(seed, int):
         raise ConfirmationPreflightError(f"seed_governance.seed must be an integer, got {seed!r}")
     if seed in INELIGIBLE_CONFIRMATION_SEEDS:
@@ -175,7 +191,7 @@ def validate_confirmation_manifest(manifest_raw: dict[str, Any] | str | Path) ->
     # 4. Sample Size Specification
     sample_spec = manifest.get("sample_size_specification", {})
     selected_n = sample_spec.get("selected_instances")
-    if selected_n not in (32, 64):
+    if type(selected_n) is not int or selected_n not in (32, 64):
         raise ConfirmationPreflightError(
             f"selected_instances must be fixed to 32 or 64, got {selected_n!r}"
         )
@@ -227,7 +243,24 @@ def validate_confirmation_manifest(manifest_raw: dict[str, Any] | str | Path) ->
             f"random_control_stream.control_seed must be {FROZEN_QUEUE_CONTROL_SEED}, got {ctrl_seed!r}"
         )
 
+    validate_scientific_profile(manifest)
+    declared_ineligible = set(seed_gov.get("ineligible_confirmation_seeds", INELIGIBLE_CONFIRMATION_SEEDS))
+    if not INELIGIBLE_CONFIRMATION_SEEDS.issubset(declared_ineligible):
+        raise ConfirmationPreflightError("Manifest omits ineligible seed roles")
+    if seed in declared_ineligible:
+        raise ConfirmationPreflightError("Seed belongs to the manifest's ineligible confirmation registry")
+
     return manifest
+
+
+def validate_scientific_profile(manifest: dict[str, Any]) -> None:
+    """Reject every nested change to the reviewed complete scientific profile."""
+    try:
+        actual = scientific_digest(manifest)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ConfirmationPreflightError(f"Incomplete scientific profile: {exc}") from exc
+    if actual != FROZEN_SCIENTIFIC_SHA256:
+        raise ConfirmationPreflightError("Scientific profile differs from the reviewed frozen specification")
 
 
 def verify_runtime_provenance(
@@ -250,11 +283,11 @@ def verify_runtime_provenance(
             provenance.get("simon_queried_row_8r_bin_sha256"),
         ),
         "queried_row_8r_cpp": (
-            Path(__file__).resolve().parent.parent.parent.parent / "tools" / "simon_queried_row_8r.cpp",
+            locs.get("queried_row_8r_cpp", Path(__file__).resolve().parents[3] / "tools" / "simon_queried_row_8r.cpp"),
             provenance.get("simon_queried_row_8r_cpp_sha256"),
         ),
         "b1_checkpoint": (
-            Path(__file__).resolve().parent.parent.parent.parent / "models" / "simon" / "simon_b1_mean_speckhead.pt",
+            locs.get("b1_checkpoint", Path(__file__).resolve().parents[3] / "models" / "simon" / "simon_b1_mean_speckhead.pt"),
             provenance.get("b1_checkpoint_sha256"),
         ),
     }
@@ -271,7 +304,7 @@ def verify_runtime_provenance(
     )
 
     for key, (path_val, exp_hash) in expected_hashes.items():
-        p = Path(path_val)
+        p = Path(path_val).resolve()
         if not p.is_file():
             raise ProvenanceVerificationError(f"Required runtime resource missing: {p}")
         if exp_hash is None or len(exp_hash) != 64:
@@ -283,12 +316,14 @@ def verify_runtime_provenance(
             )
         resolved_paths[key] = p
 
-    resolved_paths["bao_vv_directory"] = bao_dir
+    resolved_paths["bao_vv_directory"] = bao_dir.resolve()
 
     tf_python = Path(locs.get("tensorflow_python", "/private/tmp/simon_tf_venv/bin/python3.12"))
     if not tf_python.is_file():
         raise ProvenanceVerificationError(f"Required TensorFlow Python binary missing: {tf_python}")
-    resolved_paths["tensorflow_python"] = tf_python
+    # Preserve the virtualenv invocation path: resolving a venv interpreter
+    # symlink before invocation would select the base Python environment.
+    resolved_paths["tensorflow_python"] = tf_python.absolute()
 
     # Verify python and pycryptosat
     import pycryptosat
@@ -296,6 +331,11 @@ def verify_runtime_provenance(
         raise ProvenanceVerificationError(
             f"pycryptosat version mismatch: expected '5.14.7', got {pycryptosat.__version__!r}"
         )
+
+    try:
+        verify_execution_pins(manifest, tensorflow_python=resolved_paths["tensorflow_python"])
+    except (ValueError, OSError) as exc:
+        raise ProvenanceVerificationError(str(exc)) from exc
 
     return resolved_paths
 
@@ -309,6 +349,7 @@ ALLOWED_FINAL_OUTCOMES: Final[frozenset[str]] = frozenset(
         "global_deadline",
         "ranking_timeout",
         "solver_timeout",
+        "solver_unsat_or_timeout",
         "verification_failure",
         "sat_unverified",
         "exception",
@@ -322,8 +363,8 @@ def check_key_overlaps_with_prior_families(
     """Check key sequence against all recorded prior SIMON demo, development, and training families."""
     prior_draws: dict[str, set[tuple[int, int, int, int]]] = {}
 
-    # 1. Demo cohorts: seed 999999 (R=10, 8 keys across 4, 32, 64 pairs)
-    for p_cnt in (4, 32, 64):
+    # 1. Opened demo key draws: seed 999999, 8 keys at 4, 8, 32, 64 pairs
+    for p_cnt in (4, 8, 32, 64):
         cfg = SimonAttackInstanceConfig(instance_count=8, pair_count=p_cnt, rounds=10, seed=999999, split_role="demo")
         prior_draws[f"demo_seed_999999_p{p_cnt}"] = {inst.master_key for inst in generate_simon_attack_instances(cfg)}
 
@@ -385,6 +426,7 @@ def build_disjoint_family_certificate(
 
     expected_roles = [
         "demo_seed_999999_p4",
+        "demo_seed_999999_p8",
         "demo_seed_999999_p32",
         "demo_seed_999999_p64",
         "development_seed_260926_p32",
@@ -466,6 +508,12 @@ def verify_disjoint_family_certificate(
     if cert.get("instance_count") != len(instances):
         raise DisjointFamilyCertificateError("Certificate instance_count does not match instances count")
 
+    # Check collisions before assignment replay for an explicit leakage diagnosis.
+    expected_certificate = build_disjoint_family_certificate(manifest, instances)
+    validate_confirmation_assignment(manifest, instances)
+    if cert != expected_certificate:
+        raise DisjointFamilyCertificateError("Certificate contents differ from recomputed complete certificate")
+
     dataset_repr = json.dumps([inst.to_dict() for inst in instances], sort_keys=True)
     actual_dataset_sha256 = hashlib.sha256(dataset_repr.encode("utf-8")).hexdigest()
     if cert.get("dataset_sha256") != actual_dataset_sha256:
@@ -502,6 +550,7 @@ def compute_execution_identity(manifest: dict[str, Any], dataset_sha256: str) ->
         "candidate_cutoff_soft_seconds": manifest["resource_limits"]["candidate_cutoff_soft_seconds"],
         "ranking_time_limit_seconds": manifest["resource_limits"]["ranking_time_limit_seconds"],
         "provenance_hashes": manifest.get("provenance_hashes", {}),
+        "execution_pins": manifest.get("execution_pins", {}),
     }
 
 
@@ -556,6 +605,8 @@ def validate_and_filter_resume(
         )
 
     records = ledger.get("records", [])
+    if ledger.get("evidence_class") != "CONFIRMATION" or ledger.get("completed_count") != len(records):
+        raise ResumeIntegrityError("Ledger evidence class or completed_count is inconsistent")
     completed_cells: dict[tuple[str, str], dict[str, Any]] = {}
     instance_map = {inst.instance_id: (idx, inst) for idx, inst in enumerate(instances)}
 
@@ -588,15 +639,30 @@ def validate_and_filter_resume(
             "verification_wall_seconds",
         ):
             val = rec.get(time_key)
-            if val is None or not isinstance(val, (int, float)) or not math.isfinite(val) or val < 0.0:
+            if val is None and time_key != "complete_online_wall_seconds" and outcome == "exception" and rec.get("telemetry_status") == "UNAVAILABLE_OUTER_WORKER_EXCEPTION":
+                continue
+            if type(val) not in (int, float) or not math.isfinite(val) or val < 0.0:
                 raise ResumeIntegrityError(f"Record {cell} has invalid {time_key}: {val!r}")
+
+        verified = rec.get("verified_on_fresh_pairs")
+        if type(verified) is not bool or verified != (outcome == "verified_recovery"):
+            raise ResumeIntegrityError(f"Record {cell} has missing or contradictory fresh-verification flag")
+        if "counts_as_verified_recovery" in rec and rec["counts_as_verified_recovery"] is not verified:
+            raise ResumeIntegrityError(f"Record {cell} has contradictory recovery-count flag")
+        if outcome != "verified_recovery" and rec.get("recovered_master_key") is not None:
+            raise ResumeIntegrityError(f"Failure record {cell} contains a claimed recovered key")
+        for field in ("candidates_tested_count", "candidates_remaining_count"):
+            if type(rec.get(field)) is not int or rec[field] < 0:
+                raise ResumeIntegrityError(f"Record {cell} has invalid {field}")
 
         # Independent fresh verification check on claimed successes
         if outcome == "verified_recovery":
             key_raw = rec.get("recovered_master_key")
-            if not key_raw:
+            if not isinstance(key_raw, (list, tuple)) or len(key_raw) != 4:
                 raise ResumeIntegrityError(f"Claimed success missing recovered_master_key: {cell}")
-            key = (int(key_raw[0]), int(key_raw[1]), int(key_raw[2]), int(key_raw[3]))
+            if any(type(word) is not int or not 0 <= word <= 65535 for word in key_raw):
+                raise ResumeIntegrityError(f"Claimed success has malformed recovered key: {cell}")
+            key = tuple(key_raw)
             if key != inst.master_key:
                 raise ResumeIntegrityError(
                     f"Claimed success for {cell} recovered wrong key: expected {inst.master_key}, got {key}"
@@ -607,8 +673,11 @@ def validate_and_filter_resume(
                 verification_pairs=inst.verification_pairs[:2],
                 rounds=inst.rounds,
             )
-            if not v_check.verified:
+            if not v_check.verified or not verify_independent_fresh(key, inst):
                 raise ResumeIntegrityError(f"Claimed success for {cell} failed independent verification on resume")
+
+            if rec["complete_online_wall_seconds"] <= 0.0 or rec["complete_online_wall_seconds"] > 300.0:
+                raise ResumeIntegrityError(f"Claimed success for {cell} lies outside the common deadline")
 
         completed_cells[cell] = rec
 
@@ -653,6 +722,13 @@ def generate_confirmation_dataset(
         raise ConfirmationPreflightError(
             "confirmation_dataset_generation_authorized must be explicitly True in manifest"
         )
+
+    validate_confirmation_manifest(manifest)
+    verify_runtime_provenance(manifest)
+    for target in (Path(output_dataset_path), Path(output_cert_path)):
+        if target.exists() or target.with_name(target.name + ".sha256").exists():
+            raise ConfirmationPreflightError(f"Refusing to overwrite an existing confirmation artifact: {target}")
+        target.parent.mkdir(parents=True, exist_ok=True)
 
     # Validate seed governance
     seed = manifest.get("seed_governance", {}).get("seed")
@@ -713,7 +789,7 @@ def generate_confirmation_dataset(
             if diff != DEFAULT_SIMON_INPUT_DIFFERENCE:
                 raise ConfirmationPreflightError(f"Instance {inst.instance_id} pair has wrong difference: {diff}")
         attack_pts = {p.plaintext0 for p in inst.pairs} | {p.plaintext1 for p in inst.pairs}
-        verif_pts = {vp[0][0] for vp in inst.verification_pairs} | {vp[1][0] for vp in inst.verification_pairs}
+        verif_pts = {pt for pt, _ct in inst.verification_pairs}
         if attack_pts.intersection(verif_pts):
             raise ConfirmationPreflightError(f"Instance {inst.instance_id} has overlap between attack and verification plaintexts")
 
@@ -742,3 +818,33 @@ def generate_confirmation_dataset(
     os.replace(tmp_sha, sha_file)
 
     return out_ds, out_cert
+
+
+def validate_confirmation_assignment(manifest: dict, instances: Sequence[SimonAttackInstance]) -> None:
+    """Bind a unique complete cohort to the registered deterministic assignment."""
+    n = manifest["sample_size_specification"]["selected_instances"]
+    if len(instances) != n:
+        raise DisjointFamilyCertificateError("Actual cohort size differs from the frozen N")
+    if len({inst.instance_id for inst in instances}) != n or len({inst.master_key for inst in instances}) != n:
+        raise DisjointFamilyCertificateError("Confirmation assignment contains duplicate IDs or keys")
+    expected = generate_simon_attack_instances(SimonAttackInstanceConfig(
+        instance_count=n, pair_count=64, rounds=10,
+        seed=manifest["seed_governance"]["seed"], split_role="confirmation",
+    ))
+    if [inst.to_dict() for inst in instances] != [inst.to_dict() for inst in expected]:
+        raise DisjointFamilyCertificateError("Dataset differs from the registered seed/configuration/order")
+    for inst in instances:
+        SimonComparisonInput.from_attack_instance(inst, manifest_seed=manifest["seed_governance"]["seed"], pair_count=64)
+
+
+def verify_independent_fresh(key: tuple[int, int, int, int], instance: SimonAttackInstance) -> bool:
+    """Clean-room cipher check, separate from the SAT and production cipher paths."""
+    import importlib.util
+    reference = Path(__file__).resolve().parents[3] / "tests/fixtures/simon_reference_oracle.py"
+    spec = importlib.util.spec_from_file_location("simon_independent_reference", reference)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return all(
+        module.oracle_simon32_64_encrypt(pt, key, rounds=instance.rounds) == ct
+        for pt, ct in instance.verification_pairs
+    )

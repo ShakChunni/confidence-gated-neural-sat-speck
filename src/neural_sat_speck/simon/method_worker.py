@@ -1804,6 +1804,11 @@ def run_method_worker(
                 result_dict = json.loads(stdout)
                 child_peak = float(result_dict.get("peak_rss_gib", 0.0))
                 tree_peak_rss = (parent_self_rss + max(parent_child_rss, child_peak * scale)) / scale
+                # Parent time is binding even if a child completion races cleanup.
+                if result_dict.get("outcome") == "verified_recovery" and elapsed > global_deadline_seconds:
+                    result_dict.update(outcome="global_deadline", recovered_master_key=None,
+                                       verified_on_fresh_pairs=False,
+                                       error_message="Child result received outside the hard parent deadline")
                 result_dict["complete_online_wall_seconds"] = elapsed
                 result_dict["peak_rss_gib"] = tree_peak_rss
                 return MethodWorkerOutcome.from_dict(result_dict)

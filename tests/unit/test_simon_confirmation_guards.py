@@ -33,14 +33,15 @@ from neural_sat_speck.simon.confirmation_guard import (
 
 
 @pytest.fixture
-def mock_valid_manifest() -> dict:
+def mock_valid_manifest(monkeypatch) -> dict:
     """Synthetic approved manifest fixture for unit tests."""
-    return {
-        "manifest_version": "1.1.0",
+    manifest = {
+        "manifest_version": "1.2.0",
         "protocol_id": "simon32_64_r10_unseen_confirmation_v1",
         "status": "APPROVED",
         "evidence_class": "CONFIRMATION",
         "confirmation_execution_authorized": True,
+        "execution_readiness": {"status": "AUTHORIZED_FROZEN_CONFIRMATION", "open_approval_gates": [], "preparation_blockers": []},
         "seed_governance": {
             "seed": 777001,
             "seed_status": "APPROVED_FRESH_CONFIRMATION",
@@ -78,6 +79,14 @@ def mock_valid_manifest() -> dict:
             "test_dummy": "a" * 64,
         },
     }
+    from neural_sat_speck.simon.confirmation_profile import SCIENTIFIC_FIELDS
+    baseline = json.loads(Path("docs/SIMON_UNSEEN_CONFIRMATION_MANIFEST_PROPOSED.json").read_text())
+    manifest.update({key: copy.deepcopy(baseline[key]) for key in SCIENTIFIC_FIELDS})
+    # This small fixture freezes its own N32 specification; production freezes N64.
+    manifest["sample_size_specification"]["selected_instances"] = 32
+    from neural_sat_speck.simon.confirmation_profile import scientific_digest
+    monkeypatch.setattr("neural_sat_speck.simon.confirmation_guard.FROZEN_SCIENTIFIC_SHA256", scientific_digest(manifest))
+    return manifest
 
 
 def test_unapproved_manifest_rejected(mock_valid_manifest):
@@ -212,6 +221,12 @@ def test_disjoint_family_certificate_build_and_verify_passes_on_fresh_keys(mock_
 
 
 def _write_ledger_with_sidecar(path: Path, data: dict) -> None:
+    data.setdefault("evidence_class", "CONFIRMATION")
+    data.setdefault("completed_count", len(data.get("records", [])))
+    for rec in data.get("records", []):
+        rec.setdefault("verified_on_fresh_pairs", rec.get("outcome") == "verified_recovery")
+        rec.setdefault("candidates_tested_count", 0)
+        rec.setdefault("candidates_remaining_count", 0)
     raw = json.dumps(data)
     path.write_text(raw, encoding="utf-8")
     import hashlib
@@ -390,7 +405,7 @@ def test_forged_zero_certificate_rejected_by_verify_disjoint_family_certificate(
     cert_path.write_text(json.dumps(forged_cert), encoding="utf-8")
 
     # verify_disjoint_family_certificate must reject the forged certificate
-    with pytest.raises(DisjointFamilyCertificateError, match="Disjoint family violation"):
+    with pytest.raises(DisjointFamilyCertificateError, match="Disjoint family violation|duplicate master keys"):
         verify_disjoint_family_certificate(mock_valid_manifest, instances, cert_path)
 
 
@@ -418,7 +433,8 @@ def test_generate_confirmation_dataset_fails_closed_without_authorization(mock_v
         )
 
 
-def test_generate_confirmation_dataset_succeeds_when_authorized(mock_valid_manifest, tmp_path):
+def test_generate_confirmation_dataset_succeeds_when_authorized(mock_valid_manifest, tmp_path, monkeypatch):
+    monkeypatch.setattr("neural_sat_speck.simon.confirmation_guard.verify_runtime_provenance", lambda *_: {})
     from neural_sat_speck.simon.confirmation_guard import generate_confirmation_dataset
 
     m = copy.deepcopy(mock_valid_manifest)

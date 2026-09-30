@@ -171,9 +171,9 @@ def validate_record_invariants(record: dict[str, Any]) -> None:
     verified_fresh = record.get("verified_on_fresh_pairs")
 
     if outcome == "verified_recovery":
-        if verified_fresh is False:
+        if verified_fresh is not True:
             raise ValueError(
-                f"Contradictory record {iid}:{m}: outcome is 'verified_recovery' but verified_on_fresh_pairs is False"
+                f"Contradictory record {iid}:{m}: outcome is 'verified_recovery' but verified_on_fresh_pairs is missing or False"
             )
         if counts_as is False:
             raise ValueError(
@@ -293,9 +293,15 @@ def compute_method_summary(
         float(r.get("complete_online_wall_seconds", r.get("online_wall_seconds", 0.0)))
         for r in records
     ]
-    ranking_times = [float(r.get("ranking_wall_seconds", 0.0)) for r in records]
-    solving_times = [float(r.get("solving_wall_seconds", 0.0)) for r in records]
-    verif_times = [float(r.get("verification_wall_seconds", 0.0)) for r in records]
+    def components(field):
+        values = [r.get(field) for r in records]
+        # Unknown legacy telemetry must never be rendered as measured zero work.
+        if any(v is None for v in values):
+            return None, None
+        return statistics.mean(values), statistics.median(values)
+    rank_mean, rank_median = components("ranking_wall_seconds")
+    solve_mean, solve_median = components("solving_wall_seconds")
+    verif_mean, verif_median = components("verification_wall_seconds")
     candidates_tested = [int(r.get("candidates_tested_count", 0)) for r in records]
 
     k = sum(successes)
@@ -358,15 +364,18 @@ def compute_method_summary(
             "label": "[SUCCESS-CONDITIONAL: DO NOT USE FOR UNCONDITIONAL SPEED CLAIMS]",
         },
         "mean_component_seconds": {
-            "ranking": statistics.mean(ranking_times),
-            "solving": statistics.mean(solving_times),
-            "verification": statistics.mean(verif_times),
+            "ranking": rank_mean,
+            "solving": solve_mean,
+            "verification": verif_mean,
         },
         "median_component_seconds": {
-            "ranking": statistics.median(ranking_times),
-            "solving": statistics.median(solving_times),
-            "verification": statistics.median(verif_times),
+            "ranking": rank_median,
+            "solving": solve_median,
+            "verification": verif_median,
         },
+        "pair_usage_counts": {str(value): sum(r.get("full_pairs_used") == value for r in records) for value in {r.get("full_pairs_used") for r in records}},
+        "success_candidate_indices": [next((i + 1 for i, a in enumerate(r.get("candidate_attempts", [])) if a.get("status") == "sat"), None) for r, success in zip(records, successes, strict=True) if success],
+        "true_tuple_ranks": [{"instance_id": r["instance_id"], "rank": r.get("audit_true_tuple_rank"), "queue_recorded": bool(r.get("full_queue"))} for r in records],
         "candidates_tested": {
             "mean": statistics.mean(candidates_tested),
             "median": statistics.median(candidates_tested),
@@ -509,6 +518,8 @@ def generate_markdown_audit_report(
     analysis: dict[str, Any],
 ) -> str:
     """Generate comprehensive GitHub-style markdown audit document."""
+    def seconds(value):
+        return "Unknown" if value is None else f"{value:.2f}s"
     lines: list[str] = []
     n = analysis["instances_analyzed"]
     lines.append(f"# SIMON32/64 R=10 Statistical Analysis Audit Report (N={n})")
@@ -522,13 +533,13 @@ def generate_markdown_audit_report(
     if "DEVELOPMENT" in context.get("evidence_class", ""):
         lines.append("> [!NOTE]")
         lines.append("> **Provenance and Supersession:**")
-        lines.append("> This audit (V2) supersedes `docs/SIMON_DEVELOPMENT_RECOMPUTED_AUDIT.md` and supplements `docs/SIMON_DEVELOPMENT_AUDIT_20260930.md`.")
+        lines.append("> This versioned derived audit supplements the original independent audit and V1/V2 statistical audits; earlier documents and raw ledgers remain unchanged.")
         lines.append("> - The raw development ledger (`results/simon_development/simon_development_comparators_32keys.json`) and previous audit files are preserved as immutable history.")
         lines.append("> - Pointwise paired intervals are updated with the published Newcombe (1998) Method 10 continuity-corrected association coefficient (phi).")
         lines.append("> - The paired classical vs Bao hybrid interval becomes `[-0.0335, 0.2806]` (exact `[-0.03353845, 0.28064412]`, p=0.21875); primary contrasts against SAT-only remain unchanged.")
         lines.append("> - The two ranking timeouts in `fully_neural_1parent` are explicitly reported in the failure breakdown so that every row sums to N=32.")
-        lines.append("> - Diagnostic oracle is labeled `oracle_2key_n4` (diagnostic upper bound).")
-        lines.append("> - Interrupted SAT solving telemetry for SAT-only is preserved as 0.0s solving work (300.01s online wall time).")
+        lines.append("> - Diagnostic oracle is labeled `oracle_2key_n4` (true-subkey-conditioned diagnostic; not an upper bound).")
+        lines.append("> - Legacy component telemetry is unavailable for valid aggregate cost claims; raw recorded values are preserved unchanged. Complete online wall times remain usable.")
         lines.append("> - No causal ARX/AND-RX or mandatory-guidance claim is justified by these development observations.")
         lines.append("")
 
@@ -538,8 +549,8 @@ def generate_markdown_audit_report(
     # Section 1: Per-Method Summary Table
     lines.append("## 1. Per-Method Recovery and Resource Endpoints")
     lines.append("")
-    lines.append("| Method | Role | Verified | Recovery Rate | Wilson 95% CI | PAR-2 (300s) | Median Wall | Mean Rank | Mean Solve |")
-    lines.append("| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+    lines.append("| Method | Role | Verified | Recovery Rate | Wilson 95% CI | PAR-2 (300s) | Median Wall | Mean Wall | Mean Ranking Time | Mean Solve Time |")
+    lines.append("| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
 
     role_labels: dict[str, str] = {
         "fully_classical_8parent": "Classical",
@@ -560,8 +571,9 @@ def generate_markdown_audit_report(
             f"**{s['verified_recoveries']}/{n}** | {s['verified_recovery_rate']:.1%} | "
             f"[{ci[0]:.4f}, {ci[1]:.4f}] | {s['par2_score']:.2f}s | "
             f"{s['unconditional_wall_seconds']['median']:.2f}s | "
-            f"{s['mean_component_seconds']['ranking']:.2f}s | "
-            f"{s['mean_component_seconds']['solving']:.2f}s |"
+            f"{s['unconditional_wall_seconds']['mean']:.2f}s | "
+            f"{seconds(s['mean_component_seconds']['ranking'])} | "
+            f"{seconds(s['mean_component_seconds']['solving'])} |"
         )
 
     if analysis.get("diagnostic_oracle"):
@@ -572,12 +584,13 @@ def generate_markdown_audit_report(
             f"*{so['verified_recoveries']}/{n}* | *{so['verified_recovery_rate']:.1%}* | "
             f"*[{cio[0]:.4f}, {cio[1]:.4f}]* | *{so['par2_score']:.2f}s* | "
             f"*{so['unconditional_wall_seconds']['median']:.2f}s* | "
-            f"*{so['mean_component_seconds']['ranking']:.2f}s* | "
-            f"*{so['mean_component_seconds']['solving']:.2f}s* |"
+            f"*{so['unconditional_wall_seconds']['mean']:.2f}s* | "
+            f"*{seconds(so['mean_component_seconds']['ranking'])}* | "
+            f"*{seconds(so['mean_component_seconds']['solving'])}* |"
         )
     lines.append("")
     lines.append("> [!NOTE]")
-    lines.append("> B1's negative result (0 recoveries) is fully preserved. The denominator for all rates is the total instance count.")
+    lines.append("> All B1 outcomes are preserved regardless of their direction. The denominator for all rates is the total instance count.")
     if "DEVELOPMENT" in context.get("evidence_class", ""):
         lines.append(">")
         lines.append("> **Retrospective Development Telemetry Note:**")
@@ -591,7 +604,7 @@ def generate_markdown_audit_report(
     lines.append("Pointwise intervals: Newcombe Method 10 paired difference 95% confidence intervals.")
     lines.append("")
     lines.append("| Contrast | Method A | Method B | (1,1) | (1,0) | (0,1) | (0,0) | Risk Diff | Pointwise 95% CI | Raw p | Holm Adj p | Decision |")
-    lines.append("| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+    lines.append("| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
 
     for p in analysis["primary_contrasts_holm"]:
         c = p["contingency"]
@@ -612,7 +625,7 @@ def generate_markdown_audit_report(
     lines.append("> Secondary contrasts are descriptive complete-policy comparisons. They do not constitute prospective confirmatory claims.")
     lines.append("")
     lines.append("| Contrast | Method A | Method B | (1,1) | (1,0) | (0,1) | (0,0) | Risk Diff | Pointwise 95% CI | Raw McNemar p | Unadj p < 0.05 |")
-    lines.append("| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+    lines.append("| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
 
     for s in analysis["secondary_contrasts_exploratory"]:
         c = s["contingency"]
@@ -630,7 +643,7 @@ def generate_markdown_audit_report(
     lines.append("## 4. Failure Breakdown by Method")
     lines.append("")
     lines.append("| Method | Verified Success | Queue Exhausted | Unresolved SAT | Global Deadline | Ranking Timeout | Other / Integrity | Total |")
-    lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+    lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
     for m in list(PRIMARY_METHODS) + [DIAGNOSTIC_ORACLE]:
         if m in PRIMARY_METHODS:
             s = analysis["method_summaries"][m]
@@ -673,6 +686,44 @@ def generate_markdown_audit_report(
     return "\n".join(lines)
 
 
+
+def validate_confirmation_analysis_inputs(args, context, records_by_method):
+    from neural_sat_speck.simon.attack_instance import load_simon_attack_instances
+    from neural_sat_speck.simon.confirmation_guard import (
+        ALL_CONFIRMATION_METHODS,
+        compute_execution_identity,
+        file_sha256,
+        validate_and_filter_resume,
+        validate_confirmation_manifest,
+        verify_disjoint_family_certificate,
+    )
+    from neural_sat_speck.simon.confirmation_profile import code_identity
+    if args.allow_drift or args.global_cutoff != 300.0 or args.alpha != 0.05:
+        raise ValueError("Confirmation analysis cannot override the frozen statistical plan")
+    if not args.manifest or not args.dataset or not args.certificate:
+        raise ValueError("Confirmation analysis requires the frozen manifest, dataset and certificate")
+    manifest = validate_confirmation_manifest(args.manifest)
+    if manifest.get("execution_pins", {}).get("source_sha256") != code_identity():
+        raise ValueError("Confirmation analysis source has drifted")
+    instances = load_simon_attack_instances(args.dataset)
+    verify_disjoint_family_certificate(manifest, instances, args.certificate)
+    identity = compute_execution_identity(manifest, file_sha256(args.dataset))
+    cells, pending = validate_and_filter_resume(args.ledger, identity, instances, ALL_CONFIRMATION_METHODS, resume_flag=True)
+    if pending or len(cells) != manifest["sample_size_specification"]["selected_instances"] * 9:
+        raise ValueError("Confirmation ledger is incomplete: the full selected N x 9 grid is required")
+    from neural_sat_speck.simon.key_schedule import expand_key
+    for inst in instances:
+        truth = list(expand_key(inst.master_key, rounds=10)[-2:])
+        for record in (cells[(inst.instance_id, m)] for m in ALL_CONFIRMATION_METHODS):
+            queue = record.get("full_queue", [])
+            rank = next((i+1 for i, item in enumerate(queue) if item == truth), None)
+            # Keep absent true tuples distinct from unavailable queues.
+            record["audit_true_tuple_rank"] = rank if queue else None
+            target = next(r for r in records_by_method[record["method"]] if r["instance_id"] == inst.instance_id)
+            target["audit_true_tuple_rank"] = record["audit_true_tuple_rank"]
+    context.update(manifest_sha256=file_sha256(args.manifest), dataset_sha256=file_sha256(args.dataset), certificate_sha256=file_sha256(args.certificate))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run reproducible statistical analysis and audit on SIMON recovery ledgers."
@@ -695,6 +746,7 @@ def main() -> int:
         default=None,
         help="Optional path to dataset JSON to validate instance IDs against ledger.",
     )
+    parser.add_argument("--certificate", type=Path, default=None, help="Required disjoint-family certificate for confirmation analysis.")
     parser.add_argument(
         "--output-json",
         type=Path,
@@ -727,7 +779,7 @@ def main() -> int:
     parser.add_argument(
         "--audit-development",
         action="store_true",
-        help="Run development regression audit and write to docs/SIMON_DEVELOPMENT_RECOMPUTED_AUDIT_V2.md.",
+        help="Run development regression audit and write to docs/SIMON_DEVELOPMENT_RECOMPUTED_AUDIT_V3.md.",
     )
 
     args = parser.parse_args()
@@ -748,6 +800,8 @@ def main() -> int:
     print(f"[*] Loading ledger from: {args.ledger}")
     context, records_by_method = load_ledger_records(args.ledger)
 
+    if context["evidence_class"] == "CONFIRMATION":
+        validate_confirmation_analysis_inputs(args, context, records_by_method)
     print(f"[*] Analyzing {len(records_by_method)} methods...")
     analysis = analyze_all_comparators(
         records_by_method=records_by_method,
@@ -777,19 +831,28 @@ def main() -> int:
             diff = dataset_iids.symmetric_difference(ledger_iids)
             raise ValueError(f"Dataset instance IDs do not match ledger instance IDs: {diff}")
 
+    if "DEVELOPMENT" in context["evidence_class"]:
+        # Development was run with the earlier overlapping/incomplete components.
+        for group in records_by_method.values():
+            for record in group:
+                for field in ("ranking_wall_seconds", "solving_wall_seconds", "verification_wall_seconds"):
+                    record[field] = None
+        analysis = analyze_all_comparators(records_by_method, global_cutoff=args.global_cutoff, alpha=args.alpha)
     md_report = generate_markdown_audit_report(context, analysis)
 
     if args.audit_development:
-        audit_md_path = REPOSITORY_ROOT / "docs" / "SIMON_DEVELOPMENT_RECOMPUTED_AUDIT_V2.md"
-        audit_json_path = REPOSITORY_ROOT / "results" / "simon_development" / "simon_development_recomputed_audit_v2.json"
+        audit_md_path = REPOSITORY_ROOT / "docs" / "SIMON_DEVELOPMENT_RECOMPUTED_AUDIT_V3.md"
+        audit_json_path = REPOSITORY_ROOT / "results" / "simon_development" / "simon_development_recomputed_audit_v3.json"
+        if audit_md_path.exists() or audit_json_path.exists():
+            raise ValueError("Refusing to overwrite a versioned development audit")
         audit_md_path.write_text(md_report, encoding="utf-8")
         audit_json_path.parent.mkdir(parents=True, exist_ok=True)
-        audit_json_path.write_text(json.dumps(analysis, indent=2), encoding="utf-8")
-        print(f"[+] Recomputed development audit V2 written to {audit_md_path} and {audit_json_path}")
+        audit_json_path.write_text(json.dumps({"context": context, "analysis": analysis}, indent=2), encoding="utf-8")
+        print(f"[+] Recomputed development audit V3 written to {audit_md_path} and {audit_json_path}")
 
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(analysis, indent=2), encoding="utf-8")
+        args.output_json.write_text(json.dumps({"context": context, "analysis": analysis}, indent=2), encoding="utf-8")
         print(f"[+] Analysis JSON persisted to: {args.output_json}")
 
     if args.output_md:

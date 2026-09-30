@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "evidence_class": "CONFIRMATION_GENERATION_PREFLIGHT_NO_ATTACK_OUTCOMES",
+  "checked_at": "2026-09-30T10:18:12.901308+00:00",
+  "registered_seed": 8398726052707596859,
+  "unique_master_keys": 64,
+  "unique_instance_ids": 64,
+  "rounds": 10,
+  "direct_pairs_per_key": 64,
+  "known_observations_per_key": 128,
+  "fresh_observations_per_key": 2,
+  "independent_cipher_observations_checked": 8320,
+  "all_key_schedules_match_clean_room_reference": true,
+  "fresh_plaintexts_disjoint": true,
+  "prior_roles_checked": [
+    "demo_seed_999999_p4",
+    "demo_seed_999999_p8",
+    "demo_seed_999999_p32",
+    "demo_seed_999999_p64",
+    "development_seed_260926_p32",
+    "development_seed_260926_p64",
+    "synthetic_training_seed_880001",
+    "synthetic_training_seed_880002"
+  ],
+  "prior_key_intersection_count": 0,
+  "dataset_sha256": "b6fa7a5dcb24faf35a153c3693ff7cef11bd47d9dfe6f84e6543f49a03a48571",
+  "certificate_sha256": "61f1167200f41cd26ef439a906d71673c8047f1ba39dcc7828ea6d333c0e522f",
+  "frozen_manifest_sha256": "ad12052c07181d108924141b2e4c475b74d1456b4e31cb7bf6a30b562d4aeb26",
+  "scientific_profile_sha256": "b45d0bd6ac355690c52edaf2bc9260ecd4ad846e01af47cee955b37d0403a159",
+  "source_revision": "99bb6d1b30a780f30a36e58ce4300b8690072b29",
+  "authorization_revision": "5d3a52f3db516d2b97d49d99b974a5621cb22bc7",
+  "preflight_wall_seconds": 3.0636967909522355
+}

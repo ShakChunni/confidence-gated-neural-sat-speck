@@ -39,7 +39,7 @@ from tests.fixtures.simon_reference_oracle import oracle_simon32_64_key_schedule
 
 
 @pytest.fixture
-def synthetic_runner_environment(tmp_path: Path):
+def synthetic_runner_environment(tmp_path: Path, monkeypatch):
     """Create a fully valid synthetic fixture environment for runner integration tests."""
     # 1. Create dummy resource files
     ddt_path = tmp_path / "simon_predicted_ddt_7r.bin"
@@ -73,11 +73,12 @@ def synthetic_runner_environment(tmp_path: Path):
 
     # 2. Manifest
     manifest = {
-        "manifest_version": "1.1.0",
+        "manifest_version": "1.2.0",
         "protocol_id": "simon32_64_r10_unseen_confirmation_v1",
         "status": "APPROVED",
         "evidence_class": "CONFIRMATION",
         "confirmation_execution_authorized": True,
+        "execution_readiness": {"status": "AUTHORIZED_FROZEN_CONFIRMATION", "open_approval_gates": [], "preparation_blockers": []},
         "seed_governance": {
             "seed": 777001,
             "seed_status": "APPROVED_FRESH_CONFIRMATION",
@@ -140,6 +141,14 @@ def synthetic_runner_environment(tmp_path: Path):
             "tensorflow_python": str(tf_py),
         },
     }
+    from neural_sat_speck.simon.confirmation_profile import SCIENTIFIC_FIELDS
+    baseline = json.loads(Path("docs/SIMON_UNSEEN_CONFIRMATION_MANIFEST_PROPOSED.json").read_text())
+    manifest.update({key: copy.deepcopy(baseline[key]) for key in SCIENTIFIC_FIELDS})
+    # This small fixture freezes its own N32 specification; production freezes N64.
+    manifest["sample_size_specification"]["selected_instances"] = 32
+    from neural_sat_speck.simon.confirmation_profile import scientific_digest
+    monkeypatch.setattr("neural_sat_speck.simon.confirmation_guard.FROZEN_SCIENTIFIC_SHA256", scientific_digest(manifest))
+    manifest["development_resource_locations"].update(b1_checkpoint=str(b1_path), queried_row_8r_cpp=str(cpp_path))
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
@@ -258,6 +267,7 @@ def test_runner_rejection_non_confirmation_dataset_zero_worker_calls(synthetic_r
     dev_instances = generate_simon_attack_instances(dev_cfg)
     dev_ds_path = env["tmp_path"] / "dev_dataset.json"
     dev_ds_path.write_text(json.dumps([inst.to_dict() for inst in dev_instances]), encoding="utf-8")
+    dev_ds_path.with_name(dev_ds_path.name + ".sha256").write_text(file_sha256(dev_ds_path))
 
     worker_spy = MagicMock()
     monkeypatch.setattr(runner, "run_method_worker", worker_spy)
@@ -284,6 +294,7 @@ def test_runner_rejection_disjoint_family_overlap_zero_worker_calls(synthetic_ru
     clash_instances = [replace(demo_inst, split_role="confirmation")] + list(env["instances"][1:])
     clash_path = env["tmp_path"] / "clash_dataset.json"
     clash_path.write_text(json.dumps([inst.to_dict() for inst in clash_instances]), encoding="utf-8")
+    clash_path.with_name(clash_path.name + ".sha256").write_text(file_sha256(clash_path))
 
     worker_spy = MagicMock()
     monkeypatch.setattr(runner, "run_method_worker", worker_spy)
@@ -542,3 +553,25 @@ def test_certificate_rejects_actual_numpy_training_key():
     manifest = {"sample_size_specification": {"selected_instances": 2}}
     with pytest.raises(DisjointFamilyCertificateError, match="synthetic_training_seed_880001"):
         build_disjoint_family_certificate(manifest, fixtures)
+
+
+def test_runner_preserves_outer_exception_then_suspends(synthetic_runner_environment, monkeypatch):
+    env = synthetic_runner_environment
+    ledger = env["tmp_path"] / "ledger.json"
+    spy = MagicMock(side_effect=OSError("fixture worker spawn failure"))
+    monkeypatch.setattr(runner, "run_method_worker", spy)
+    monkeypatch.setattr(runner, "verify_runtime_provenance", lambda *_: env["resource_paths"])
+    monkeypatch.setattr(runner.sys, "argv", ["evaluate_simon_confirmation.py", "--manifest", str(env["manifest_path"]), "--dataset", str(env["dataset_path"]), "--certificate", str(env["cert_path"]), "--output", str(ledger)])
+    assert runner.main() == 8
+    assert spy.call_count == 1
+    data = json.loads(ledger.read_text())
+    assert data["completed_count"] == 1
+    assert data["records"][0]["outcome"] == "exception"
+    assert data["records"][0]["solving_wall_seconds"] is None
+    assert data["records"][0]["verified_on_fresh_pairs"] is False
+    assert "spawn failure" in data["records"][0]["error_message"]
+    assert ledger.with_name(ledger.name + ".sha256").is_file()
+    completed, pending = runner.validate_and_filter_resume(
+        ledger, data["execution_identity"], env["instances"], ALL_CONFIRMATION_METHODS, resume_flag=True,
+    )
+    assert len(completed) == 1 and len(pending) == 287
