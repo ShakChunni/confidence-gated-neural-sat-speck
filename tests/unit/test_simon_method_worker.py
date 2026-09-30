@@ -35,10 +35,12 @@ def test_corrupt_progress_journal_is_flagged_and_partial_evidence_retained(tmp_p
         json.dumps({"event": "queue", "total_queue_count": 1,
                     "full_queue": [[1, 2]], "queue_sample": [[1, 2]]}) + "\n"
         + json.dumps({"event": "attempt_start", "candidate_k8": 1,
-                      "candidate_k9": 2, "elapsed_so_far": 0.1}) + "\n"
+                      "candidate_k9": 2, "started_at_monotonic": 100.1}) + "\n"
         + '{"event":"attempt"\n', encoding="utf-8"
     )
-    rec = method_worker_module._read_progress_file(journal, parent_elapsed=1.0)
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=1.0, stopped_at_monotonic=101.0,
+    )
     assert rec.journal_error is not None
     assert "line 3" in rec.journal_error
     assert rec.in_flight_attempt is not None
@@ -958,3 +960,227 @@ def test_timeout_only_queue_is_unresolved_not_exhausted(demo_instance):
     )
     assert outcome.outcome == "candidate_unresolved"
     assert outcome.candidate_attempts[0].status == "solver_timeout"
+
+
+def test_full_pairs_used_telemetry_on_queue_method(demo_instance):
+    attack_pairs = tuple((p.ciphertext0, p.ciphertext1) for p in demo_instance.pairs)
+    outcome = run_method_worker(
+        method="test_mock_queue",
+        rounds=10,
+        attack_pairs=attack_pairs,
+        known_pairs=demo_instance.known_pairs,
+        verification_pairs=demo_instance.verification_pairs,
+        mock_candidate_queue=[(1, 2)],
+        solver_stub=lambda *_args: SatSolveResult(False, None, 0.0, False, "unsat"),
+        use_parent_watchdog=False,
+    )
+    assert outcome.outcome == "queue_exhausted"
+    assert outcome.full_pairs_used == len(attack_pairs)
+
+
+def test_interrupted_sat_only_telemetry_records_solving_time_and_pairs(demo_instance):
+    attack_pairs = tuple((p.ciphertext0, p.ciphertext1) for p in demo_instance.pairs)
+    # 1. Test in-flight solving time recovery during interruption
+    outcome_interrupted = run_method_worker(
+        method="test_sat_only",
+        rounds=10,
+        attack_pairs=attack_pairs,
+        known_pairs=demo_instance.known_pairs,
+        verification_pairs=demo_instance.verification_pairs,
+        global_deadline_seconds=2.0,
+        use_parent_watchdog=True,
+        test_interruption_point="solving",
+    )
+    assert outcome_interrupted.outcome == "global_deadline"
+    assert outcome_interrupted.full_pairs_used == 32
+    assert outcome_interrupted.solving_wall_seconds > 0.0
+    assert outcome_interrupted.solving_wall_seconds <= 2.5
+
+    # Before a phase is recorded the selected input count remains unknown.
+    outcome_n4 = run_method_worker(
+        method="sat_only_n4",
+        rounds=10,
+        attack_pairs=attack_pairs,
+        known_pairs=demo_instance.known_pairs,
+        verification_pairs=demo_instance.verification_pairs,
+        global_deadline_seconds=0.001,
+        use_parent_watchdog=True,
+    )
+    assert outcome_n4.outcome == "global_deadline"
+    assert outcome_n4.full_pairs_used is None
+
+
+def test_unguided_phase_duration_excludes_parent_and_child_startup(tmp_path, monkeypatch):
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text(json.dumps({
+        "event": "phase", "phase": "solving", "solving_kind": "unguided",
+        "started_at_monotonic": 109.0, "full_pairs_used": 64,
+    }) + "\n", encoding="utf-8")
+    monkeypatch.setattr(method_worker_module.time, "perf_counter", lambda: 112.0)
+    # Parent began at 100; nine seconds of startup must not become SAT time.
+    rec = method_worker_module._read_progress_file(journal, parent_elapsed=12.0)
+    assert rec.journal_error is None
+    assert rec.solving_wall_seconds == 3.0
+    assert rec.full_pairs_used == 64
+
+
+def test_completed_unguided_phase_is_not_counted_until_parent_exit(tmp_path, monkeypatch):
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text("\n".join(json.dumps(ev) for ev in [
+        {"event": "phase", "phase": "solving", "solving_kind": "unguided",
+         "started_at_monotonic": 100.0, "full_pairs_used": 2},
+        {"event": "completed", "outcome": "solver_timeout", "solving_wall_seconds": 4.0},
+    ]) + "\n", encoding="utf-8")
+    monkeypatch.setattr(method_worker_module.time, "perf_counter", lambda: 130.0)
+    rec = method_worker_module._read_progress_file(journal, parent_elapsed=30.0)
+    assert rec.journal_error is None
+    assert rec.solving_wall_seconds == 4.0
+
+
+def test_candidate_phase_does_not_use_unguided_recovery_path(tmp_path):
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text("\n".join(json.dumps(ev) for ev in [
+        {"event": "phase", "phase": "solving", "candidate_index": 0},
+        {"event": "attempt", "candidate_k8": 1, "candidate_k9": 2,
+         "solve_wall_seconds": 3.0, "status": "unsat", "rebuild_occurred": False,
+         "current_solving_wall_seconds": 4.0},
+    ]) + "\n", encoding="utf-8")
+    rec = method_worker_module._read_progress_file(journal, parent_elapsed=60.0)
+    assert rec.journal_error is None
+    assert rec.solving_wall_seconds == 4.0
+
+
+def test_interrupted_candidate_duration_excludes_startup_and_journal_read(tmp_path, monkeypatch):
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text("\n".join(json.dumps(ev) for ev in [
+        {"event": "attempt", "candidate_k8": 1, "candidate_k9": 2,
+         "solve_wall_seconds": 2.0, "status": "unsat", "rebuild_occurred": False,
+         "current_solving_wall_seconds": 3.0},
+        {"event": "attempt_start", "candidate_k8": 3, "candidate_k9": 4,
+         "started_at_monotonic": 109.0, "elapsed_so_far": 2.0},
+    ]) + "\n", encoding="utf-8")
+    monkeypatch.setattr(method_worker_module.time, "perf_counter", lambda: 150.0)
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=12.0, stopped_at_monotonic=112.0,
+    )
+    assert rec.journal_error is None
+    assert rec.in_flight_attempt.solve_wall_seconds == 3.0
+    assert rec.solving_wall_seconds == 6.0
+
+
+@pytest.mark.parametrize(
+    "timestamp", [None, False, True, "99.0", -1.0, 0.0, float("nan"), float("inf"), 101.0, 10**400],
+)
+def test_invalid_unguided_phase_clock_is_flagged(tmp_path, monkeypatch, timestamp):
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text(json.dumps({
+        "event": "phase", "phase": "solving", "solving_kind": "unguided",
+        "started_at_monotonic": timestamp,
+    }) + "\n", encoding="utf-8")
+    monkeypatch.setattr(method_worker_module.time, "perf_counter", lambda: 100.0)
+    rec = method_worker_module._read_progress_file(journal, parent_elapsed=10.0)
+    assert rec.journal_error is not None
+    assert "Invalid in-flight solving phase" in rec.journal_error
+
+
+def test_interrupted_unguided_verification_retains_completed_solve_and_journals_verification(tmp_path):
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text("\n".join(json.dumps(ev) for ev in [
+        {"event": "phase", "phase": "solving", "solving_kind": "unguided",
+         "started_at_monotonic": 100.0, "full_pairs_used": 2},
+        {"event": "solve_complete", "solving_wall_seconds": 4.5},
+        {"event": "phase", "phase": "verification", "started_at_monotonic": 105.0},
+    ]) + "\n", encoding="utf-8")
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=10.0, stopped_at_monotonic=107.0,
+    )
+    assert rec.journal_error is None
+    assert rec.last_phase == "verification"
+    assert rec.solving_wall_seconds == 4.5
+    assert rec.verification_wall_seconds == 2.0
+
+
+def test_interrupted_guided_verification_retains_candidate_solve_and_journals_verification(tmp_path):
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text("\n".join(json.dumps(ev) for ev in [
+        {"event": "queue", "total_queue_count": 2, "full_queue": [[1, 2], [3, 4]], "queue_sample": [[1, 2]]},
+        {"event": "attempt_start", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2,
+         "started_at_monotonic": 100.0},
+        {"event": "phase", "phase": "solving", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2,
+         "started_at_monotonic": 100.0},
+        {"event": "candidate_solve_complete", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2,
+         "solve_wall_seconds": 0.5, "status": "sat"},
+        {"event": "phase", "phase": "verification", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2,
+         "started_at_monotonic": 101.0},
+    ]) + "\n", encoding="utf-8")
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=5.0, stopped_at_monotonic=104.0,
+    )
+    assert rec.journal_error is None
+    assert rec.last_phase == "verification"
+    assert rec.in_flight_attempt is not None
+    assert rec.in_flight_attempt.solve_wall_seconds == 0.5
+    assert rec.solving_wall_seconds == 0.5
+    assert rec.verification_wall_seconds == 3.0
+
+
+def test_interrupted_initial_formula_construction_journals_phase_and_duration(tmp_path):
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text("\n".join(json.dumps(ev) for ev in [
+        {"event": "queue", "total_queue_count": 2, "full_queue": [[1, 2], [3, 4]], "queue_sample": [[1, 2]]},
+        {"event": "phase", "phase": "initial_formula_construction", "started_at_monotonic": 100.0},
+    ]) + "\n", encoding="utf-8")
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=4.0, stopped_at_monotonic=103.5,
+    )
+    assert rec.journal_error is None
+    assert rec.last_phase == "initial_formula_construction"
+    assert rec.solving_wall_seconds == 3.5
+    assert rec.candidates_tested_count == 0
+    assert rec.candidates_remaining_count == 2
+
+
+def test_interrupted_rebuilding_journals_phase_and_duration(tmp_path):
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text("\n".join(json.dumps(ev) for ev in [
+        {"event": "queue", "total_queue_count": 2, "full_queue": [[1, 2], [3, 4]], "queue_sample": [[1, 2]]},
+        {"event": "attempt_start", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2, "started_at_monotonic": 100.0},
+        {"event": "candidate_solve_complete", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2, "solve_wall_seconds": 0.5, "status": "sat"},
+        {"event": "attempt", "candidate_k8": 1, "candidate_k9": 2, "solve_wall_seconds": 0.5, "status": "verification_failure",
+         "rebuild_occurred": False, "current_solving_wall_seconds": 0.5, "current_verification_wall_seconds": 0.1},
+        {"event": "phase", "phase": "rebuilding", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2, "started_at_monotonic": 101.0},
+    ]) + "\n", encoding="utf-8")
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=5.0, stopped_at_monotonic=103.0,
+    )
+    assert rec.journal_error is None
+    assert rec.last_phase == "rebuilding"
+    assert len(rec.attempts) == 1
+    assert rec.attempts[0].rebuild_occurred is False
+    assert rec.solving_wall_seconds == 2.5  # 0.5 solve + 2.0 rebuild
+    assert rec.verification_wall_seconds == 0.1
+
+
+def test_multiple_verification_failures_and_rebuilds_component_accounting(demo_instance):
+    outcome = run_method_worker(
+        method="test_multiple_verification_failures",
+        rounds=10,
+        attack_pairs=tuple((p.ciphertext0, p.ciphertext1) for p in demo_instance.pairs),
+        known_pairs=demo_instance.known_pairs,
+        verification_pairs=demo_instance.verification_pairs,
+        mock_candidate_queue=[(0x1111, 0x2222), (0x3333, 0x4444), (0x5555, 0x6666)],
+        use_parent_watchdog=False,
+    )
+    assert outcome.outcome == "verified_recovery"
+    assert outcome.verified_on_fresh_pairs is True
+    assert outcome.candidates_tested_count == 3
+    assert len(outcome.candidate_attempts) == 3
+    assert outcome.candidate_attempts[0].status == "verification_failure"
+    assert outcome.candidate_attempts[0].rebuild_occurred is True
+    assert outcome.candidate_attempts[1].status == "verification_failure"
+    assert outcome.candidate_attempts[1].rebuild_occurred is True
+    assert outcome.candidate_attempts[2].status == "sat"
+    assert outcome.candidate_attempts[2].rebuild_occurred is False
+    assert outcome.verification_wall_seconds > 0.0
+    assert outcome.solving_wall_seconds > 0.0
+    assert outcome.solving_wall_seconds + outcome.verification_wall_seconds <= outcome.complete_online_wall_seconds + 0.05

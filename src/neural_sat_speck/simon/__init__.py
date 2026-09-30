@@ -111,6 +111,15 @@ try:
     from .b1_data import (
         save_simon_checkpoint as save_simon_checkpoint,
     )
+    from .b1_training_runner import (
+        load_and_validate_manifest as load_and_validate_manifest,
+    )
+    from .b1_training_runner import (
+        run_b0_b1_training_pipeline as run_b0_b1_training_pipeline,
+    )
+    from .b1_training_runner import (
+        verify_preflight_cryptography as verify_preflight_cryptography,
+    )
     from .faithful_b1_model import (
         SimonGohrResNet as SimonGohrResNet,
     )
@@ -128,5 +137,6 @@ else:
         "SimonB0Dataset", "SimonB1GroupDataset", "SimonGeneratedB0Data",
         "SimonGeneratedPairGroups", "SimonGohrResNet", "SimonGohrResNetConfig",
         "SimonPairGroupRanker", "generate_simon_b0_pairs", "generate_simon_b1_groups",
-        "load_simon_b0_checkpoint", "load_simon_b1_checkpoint", "save_simon_checkpoint",
+        "load_and_validate_manifest", "load_simon_b0_checkpoint", "load_simon_b1_checkpoint",
+        "run_b0_b1_training_pipeline", "save_simon_checkpoint", "verify_preflight_cryptography",
     ])

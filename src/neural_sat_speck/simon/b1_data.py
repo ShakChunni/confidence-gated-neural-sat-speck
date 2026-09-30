@@ -764,7 +764,7 @@ def save_simon_checkpoint(
         payload["variant"] = getattr(model, "variant", "b1_mean")
         payload["head_variant"] = getattr(model, "head_variant", "speck_b1")
     else:
-        payload["head_type"] = getattr(model, "head_type", "direct")
+        payload["head_type"] = getattr(model, "head_type", "speck")
 
     torch.save(payload, path)
 
@@ -782,7 +782,7 @@ def load_simon_b0_checkpoint(
         raise ValueError(f"expected simon_gohr_resnet, got {payload.get('model_type')}")
 
     config = SimonGohrResNetConfig.from_dict(payload["model_config"])
-    head_type = payload.get("head_type", "direct")
+    head_type = payload.get("head_type", "speck")
     model = SimonGohrResNet(config, head_type=head_type)
     model.load_state_dict(payload["state_dict"])
     model.to(device)
@@ -804,8 +804,7 @@ def load_simon_b1_checkpoint(
 
     config = SimonGohrResNetConfig.from_dict(payload["model_config"])
     variant = payload.get("variant", "b1_mean")
-    # Legacy pre-freeze checkpoints lacked head_variant and used b1_mlp_bn.
-    head_variant = payload.get("head_variant", "b1_mlp_bn")
+    head_variant = payload.get("head_variant", "speck_b1")
     model = SimonPairGroupRanker(config, variant=variant, head_variant=head_variant)
     model.load_state_dict(payload["state_dict"])
     model.to(device)

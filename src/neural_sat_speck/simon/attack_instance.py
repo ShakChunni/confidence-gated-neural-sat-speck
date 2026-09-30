@@ -38,7 +38,7 @@ KnownPair: TypeAlias = tuple[Block, Block]
 DEFAULT_SIMON_INPUT_DIFFERENCE: Final[Block] = (0x0000, 0x0040)
 
 PERMITTED_SIMON_ROLES: Final[frozenset[str]] = frozenset(
-    {"demo", "development", "feasibility"}
+    {"demo", "development", "feasibility", "confirmation"}
 )
 
 # Additional frozen seeds from Phase 11 prospective campaign
@@ -209,6 +209,8 @@ class SimonAttackInstanceConfig:
             )
         if self.split_role == "development" and self.seed == CLI_DEMO_SEED:
             raise ValueError("Development split role cannot reuse the demo seed")
+        if self.split_role == "confirmation" and (self.seed == CLI_DEMO_SEED or self.seed == 260926):
+            raise ValueError("Confirmation split role cannot reuse the demo or development seed")
 
 
 def generate_simon_attack_instances(

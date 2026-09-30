@@ -39,6 +39,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import math
 import os
 import platform
 import random
@@ -74,7 +75,10 @@ from neural_sat_speck.simon.faithful_b1_model import (
 from neural_sat_speck.simon.published_vv import load_published_vv_checkpoint
 from neural_sat_speck.simon.published_vv_ranking import rank_neural_domain
 from neural_sat_speck.simon.sat_model import SatSolveResult, SimonSatModel
-from neural_sat_speck.simon.verification import verify_simon_master_key
+from neural_sat_speck.simon.verification import (
+    SimonVerificationResult,
+    verify_simon_master_key,
+)
 
 EIGHT_COMPARATORS: Final[frozenset[str]] = frozenset(
     {
@@ -85,7 +89,7 @@ EIGHT_COMPARATORS: Final[frozenset[str]] = frozenset(
         "random_control_128",
         "random_control_1024",
         "sat_only_n4",
-        "sat_only_n64",
+        "sat_only_n128",
     }
 )
 
@@ -94,10 +98,13 @@ SEVEN_COMPARATORS: Final[frozenset[str]] = frozenset(
 )
 
 COMPARATOR_METHODS: Final[frozenset[str]] = frozenset(
-    EIGHT_COMPARATORS | {"faithful_b1_8parent", "sat_only_n128"}
+    EIGHT_COMPARATORS | {"faithful_b1_8parent", "sat_only_n64"}
 )
 
 DIAGNOSTIC_ORACLE: Final[str] = "oracle_a2_n4"
+DIAGNOSTIC_ORACLES: Final[frozenset[str]] = frozenset(
+    {"oracle_a2_n4", "oracle_2key_n4"}
+)
 
 TEST_ONLY_METHODS: Final[frozenset[str]] = frozenset(
     {
@@ -109,13 +116,14 @@ TEST_ONLY_METHODS: Final[frozenset[str]] = frozenset(
         "test_slow_rebuild",
         "test_slow_verification",
         "test_verification_failure",
+        "test_multiple_verification_failures",
         "test_unknown_solver_status",
         "test_sat_only",
     }
 )
 
 ALL_PERMITTED_METHODS: Final[frozenset[str]] = frozenset(
-    COMPARATOR_METHODS | {DIAGNOSTIC_ORACLE} | TEST_ONLY_METHODS
+    COMPARATOR_METHODS | DIAGNOSTIC_ORACLES | TEST_ONLY_METHODS
 )
 
 
@@ -159,6 +167,8 @@ def _log_progress_event(progress_file: str | None, event: dict[str, Any]) -> Non
 def _read_progress_file(
     path: str | Path | None,
     parent_elapsed: float | None = None,
+    *,
+    stopped_at_monotonic: float | None = None,
 ) -> _RecoveredProgress:
     rec = _RecoveredProgress()
     if path is None:
@@ -167,6 +177,11 @@ def _read_progress_file(
         rec.journal_error = f"Progress journal missing: {path}"
         return rec
     last_attempt_start: dict[str, Any] | None = None
+    last_candidate_solve_complete: dict[str, Any] | None = None
+    last_solving_start: dict[str, Any] | None = None
+    last_verification_start: dict[str, Any] | None = None
+    last_rebuild_start: dict[str, Any] | None = None
+    last_construction_start: dict[str, Any] | None = None
 
     try:
         with open(path, encoding="utf-8") as f:
@@ -184,33 +199,123 @@ def _read_progress_file(
                 event_type = ev["event"]
                 try:
                     _apply_progress_event(rec, ev, event_type, line_number)
-                except (KeyError, IndexError, TypeError, ValueError) as exc:
+                except (KeyError, IndexError, TypeError, ValueError, OverflowError) as exc:
                     rec.journal_error = f"Invalid progress journal line {line_number}: {exc}"
                     continue
                 if event_type == "attempt_start":
                     if last_attempt_start is not None:
                         rec.journal_error = f"Overlapping attempt_start at line {line_number}"
                     last_attempt_start = ev
+                    last_candidate_solve_complete = None
+                    last_verification_start = None
+                    last_rebuild_start = None
+                elif event_type == "candidate_solve_complete":
+                    last_candidate_solve_complete = ev
                 elif event_type == "attempt":
                     last_attempt_start = None
+                    last_candidate_solve_complete = None
+                    last_verification_start = None
+                elif event_type == "rebuild_complete":
+                    last_rebuild_start = None
+                elif event_type == "initial_formula_construction_complete":
+                    last_construction_start = None
+                elif event_type == "solve_complete":
+                    last_solving_start = None
+                    rec.solving_wall_seconds = float(ev["solving_wall_seconds"])
+                elif event_type == "phase":
+                    phase_name = ev.get("phase")
+                    if phase_name == "solving" and ev.get("solving_kind") == "unguided":
+                        last_solving_start = ev
+                    elif phase_name == "verification":
+                        last_verification_start = ev
+                    elif phase_name == "rebuilding":
+                        last_rebuild_start = ev
+                    elif phase_name == "initial_formula_construction":
+                        last_construction_start = ev
+                elif event_type == "completed":
+                    last_solving_start = None
+                    last_verification_start = None
+                    last_rebuild_start = None
+                    last_construction_start = None
+                    last_attempt_start = None
+                    last_candidate_solve_complete = None
     except OSError as exc:
         rec.journal_error = f"Cannot read progress journal: {exc}"
 
-    # Recover in-flight attempt if interrupted during solve
+    # Handle interruptions across different phases:
     if last_attempt_start is not None:
+        # Interrupted during a candidate attempt (solving or verification)
+        if last_candidate_solve_complete is not None and rec.last_phase == "verification":
+            # Solve completed before interruption; interrupted during verification
+            try:
+                cand_solve_time = float(last_candidate_solve_complete["solve_wall_seconds"])
+                rec.in_flight_attempt = CandidateAttemptLog(
+                    candidate_k8=int(last_attempt_start["candidate_k8"]),
+                    candidate_k9=int(last_attempt_start["candidate_k9"]),
+                    solve_wall_seconds=cand_solve_time,
+                    status="in_flight",
+                    rebuild_occurred=False,
+                )
+                rec.solving_wall_seconds += cand_solve_time
+                if last_verification_start is not None:
+                    verif_time = _interrupted_duration(
+                        last_verification_start, parent_elapsed, stopped_at_monotonic,
+                    )
+                    rec.verification_wall_seconds += verif_time
+            except (KeyError, TypeError, ValueError, OverflowError) as exc:
+                rec.journal_error = f"Invalid in-flight attempt during verification: {exc}"
+        else:
+            # Interrupted during candidate solving
+            try:
+                in_flight_time = _interrupted_duration(
+                    last_attempt_start, parent_elapsed, stopped_at_monotonic,
+                )
+                rec.in_flight_attempt = CandidateAttemptLog(
+                    candidate_k8=int(last_attempt_start["candidate_k8"]),
+                    candidate_k9=int(last_attempt_start["candidate_k9"]),
+                    solve_wall_seconds=in_flight_time,
+                    status="in_flight",
+                    rebuild_occurred=False,
+                )
+                rec.solving_wall_seconds += in_flight_time
+            except (KeyError, TypeError, ValueError, OverflowError) as exc:
+                rec.journal_error = f"Invalid in-flight attempt: {exc}"
+    elif last_solving_start is not None and rec.last_phase == "solving":
+        # Unguided SAT solving interrupted
         try:
-            elapsed_start = float(last_attempt_start.get("elapsed_so_far", 0.0))
-            in_flight_time = max(0.0, parent_elapsed - elapsed_start) if parent_elapsed is not None else 0.0
-            rec.in_flight_attempt = CandidateAttemptLog(
-                candidate_k8=int(last_attempt_start["candidate_k8"]),
-                candidate_k9=int(last_attempt_start["candidate_k9"]),
-                solve_wall_seconds=in_flight_time,
-                status="in_flight",
-                rebuild_occurred=False,
+            # perf_counter has a shared monotonic origin across processes on
+            # supported runtimes. Child-relative elapsed time cannot be
+            # subtracted from parent elapsed time: that would charge startup
+            # to solving. Only an explicitly unguided phase uses this path.
+            rec.solving_wall_seconds = _interrupted_duration(
+                last_solving_start, parent_elapsed, stopped_at_monotonic,
             )
-            rec.solving_wall_seconds += in_flight_time
-        except (KeyError, TypeError, ValueError) as exc:
-            rec.journal_error = f"Invalid in-flight attempt: {exc}"
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            rec.journal_error = f"Invalid in-flight solving phase: {exc}"
+    elif last_verification_start is not None and rec.last_phase == "verification":
+        # Unguided SAT verification interrupted (solving completed earlier)
+        try:
+            rec.verification_wall_seconds += _interrupted_duration(
+                last_verification_start, parent_elapsed, stopped_at_monotonic,
+            )
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            rec.journal_error = f"Invalid in-flight unguided verification phase: {exc}"
+    elif last_rebuild_start is not None and rec.last_phase == "rebuilding":
+        # Interrupted during guided rebuild phase
+        try:
+            rec.solving_wall_seconds += _interrupted_duration(
+                last_rebuild_start, parent_elapsed, stopped_at_monotonic,
+            )
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            rec.journal_error = f"Invalid in-flight rebuilding phase: {exc}"
+    elif last_construction_start is not None and rec.last_phase == "initial_formula_construction":
+        # Interrupted during guided initial formula construction
+        try:
+            rec.solving_wall_seconds += _interrupted_duration(
+                last_construction_start, parent_elapsed, stopped_at_monotonic,
+            )
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            rec.journal_error = f"Invalid in-flight initial formula construction phase: {exc}"
 
     in_flight_count = 1 if rec.in_flight_attempt is not None else 0
     rec.candidates_tested_count = len(rec.attempts)
@@ -219,6 +324,28 @@ def _read_progress_file(
     if rec.solving_wall_seconds == 0.0 and rec.attempts:
         rec.solving_wall_seconds = sum(a.solve_wall_seconds for a in rec.attempts)
     return rec
+
+
+def _interrupted_duration(
+    event: dict[str, Any], parent_elapsed: float | None, stopped_at: float | None,
+) -> float:
+    timestamp = event["started_at_monotonic"]
+    if isinstance(timestamp, bool) or not isinstance(timestamp, (int, float)):
+        raise ValueError("monotonic solving timestamp must be a JSON number")
+    started_at = float(timestamp)
+    stopped_at = time.perf_counter() if stopped_at is None else float(stopped_at)
+    if not math.isfinite(started_at) or not math.isfinite(stopped_at):
+        raise ValueError("non-finite monotonic solving timestamp")
+    if not 0.0 <= started_at <= stopped_at:
+        raise ValueError("invalid monotonic solving timestamp")
+    duration = stopped_at - started_at
+    if parent_elapsed is not None:
+        if not math.isfinite(parent_elapsed) or parent_elapsed < 0.0:
+            raise ValueError("invalid parent duration")
+        if duration > parent_elapsed + 1e-6:
+            raise ValueError("solving timestamp precedes parent execution")
+        duration = min(duration, parent_elapsed)
+    return duration
 
 
 def _apply_progress_event(
@@ -268,9 +395,31 @@ def _apply_progress_event(
             previous.candidate_k8, previous.candidate_k9, previous.solve_wall_seconds,
             previous.status, True,
         )
+    elif event_type == "candidate_solve_complete":
+        pass
+    elif event_type == "initial_formula_construction_complete":
+        pass
+    elif event_type == "solve_complete":
+        duration = float(ev["solving_wall_seconds"])
+        if not math.isfinite(duration) or duration < 0.0:
+            raise ValueError("invalid solve_complete duration")
+        rec.solving_wall_seconds = duration
     elif event_type == "phase":
         rec.last_phase = str(ev.get("phase", rec.last_phase))
-    elif event_type not in {"init", "completed", "exception"}:
+        if "full_pairs_used" in ev:
+            rec.full_pairs_used = int(ev["full_pairs_used"])
+    elif event_type == "completed":
+        if "solving_wall_seconds" in ev:
+            duration = float(ev["solving_wall_seconds"])
+            if not math.isfinite(duration) or duration < 0.0:
+                raise ValueError("invalid completed solving duration")
+            rec.solving_wall_seconds = duration
+        if "verification_wall_seconds" in ev:
+            v_duration = float(ev["verification_wall_seconds"])
+            if not math.isfinite(v_duration) or v_duration < 0.0:
+                raise ValueError("invalid completed verification duration")
+            rec.verification_wall_seconds = v_duration
+    elif event_type not in {"init", "exception"}:
         raise ValueError(f"unknown event {event_type!r} at line {line_number}")
 
 
@@ -725,6 +874,8 @@ def generate_faithful_b1_hybrid_queue(
             raise ValueError("Production B1 checkpoint has the wrong head architecture")
         if not isinstance(metadata, dict) or metadata.get("training_status") != "complete":
             raise ValueError("Production B1 checkpoint lacks completed-training provenance")
+        if metadata.get("smoke_test") is True or metadata.get("performance_label") == "smoke_test":
+            raise ValueError("Smoke-test checkpoints cannot be used in production comparison")
         for field_name in (
             "training_manifest_sha256",
             "train_dataset_checksum",
@@ -840,15 +991,21 @@ def _run_method_worker_direct(
     try:
         # 1. SAT-only methods (no candidate queue)
         if method in ("sat_only_n4", "sat_only_n64", "sat_only_n128", "test_sat_only"):
-            _log_progress_event(progress_file, {"event": "phase", "phase": "solving"})
-            if test_interruption_point == "solving":
-                time.sleep(10.0)
             if method == "sat_only_n4":
                 obs_count = 4
             elif method in ("sat_only_n64", "sat_only_n128"):
                 obs_count = 128 if (method == "sat_only_n128" or len(known_pairs) >= 128) else 64
             else:
                 obs_count = min(64, len(known_pairs))
+            _log_progress_event(progress_file, {
+                "event": "phase",
+                "phase": "solving",
+                "solving_kind": "unguided",
+                "started_at_monotonic": time.perf_counter(),
+                "full_pairs_used": obs_count // 2,
+            })
+            if test_interruption_point == "solving":
+                time.sleep(10.0)
             obs_pairs = tuple(known_pairs[:obs_count])
             t0 = time.perf_counter()
             model = SimonSatModel.from_known_pairs(known_pairs=obs_pairs, rounds=rounds)
@@ -862,7 +1019,15 @@ def _run_method_worker_direct(
             if solve_res.status == "sat":
                 sol_key = model.master_key_from_solution(solve_res.solution)
                 recovered_key = sol_key
-                _log_progress_event(progress_file, {"event": "phase", "phase": "verification"})
+                _log_progress_event(progress_file, {
+                    "event": "solve_complete",
+                    "solving_wall_seconds": solving_time,
+                })
+                _log_progress_event(progress_file, {
+                    "event": "phase",
+                    "phase": "verification",
+                    "started_at_monotonic": time.perf_counter(),
+                })
                 if test_interruption_point == "verification":
                     time.sleep(10.0)
                 t_v0 = time.perf_counter()
@@ -883,7 +1048,12 @@ def _run_method_worker_direct(
             else:
                 outcome = f"solver_{solve_res.status}"
 
-            _log_progress_event(progress_file, {"event": "completed", "outcome": outcome})
+            _log_progress_event(progress_file, {
+                "event": "completed",
+                "outcome": outcome,
+                "solving_wall_seconds": solving_time,
+                "verification_wall_seconds": verif_time,
+            })
             return MethodWorkerOutcome(
                 method=method,
                 outcome=outcome,
@@ -910,9 +1080,9 @@ def _run_method_worker_direct(
         if test_interruption_point == "ranking" or method == "test_slow_ranker":
             time.sleep(10.0)
 
-        if method == DIAGNOSTIC_ORACLE:
+        if method in DIAGNOSTIC_ORACLES:
             if oracle_trailing_keys is None:
-                raise ValueError("oracle_trailing_keys required for oracle_a2_n4")
+                raise ValueError(f"oracle_trailing_keys required for {method}")
             queue = [oracle_trailing_keys]
         elif method == "test_mock_queue":
             if mock_candidate_queue is None:
@@ -947,6 +1117,8 @@ def _run_method_worker_direct(
             "test_unknown_solver_status",
         ):
             queue = [(0x1234, 0x5678), (0x2345, 0x6789)]
+        elif method == "test_multiple_verification_failures":
+            queue = list(mock_candidate_queue) if mock_candidate_queue else [(0x1111, 0x2222), (0x3333, 0x4444), (0x5555, 0x6666)]
         elif method == "random_control_128":
             queue = generate_random_tuples(128, seed=random_seed)
         elif method == "random_control_1024":
@@ -1008,9 +1180,22 @@ def _run_method_worker_direct(
 
         # 3. Candidate Solving Loop on 4-observation formula
         known_4obs = tuple(known_pairs[:4])
-        t_solve_start = time.perf_counter()
+        _log_progress_event(progress_file, {
+            "event": "phase",
+            "phase": "initial_formula_construction",
+            "started_at_monotonic": time.perf_counter(),
+        })
+        if test_interruption_point == "initial_formula_construction":
+            time.sleep(10.0)
+        t_model0 = time.perf_counter()
         model = SimonSatModel.from_known_pairs(known_pairs=known_4obs, rounds=rounds)
+        initial_construction_time = time.perf_counter() - t_model0
+        _log_progress_event(progress_file, {
+            "event": "initial_formula_construction_complete",
+            "initial_construction_wall_seconds": initial_construction_time,
+        })
 
+        t_solve_start = time.perf_counter()
         candidates_tested = 0
         total_in_queue = len(queue)
 
@@ -1030,6 +1215,7 @@ def _run_method_worker_direct(
                 "candidate_k8": cand_k8,
                 "candidate_k9": cand_k9,
                 "elapsed_so_far": time.perf_counter() - t_start,
+                "started_at_monotonic": time.perf_counter(),
                 "peak_rss_gib": get_process_peak_rss_gib(),
             })
 
@@ -1039,6 +1225,7 @@ def _run_method_worker_direct(
                 "candidate_index": idx,
                 "candidate_k8": cand_k8,
                 "candidate_k9": cand_k9,
+                "started_at_monotonic": time.perf_counter(),
             })
 
             if test_interruption_point == "solving" and idx == 1:
@@ -1053,7 +1240,7 @@ def _run_method_worker_direct(
                     solve_res = SatSolveResult(False, None, 10.0, True, "solver_timeout")
             elif method == "test_slow_rebuild":
                 solve_res = SatSolveResult(False, None, 0.001, True, "solver_timeout")
-            elif method == "test_slow_verification":
+            elif method in ("test_slow_verification", "test_multiple_verification_failures"):
                 sol = [False] * (model.variable_count + 1)
                 solve_res = SatSolveResult(True, sol, 0.001, False, "sat")
             elif solver_stub is not None:
@@ -1069,23 +1256,38 @@ def _run_method_worker_direct(
             if solve_res.status == "sat":
                 sol_key = model.master_key_from_solution(solve_res.solution)
                 _log_progress_event(progress_file, {
+                    "event": "candidate_solve_complete",
+                    "candidate_index": idx,
+                    "candidate_k8": cand_k8,
+                    "candidate_k9": cand_k9,
+                    "solve_wall_seconds": cand_solve_time,
+                    "status": "sat",
+                })
+                _log_progress_event(progress_file, {
                     "event": "phase",
                     "phase": "verification",
                     "candidate_index": idx,
                     "candidate_k8": cand_k8,
                     "candidate_k9": cand_k9,
+                    "started_at_monotonic": time.perf_counter(),
                 })
                 if test_interruption_point == "verification" or method == "test_slow_verification":
                     time.sleep(10.0)
 
                 t_v0 = time.perf_counter()
-                v_res = verify_simon_master_key(
-                    master_key=sol_key,
-                    known_pairs=known_pairs,
-                    verification_pairs=verification_pairs[:2],
-                    rounds=rounds,
-                )
+                if method == "test_multiple_verification_failures":
+                    is_verified = (idx >= 2)
+                    v_res = SimonVerificationResult(is_verified, is_verified)
+                else:
+                    v_res = verify_simon_master_key(
+                        master_key=sol_key,
+                        known_pairs=known_pairs,
+                        verification_pairs=verification_pairs[:2],
+                        rounds=rounds,
+                    )
                 verif_time += time.perf_counter() - t_v0
+                current_solve_wall = max(0.0, (time.perf_counter() - t_solve_start) - verif_time)
+
                 if v_res.verified:
                     recovered_key = sol_key
                     verified = True
@@ -1107,7 +1309,7 @@ def _run_method_worker_direct(
                         "status": cand_status,
                         "rebuild_occurred": False,
                         "candidates_tested_count": len(attempts),
-                        "current_solving_wall_seconds": time.perf_counter() - t_solve_start,
+                        "current_solving_wall_seconds": current_solve_wall,
                         "current_verification_wall_seconds": verif_time,
                         "peak_rss_gib": get_process_peak_rss_gib(),
                     })
@@ -1132,7 +1334,7 @@ def _run_method_worker_direct(
                         "status": cand_status,
                         "rebuild_occurred": False,
                         "candidates_tested_count": len(attempts),
-                        "current_solving_wall_seconds": time.perf_counter() - t_solve_start,
+                        "current_solving_wall_seconds": current_solve_wall,
                         "current_verification_wall_seconds": verif_time,
                         "peak_rss_gib": get_process_peak_rss_gib(),
                     })
@@ -1142,10 +1344,13 @@ def _run_method_worker_direct(
                         "candidate_index": idx,
                         "candidate_k8": cand_k8,
                         "candidate_k9": cand_k9,
+                        "started_at_monotonic": time.perf_counter(),
                     })
                     if test_interruption_point == "rebuilding" or method == "test_slow_rebuild":
                         time.sleep(10.0)
+                    t_reb0 = time.perf_counter()
                     model = SimonSatModel.from_known_pairs(known_pairs=known_4obs, rounds=rounds)
+                    reb_time = time.perf_counter() - t_reb0
                     attempts[-1] = CandidateAttemptLog(
                         cand_k8, cand_k9, cand_solve_time, cand_status, True
                     )
@@ -1153,6 +1358,7 @@ def _run_method_worker_direct(
                         "event": "rebuild_complete",
                         "candidate_k8": cand_k8,
                         "candidate_k9": cand_k9,
+                        "rebuild_wall_seconds": reb_time,
                     })
             elif solve_res.status == "unsat":
                 cand_status = "unsat"
@@ -1165,6 +1371,7 @@ def _run_method_worker_direct(
                     rebuild_occurred=False,
                 )
                 attempts.append(att)
+                current_solve_wall = max(0.0, (time.perf_counter() - t_solve_start) - verif_time)
                 _log_progress_event(progress_file, {
                     "event": "attempt",
                     "candidate_k8": cand_k8,
@@ -1173,7 +1380,7 @@ def _run_method_worker_direct(
                     "status": cand_status,
                     "rebuild_occurred": False,
                     "candidates_tested_count": len(attempts),
-                    "current_solving_wall_seconds": time.perf_counter() - t_solve_start,
+                    "current_solving_wall_seconds": current_solve_wall,
                     "current_verification_wall_seconds": verif_time,
                     "peak_rss_gib": get_process_peak_rss_gib(),
                 })
@@ -1189,6 +1396,7 @@ def _run_method_worker_direct(
                     rebuild_occurred=False,
                 )
                 attempts.append(att)
+                current_solve_wall = max(0.0, (time.perf_counter() - t_solve_start) - verif_time)
                 _log_progress_event(progress_file, {
                     "event": "attempt",
                     "candidate_k8": cand_k8,
@@ -1197,7 +1405,7 @@ def _run_method_worker_direct(
                     "status": cand_status,
                     "rebuild_occurred": False,
                     "candidates_tested_count": len(attempts),
-                    "current_solving_wall_seconds": time.perf_counter() - t_solve_start,
+                    "current_solving_wall_seconds": current_solve_wall,
                     "current_verification_wall_seconds": verif_time,
                     "peak_rss_gib": get_process_peak_rss_gib(),
                 })
@@ -1207,10 +1415,13 @@ def _run_method_worker_direct(
                     "candidate_index": idx,
                     "candidate_k8": cand_k8,
                     "candidate_k9": cand_k9,
+                    "started_at_monotonic": time.perf_counter(),
                 })
                 if test_interruption_point == "rebuilding" or method == "test_slow_rebuild":
                     time.sleep(10.0)
+                t_reb0 = time.perf_counter()
                 model = SimonSatModel.from_known_pairs(known_pairs=known_4obs, rounds=rounds)
+                reb_time = time.perf_counter() - t_reb0
                 attempts[-1] = CandidateAttemptLog(
                     cand_k8, cand_k9, cand_solve_time, cand_status, True
                 )
@@ -1218,9 +1429,10 @@ def _run_method_worker_direct(
                     "event": "rebuild_complete",
                     "candidate_k8": cand_k8,
                     "candidate_k9": cand_k9,
+                    "rebuild_wall_seconds": reb_time,
                 })
 
-        solving_time = time.perf_counter() - t_solve_start
+        solving_time = max(0.0, (time.perf_counter() - t_solve_start) - verif_time)
 
         if outcome == "unknown":
             if verified:
@@ -1238,7 +1450,12 @@ def _run_method_worker_direct(
             else:
                 outcome = "global_deadline"
 
-        _log_progress_event(progress_file, {"event": "completed", "outcome": outcome})
+        _log_progress_event(progress_file, {
+            "event": "completed",
+            "outcome": outcome,
+            "solving_wall_seconds": solving_time,
+            "verification_wall_seconds": verif_time,
+        })
 
     except TimeoutError as exc:
         outcome = "ranking_timeout"
@@ -1268,6 +1485,7 @@ def _run_method_worker_direct(
         full_queue=tuple(queue) if 'queue' in locals() else (),
         in_flight_attempt=None,
         child_pids=(),
+        full_pairs_used=len(attack_pairs),
     )
 
 
@@ -1384,6 +1602,9 @@ def run_method_worker(
                 raise ValueError("Production B1 method requires a checkpoint path and SHA-256")
         elif b1_checkpoint_path is not None or b1_checkpoint_sha256 is not None:
             raise ValueError(f"Comparator {method} cannot receive a B1 checkpoint")
+    elif method in DIAGNOSTIC_ORACLES:
+        if oracle_trailing_keys is None:
+            raise ValueError(f"Diagnostic oracle {method} requires oracle_trailing_keys")
 
     if rounds is None:
         raise ValueError("rounds is required")
@@ -1470,7 +1691,8 @@ def run_method_worker(
         try:
             remaining_timeout = max(0.001, global_deadline_seconds - (time.perf_counter() - t_start))
             stdout, stderr = proc.communicate(input=json.dumps(payload), timeout=remaining_timeout)
-            elapsed = time.perf_counter() - t_start
+            stopped_at = time.perf_counter()
+            elapsed = stopped_at - t_start
 
             # Measure process tree memory honestly across concurrently alive processes
             parent_self_rss = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
@@ -1485,7 +1707,9 @@ def run_method_worker(
                 result_dict["peak_rss_gib"] = tree_peak_rss
                 return MethodWorkerOutcome.from_dict(result_dict)
             else:
-                rec = _read_progress_file(progress_path, parent_elapsed=elapsed)
+                rec = _read_progress_file(
+                    progress_path, parent_elapsed=elapsed, stopped_at_monotonic=stopped_at,
+                )
                 preserve_progress = rec.journal_error is not None
                 child_peak = max(parent_child_rss, rec.peak_rss_gib * scale)
                 tree_peak_rss = (parent_self_rss + child_peak) / scale
@@ -1510,6 +1734,7 @@ def run_method_worker(
                     full_queue=rec.full_queue,
                     in_flight_attempt=rec.in_flight_attempt,
                     child_pids=tuple(rec.child_pids),
+                    full_pairs_used=rec.full_pairs_used,
                 )
         except subprocess.TimeoutExpired:
             # Kill first. A corrupt journal must never prevent process-tree cleanup.
@@ -1518,8 +1743,11 @@ def run_method_worker(
             except OSError:
                 pass
             proc.communicate()
-            elapsed = time.perf_counter() - t_start
-            rec = _read_progress_file(progress_path, parent_elapsed=elapsed)
+            stopped_at = time.perf_counter()
+            elapsed = stopped_at - t_start
+            rec = _read_progress_file(
+                progress_path, parent_elapsed=elapsed, stopped_at_monotonic=stopped_at,
+            )
             preserve_progress = rec.journal_error is not None
 
             parent_self_rss = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
@@ -1552,6 +1780,7 @@ def run_method_worker(
                 full_queue=rec.full_queue,
                 in_flight_attempt=rec.in_flight_attempt,
                 child_pids=tuple(rec.child_pids),
+                full_pairs_used=rec.full_pairs_used,
             )
     finally:
         if not preserve_progress and progress_path and os.path.exists(progress_path):

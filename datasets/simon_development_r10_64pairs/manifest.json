@@ -1,0 +1,27 @@
+{
+  "dataset_id": "simon32_64_development_r10_64pairs",
+  "evidence_class": "DEVELOPMENT",
+  "protocol_status": "DEVELOPMENT_ACTIVE",
+  "data_role": "development",
+  "rounds": 10,
+  "pair_count": 64,
+  "instance_count": 32,
+  "verification_pair_count": 2,
+  "seed": 260926,
+  "generated_at": "2026-09-29T04:59:44.182143+00:00",
+  "input_difference": [
+    0,
+    64
+  ],
+  "pair_construction": "plaintext_difference",
+  "key_generation_policy": "one_random_master_key_per_instance",
+  "governing_decisions": [
+    "D-029",
+    "D-034",
+    "D-036",
+    "D-037",
+    "D-038"
+  ],
+  "file_sha256": "4eaf189417f3922a5ce4d5919fceace7eb4ecb7f225d1ef6eab92e8084ef9653",
+  "note": "Development cohort only. Never to be cited as prospective or publication confirmation evidence."
+}
