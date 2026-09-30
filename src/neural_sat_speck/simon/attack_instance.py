@@ -301,4 +301,5 @@ def load_simon_attack_instances(path: Path | str) -> tuple[SimonAttackInstance, 
     """Load SIMON attack instances from a JSON file."""
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
-    return tuple(SimonAttackInstance.from_dict(item) for item in data["instances"])
+    raw_list = data["instances"] if isinstance(data, dict) and "instances" in data else data
+    return tuple(SimonAttackInstance.from_dict(item) for item in raw_list)

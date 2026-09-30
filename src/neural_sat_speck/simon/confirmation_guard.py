@@ -9,16 +9,22 @@ from __future__ import annotations
 
 import hashlib
 import json
-import random
+import math
+import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, Final
+
+import numpy as np
 
 from neural_sat_speck.simon.attack_instance import (
     DEFAULT_SIMON_INPUT_DIFFERENCE,
     SimonAttackInstance,
     SimonAttackInstanceConfig,
     generate_simon_attack_instances,
+)
+from neural_sat_speck.simon.comparison_input import (
+    derive_confirmation_queue_seed as derive_confirmation_queue_seed,
 )
 from neural_sat_speck.simon.verification import verify_simon_master_key
 
@@ -111,12 +117,6 @@ def file_sha256(path: Path | str) -> str:
             digest.update(chunk)
     return digest.hexdigest()
 
-
-def derive_confirmation_queue_seed(control_seed: int, instance_id: str, method: str) -> int:
-    """Deterministically derive a 64-bit random control seed from frozen queue control seed."""
-    key = f"simon_confirmation_control:{control_seed}:{instance_id}:{method}".encode()
-    h = hashlib.sha256(key).digest()
-    return int.from_bytes(h[:8], "big")
 
 
 def validate_confirmation_manifest(manifest_raw: dict[str, Any] | str | Path) -> dict[str, Any]:
@@ -259,17 +259,16 @@ def verify_runtime_provenance(
         ),
     }
 
-    # Also Bao checkpoints if directory provided
+    # Unconditionally require Bao checkpoints
     bao_dir = Path(locs.get("bao_vv_directory", "/private/tmp/bao-simon-audit/simonNDvsDD/SENet"))
-    if bao_dir.is_dir():
-        expected_hashes["vv9_checkpoint"] = (
-            bao_dir / "ND_VV_Simon32_9R.h5",
-            provenance.get("vv9_checkpoint_sha256"),
-        )
-        expected_hashes["vv8_checkpoint"] = (
-            bao_dir / "ND_VV_Simon32_8R.h5",
-            provenance.get("vv8_checkpoint_sha256"),
-        )
+    expected_hashes["vv9_checkpoint"] = (
+        bao_dir / "ND_VV_Simon32_9R.h5",
+        provenance.get("vv9_checkpoint_sha256"),
+    )
+    expected_hashes["vv8_checkpoint"] = (
+        bao_dir / "ND_VV_Simon32_8R.h5",
+        provenance.get("vv8_checkpoint_sha256"),
+    )
 
     for key, (path_val, exp_hash) in expected_hashes.items():
         p = Path(path_val)
@@ -284,6 +283,13 @@ def verify_runtime_provenance(
             )
         resolved_paths[key] = p
 
+    resolved_paths["bao_vv_directory"] = bao_dir
+
+    tf_python = Path(locs.get("tensorflow_python", "/private/tmp/simon_tf_venv/bin/python3.12"))
+    if not tf_python.is_file():
+        raise ProvenanceVerificationError(f"Required TensorFlow Python binary missing: {tf_python}")
+    resolved_paths["tensorflow_python"] = tf_python
+
     # Verify python and pycryptosat
     import pycryptosat
     if pycryptosat.__version__ != "5.14.7":
@@ -292,6 +298,54 @@ def verify_runtime_provenance(
         )
 
     return resolved_paths
+
+
+ALLOWED_FINAL_OUTCOMES: Final[frozenset[str]] = frozenset(
+    {
+        "verified_recovery",
+        "proven_unsat",
+        "candidate_unresolved",
+        "queue_exhausted",
+        "global_deadline",
+        "ranking_timeout",
+        "solver_timeout",
+        "verification_failure",
+        "sat_unverified",
+        "exception",
+    }
+)
+
+
+def check_key_overlaps_with_prior_families(
+    keys: Sequence[tuple[int, int, int, int]],
+) -> dict[str, list[tuple[int, int, int, int]]]:
+    """Check key sequence against all recorded prior SIMON demo, development, and training families."""
+    prior_draws: dict[str, set[tuple[int, int, int, int]]] = {}
+
+    # 1. Demo cohorts: seed 999999 (R=10, 8 keys across 4, 32, 64 pairs)
+    for p_cnt in (4, 32, 64):
+        cfg = SimonAttackInstanceConfig(instance_count=8, pair_count=p_cnt, rounds=10, seed=999999, split_role="demo")
+        prior_draws[f"demo_seed_999999_p{p_cnt}"] = {inst.master_key for inst in generate_simon_attack_instances(cfg)}
+
+    # 2. Development cohorts: seed 260926 (R=10, 32 keys across 32, 64 pairs)
+    for p_cnt in (32, 64):
+        cfg = SimonAttackInstanceConfig(instance_count=32, pair_count=p_cnt, rounds=10, seed=260926, split_role="development")
+        prior_draws[f"development_seed_260926_p{p_cnt}"] = {inst.master_key for inst in generate_simon_attack_instances(cfg)}
+
+    # 3. Actual initial NumPy uint16 key draws used by B0/B1 training/validation:
+    for seed, key_count in ((880001, 1_000_000), (880002, 99_968)):
+        prior_draws[f"synthetic_training_seed_{seed}"] = _training_key_overlaps(
+            keys, seed=seed, key_count=key_count,
+        )
+
+    key_set = set(keys)
+    intersections: dict[str, list[tuple[int, int, int, int]]] = {}
+    for role_name, prior_keys in prior_draws.items():
+        overlap = key_set.intersection(prior_keys)
+        if overlap:
+            intersections[role_name] = sorted(list(overlap))
+
+    return intersections
 
 
 def build_disjoint_family_certificate(
@@ -323,37 +377,21 @@ def build_disjoint_family_certificate(
         if len(inst.verification_pairs) != 2:
             raise DisjointFamilyCertificateError(f"Instance {inst.instance_id} has {len(inst.verification_pairs)} verif pairs; expected 2")
 
-    # Reconstruct initial key draws from prior datasets
-    prior_draws: dict[str, set[tuple[int, int, int, int]]] = {}
-
-    # 1. Demo cohort: seed 999999 (R=10, 8 keys)
-    demo_cfg = SimonAttackInstanceConfig(instance_count=8, pair_count=32, rounds=10, seed=999999, split_role="demo")
-    demo_instances = generate_simon_attack_instances(demo_cfg)
-    prior_draws["demo_seed_999999"] = {inst.master_key for inst in demo_instances}
-
-    # 2. Development cohort: seed 260926 (R=10, 32 keys)
-    dev_cfg = SimonAttackInstanceConfig(instance_count=32, pair_count=64, rounds=10, seed=260926, split_role="development")
-    dev_instances = generate_simon_attack_instances(dev_cfg)
-    prior_draws["development_seed_260926"] = {inst.master_key for inst in dev_instances}
-
-    # 3. B0 / B1 training seeds: 880001, 880002
-    for s in (880001, 880002):
-        rng = random.Random(s)
-        # sample 50,000 keys drawn by synthetic generator
-        keys = {(rng.randrange(1 << 16), rng.randrange(1 << 16), rng.randrange(1 << 16), rng.randrange(1 << 16)) for _ in range(50000)}
-        prior_draws[f"synthetic_training_seed_{s}"] = keys
-
-    conf_key_set = set(confirmation_keys)
-    intersections: dict[str, list[tuple[int, int, int, int]]] = {}
-    for role_name, prior_keys in prior_draws.items():
-        overlap = conf_key_set.intersection(prior_keys)
-        if overlap:
-            intersections[role_name] = sorted(list(overlap))
-
+    intersections = check_key_overlaps_with_prior_families(confirmation_keys)
     if intersections:
         raise DisjointFamilyCertificateError(
             f"Disjoint family violation! Overlapping keys found: {intersections}"
         )
+
+    expected_roles = [
+        "demo_seed_999999_p4",
+        "demo_seed_999999_p32",
+        "demo_seed_999999_p64",
+        "development_seed_260926_p32",
+        "development_seed_260926_p64",
+        "synthetic_training_seed_880001",
+        "synthetic_training_seed_880002",
+    ]
 
     # Compute dataset hash
     dataset_repr = json.dumps([inst.to_dict() for inst in instances], sort_keys=True)
@@ -368,7 +406,7 @@ def build_disjoint_family_certificate(
         "instance_count": len(instances),
         "dataset_sha256": dataset_sha256,
         "manifest_sha256": manifest_sha256,
-        "prior_roles_checked": list(prior_draws.keys()),
+        "prior_roles_checked": expected_roles,
         "intersection_count": 0,
         "disjoint_family_verified": True,
     }
@@ -379,6 +417,24 @@ def build_disjoint_family_certificate(
             json.dump(cert, f, indent=2)
 
     return cert
+
+
+def _training_key_overlaps(
+    keys: Sequence[tuple[int, int, int, int]], *, seed: int, key_count: int,
+) -> set[tuple[int, int, int, int]]:
+    """Check all initial draws from b1_data.py against an already opened cohort."""
+    drawn = np.random.default_rng(seed).integers(
+        0, 65536, size=(key_count, 4), dtype=np.uint16,
+    )
+    packed = drawn[:, 0].astype(np.uint64)
+    for column in range(1, 4):
+        packed = (packed << 16) | drawn[:, column]
+    requested = np.array([
+        (key[0] << 48) | (key[1] << 32) | (key[2] << 16) | key[3]
+        for key in keys
+    ], dtype=np.uint64)
+    matches = drawn[np.isin(packed, requested)]
+    return {tuple(int(word) for word in row) for row in matches}
 
 
 def verify_disjoint_family_certificate(
@@ -407,10 +463,26 @@ def verify_disjoint_family_certificate(
     if cert.get("selected_instances") != manifest["sample_size_specification"]["selected_instances"]:
         raise DisjointFamilyCertificateError("Certificate selected_instances does not match manifest")
 
+    if cert.get("instance_count") != len(instances):
+        raise DisjointFamilyCertificateError("Certificate instance_count does not match instances count")
+
     dataset_repr = json.dumps([inst.to_dict() for inst in instances], sort_keys=True)
     actual_dataset_sha256 = hashlib.sha256(dataset_repr.encode("utf-8")).hexdigest()
     if cert.get("dataset_sha256") != actual_dataset_sha256:
         raise DisjointFamilyCertificateError("Certificate dataset_sha256 does not match instances data")
+
+    manifest_repr = json.dumps(manifest, sort_keys=True)
+    actual_manifest_sha256 = hashlib.sha256(manifest_repr.encode("utf-8")).hexdigest()
+    if cert.get("manifest_sha256") != actual_manifest_sha256:
+        raise DisjointFamilyCertificateError("Certificate manifest_sha256 does not match manifest data")
+
+    # Repeat independent verification of key isolation against all prior families
+    conf_keys = [inst.master_key for inst in instances]
+    intersections = check_key_overlaps_with_prior_families(conf_keys)
+    if intersections:
+        raise DisjointFamilyCertificateError(
+            f"Disjoint family violation! Overlapping keys found during certificate verification: {intersections}"
+        )
 
 
 def compute_execution_identity(manifest: dict[str, Any], dataset_sha256: str) -> dict[str, Any]:
@@ -438,6 +510,8 @@ def validate_and_filter_resume(
     expected_identity: dict[str, Any],
     instances: Sequence[SimonAttackInstance],
     methods: Sequence[str],
+    *,
+    resume_flag: bool = True,
 ) -> tuple[dict[tuple[str, str], dict[str, Any]], list[tuple[SimonAttackInstance, str]]]:
     """Validate existing ledger against expected identity and return pending cells to evaluate."""
     p = Path(ledger_path)
@@ -449,8 +523,30 @@ def validate_and_filter_resume(
                 pending.append((inst, m))
         return {}, pending
 
-    with open(p, encoding="utf-8") as f:
-        ledger = json.load(f)
+    # 1. Output exists: require explicit resume_flag
+    if not resume_flag:
+        raise ResumeIntegrityError(
+            f"Output file already exists at {p}, but --resume flag was not provided. Aborting to prevent accidental overwrite."
+        )
+
+    # 2. Checksum sidecar validation
+    sha_path = p.parent / f"{p.name}.sha256"
+    if not sha_path.is_file():
+        raise ResumeIntegrityError(f"Checksum sidecar missing for resume ledger: {sha_path}")
+    sidecar_text = sha_path.read_text(encoding="utf-8").strip()
+    expected_sha = sidecar_text.split()[0] if sidecar_text else ""
+    actual_sha = file_sha256(p)
+    if actual_sha.lower() != expected_sha.lower():
+        raise ResumeIntegrityError(
+            f"Checksum sidecar mismatch for {p}: expected {expected_sha}, got {actual_sha}"
+        )
+
+    # 3. Read and parse ledger JSON
+    try:
+        with open(p, encoding="utf-8") as f:
+            ledger = json.load(f)
+    except Exception as exc:
+        raise ResumeIntegrityError(f"Corrupted or invalid JSON in resume ledger: {exc}") from exc
 
     ledger_identity = ledger.get("execution_identity")
     if ledger_identity != expected_identity:
@@ -461,12 +557,12 @@ def validate_and_filter_resume(
 
     records = ledger.get("records", [])
     completed_cells: dict[tuple[str, str], dict[str, Any]] = {}
-    instance_map = {inst.instance_id: inst for inst in instances}
+    instance_map = {inst.instance_id: (idx, inst) for idx, inst in enumerate(instances)}
 
     for rec in records:
         inst_id = rec.get("instance_id")
         method = rec.get("method")
-        if not inst_id or not method:
+        if not inst_id or not method or not isinstance(inst_id, str) or not isinstance(method, str):
             raise ResumeIntegrityError(f"Malformed record missing instance_id or method: {rec}")
         cell = (inst_id, method)
         if cell in completed_cells:
@@ -474,13 +570,37 @@ def validate_and_filter_resume(
         if inst_id not in instance_map or method not in methods:
             raise ResumeIntegrityError(f"Record for cell {cell} does not belong to expected confirmation grid")
 
+        inst_idx, inst = instance_map[inst_id]
+        if rec.get("instance_index") != inst_idx:
+            raise ResumeIntegrityError(
+                f"Record {cell} has mismatched instance_index: expected {inst_idx}, got {rec.get('instance_index')}"
+            )
+
+        outcome = rec.get("outcome")
+        if outcome not in ALLOWED_FINAL_OUTCOMES:
+            raise ResumeIntegrityError(f"Record {cell} has unknown or invalid outcome: {outcome!r}")
+
+        # Check finite nonnegative durations
+        for time_key in (
+            "complete_online_wall_seconds",
+            "ranking_wall_seconds",
+            "solving_wall_seconds",
+            "verification_wall_seconds",
+        ):
+            val = rec.get(time_key)
+            if val is None or not isinstance(val, (int, float)) or not math.isfinite(val) or val < 0.0:
+                raise ResumeIntegrityError(f"Record {cell} has invalid {time_key}: {val!r}")
+
         # Independent fresh verification check on claimed successes
-        if rec.get("outcome") == "verified_recovery":
+        if outcome == "verified_recovery":
             key_raw = rec.get("recovered_master_key")
             if not key_raw:
                 raise ResumeIntegrityError(f"Claimed success missing recovered_master_key: {cell}")
             key = (int(key_raw[0]), int(key_raw[1]), int(key_raw[2]), int(key_raw[3]))
-            inst = instance_map[inst_id]
+            if key != inst.master_key:
+                raise ResumeIntegrityError(
+                    f"Claimed success for {cell} recovered wrong key: expected {inst.master_key}, got {key}"
+                )
             v_check = verify_simon_master_key(
                 master_key=key,
                 known_pairs=inst.known_pairs,
@@ -500,3 +620,125 @@ def validate_and_filter_resume(
                 pending_cells.append((inst, m))
 
     return completed_cells, pending_cells
+
+
+def generate_confirmation_dataset(
+    manifest_raw: dict[str, Any] | str | Path,
+    output_dataset_path: Path | str,
+    output_cert_path: Path | str,
+    *,
+    authorization_token: bool = False,
+) -> tuple[Path, Path]:
+    """Generate confirmation attack instances and certificate from approved manifest.
+
+    Fails closed unless authorization_token is True AND confirmation_dataset_generation_authorized is True.
+    """
+    if not authorization_token:
+        raise ConfirmationPreflightError(
+            "Confirmation dataset generation requires explicit authorization token (authorization_token=True)"
+        )
+
+    if isinstance(manifest_raw, (str, Path)):
+        p = Path(manifest_raw)
+        if not p.is_file():
+            raise ConfirmationPreflightError(f"Manifest file does not exist: {p}")
+        with open(p, encoding="utf-8") as f:
+            manifest = json.load(f)
+    elif isinstance(manifest_raw, dict):
+        manifest = manifest_raw
+    else:
+        raise TypeError("manifest_raw must be a dict, str, or Path")
+
+    if manifest.get("confirmation_dataset_generation_authorized") is not True:
+        raise ConfirmationPreflightError(
+            "confirmation_dataset_generation_authorized must be explicitly True in manifest"
+        )
+
+    # Validate seed governance
+    seed = manifest.get("seed_governance", {}).get("seed")
+    if seed is None or isinstance(seed, bool) or not isinstance(seed, int):
+        raise ConfirmationPreflightError(f"seed_governance.seed must be an integer, got {seed!r}")
+    if seed in INELIGIBLE_CONFIRMATION_SEEDS:
+        raise ConfirmationPreflightError(
+            f"Seed {seed} belongs to INELIGIBLE_CONFIRMATION_SEEDS and cannot be used for confirmation"
+        )
+
+    sample_spec = manifest.get("sample_size_specification", {})
+    selected_n = sample_spec.get("selected_instances")
+    if selected_n not in (32, 64):
+        raise ConfirmationPreflightError(f"selected_instances must be 32 or 64, got {selected_n!r}")
+
+    pair_count = sample_spec.get("pair_count", 64)
+    if pair_count != 64:
+        raise ConfirmationPreflightError(f"pair_count must be 64, got {pair_count!r}")
+
+    rounds = manifest.get("target_cipher", {}).get("rounds", 10)
+    if rounds != 10:
+        raise ConfirmationPreflightError(f"rounds must be 10, got {rounds!r}")
+
+    input_diff = tuple(manifest.get("target_cipher", {}).get("input_difference", ()))
+    if input_diff != DEFAULT_SIMON_INPUT_DIFFERENCE:
+        raise ConfirmationPreflightError(f"input_difference must be {DEFAULT_SIMON_INPUT_DIFFERENCE}")
+
+    cfg = SimonAttackInstanceConfig(
+        instance_count=selected_n,
+        pair_count=pair_count,
+        rounds=rounds,
+        seed=seed,
+        split_role="confirmation",
+    )
+    instances = generate_simon_attack_instances(cfg)
+
+    # Validate generated instances
+    if len(instances) != selected_n:
+        raise ConfirmationPreflightError(f"Generated {len(instances)} instances, expected {selected_n}")
+
+    unique_keys = {inst.master_key for inst in instances}
+    if len(unique_keys) != selected_n:
+        raise ConfirmationPreflightError("Generated instances contain duplicate master keys")
+
+    unique_ids = {inst.instance_id for inst in instances}
+    if len(unique_ids) != selected_n:
+        raise ConfirmationPreflightError("Generated instances contain duplicate instance IDs")
+
+    for inst in instances:
+        if inst.split_role != "confirmation":
+            raise ConfirmationPreflightError(f"Instance {inst.instance_id} has invalid role {inst.split_role!r}")
+        if len(inst.pairs) != 64:
+            raise ConfirmationPreflightError(f"Instance {inst.instance_id} has {len(inst.pairs)} pairs; expected 64")
+        if len(inst.verification_pairs) != 2:
+            raise ConfirmationPreflightError(f"Instance {inst.instance_id} has {len(inst.verification_pairs)} verification pairs; expected 2")
+        for p in inst.pairs:
+            diff = (p.plaintext0[0] ^ p.plaintext1[0], p.plaintext0[1] ^ p.plaintext1[1])
+            if diff != DEFAULT_SIMON_INPUT_DIFFERENCE:
+                raise ConfirmationPreflightError(f"Instance {inst.instance_id} pair has wrong difference: {diff}")
+        attack_pts = {p.plaintext0 for p in inst.pairs} | {p.plaintext1 for p in inst.pairs}
+        verif_pts = {vp[0][0] for vp in inst.verification_pairs} | {vp[1][0] for vp in inst.verification_pairs}
+        if attack_pts.intersection(verif_pts):
+            raise ConfirmationPreflightError(f"Instance {inst.instance_id} has overlap between attack and verification plaintexts")
+
+    # Build disjoint-family certificate (checks all prior families)
+    out_cert = Path(output_cert_path)
+    build_disjoint_family_certificate(manifest, instances, output_path=out_cert)
+
+    # Write dataset atomically with .sha256 sidecar
+    out_ds = Path(output_dataset_path)
+    tmp_ds = out_ds.with_suffix(".tmp")
+    ds_data = [inst.to_dict() for inst in instances]
+    raw_ds = json.dumps(ds_data, indent=2)
+    with open(tmp_ds, "w", encoding="utf-8") as f:
+        f.write(raw_ds)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_ds, out_ds)
+
+    ds_sha = hashlib.sha256(raw_ds.encode()).hexdigest()
+    sha_file = out_ds.parent / f"{out_ds.name}.sha256"
+    tmp_sha = out_ds.parent / f"{out_ds.name}.sha256.tmp"
+    with open(tmp_sha, "w", encoding="utf-8") as f:
+        f.write(f"{ds_sha}  {out_ds.name}\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_sha, sha_file)
+
+    return out_ds, out_cert

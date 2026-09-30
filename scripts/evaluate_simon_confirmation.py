@@ -36,13 +36,13 @@ from neural_sat_speck.simon.confirmation_guard import (  # noqa: E402
     ProvenanceVerificationError,
     ResumeIntegrityError,
     compute_execution_identity,
-    derive_confirmation_queue_seed,
     file_sha256,
     validate_and_filter_resume,
     validate_confirmation_manifest,
     verify_disjoint_family_certificate,
     verify_runtime_provenance,
 )
+from neural_sat_speck.simon.key_schedule import expand_key  # noqa: E402
 from neural_sat_speck.simon.method_worker import (  # noqa: E402
     MethodWorkerOutcome,
     run_method_worker,
@@ -183,6 +183,7 @@ def main() -> int:
             expected_identity=execution_identity,
             instances=instances,
             methods=methods,
+            resume_flag=args.resume,
         )
     except ResumeIntegrityError as exc:
         print(f"[!] RESUME INTEGRITY REJECTION: {exc}", file=sys.stderr)
@@ -212,24 +213,15 @@ def main() -> int:
                 continue
 
             print(f"[*] Running {inst.instance_id} | {method}...")
-            comp_input = SimonComparisonInput(
-                instance_id=inst.instance_id,
-                ciphertext_pairs=tuple((p.ciphertext0, p.ciphertext1) for p in inst.pairs),
-                known_pairs=inst.known_pairs,
-                verification_pairs=inst.verification_pairs[:2],
-                rounds=10,
+            comp_input = SimonComparisonInput.from_attack_instance(
+                inst,
                 manifest_seed=manifest["seed_governance"]["seed"],
+                pair_count=64,
             )
 
             oracle_keys = (
-                (inst.master_key[2], inst.master_key[3])
+                expand_key(inst.master_key, rounds=inst.rounds)[-2:]
                 if method.startswith("oracle_")
-                else None
-            )
-
-            random_seed = (
-                derive_confirmation_queue_seed(control_seed, inst.instance_id, method)
-                if method.startswith("random_control_")
                 else None
             )
 
@@ -242,8 +234,12 @@ def main() -> int:
                 ranking_time_limit=manifest["resource_limits"]["ranking_time_limit_seconds"],
                 b1_checkpoint_path=b1_checkpoint if "b1" in method else None,
                 b1_checkpoint_sha256=b1_checkpoint_sha256 if "b1" in method else None,
-                random_seed=random_seed,
+                queue_control_seed=control_seed,
                 oracle_trailing_keys=oracle_keys,
+                ddt_7r_path=resolved_paths["ddt_7r"],
+                tool_8r_binary_path=resolved_paths["queried_row_8r_binary"],
+                bao_checkpoint_dir=resolved_paths["bao_vv_directory"],
+                tf_python_path=resolved_paths["tensorflow_python"],
                 use_parent_watchdog=True,
             )
             elapsed = time.perf_counter() - t0
@@ -287,7 +283,23 @@ def main() -> int:
             _save_ledger_atomic(args.output, output_records, execution_identity, evidence_class)
             print(f"[+] Completed {cell}: outcome={outcome.outcome} ({elapsed:.2f}s)")
 
-    print(f"[+] All {len(output_records)} cells completed. Ledger persisted to {args.output}.")
+    # 6. Grid Completion Validation: require exactly N x 9 validated cells
+    expected_total_cells = len(instances) * len(methods)
+    if len(output_records) != expected_total_cells:
+        print(
+            f"[!] LEDGER INCOMPLETE: expected exactly {expected_total_cells} cells ({len(instances)} instances x {len(methods)} methods), "
+            f"got {len(output_records)} records.",
+            file=sys.stderr,
+        )
+        return 7
+
+    observed_cells = {(r["instance_id"], r["method"]) for r in output_records}
+    all_expected_cells = {(inst.instance_id, m) for inst in instances for m in methods}
+    if observed_cells != all_expected_cells:
+        print("[!] LEDGER MISMATCH: recorded cells do not match expected confirmation grid!", file=sys.stderr)
+        return 7
+
+    print(f"[+] All {len(output_records)} cells ({len(instances)} x {len(methods)}) completed and verified. Ledger persisted to {args.output}.")
     return 0
 
 
@@ -312,10 +324,14 @@ def _save_ledger_atomic(
         os.fsync(f.fileno())
     os.replace(tmp_path, path)
 
-    sha_path = path.with_suffix(".json.sha256")
+    sha_path = path.parent / f"{path.name}.sha256"
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
-    with open(sha_path, "w", encoding="utf-8") as f:
+    tmp_sha_path = path.parent / f"{path.name}.sha256.tmp"
+    with open(tmp_sha_path, "w", encoding="utf-8") as f:
         f.write(f"{digest}  {path.name}\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_sha_path, sha_path)
 
 
 if __name__ == "__main__":

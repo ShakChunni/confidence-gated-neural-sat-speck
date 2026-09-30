@@ -72,6 +72,24 @@ def derive_random_control_seed(
     return int.from_bytes(digest[:8], byteorder="big")
 
 
+def derive_confirmation_queue_seed(
+    control_seed: int,
+    instance_id: str,
+    method: str,
+) -> int:
+    """Deterministically derive a 64-bit random control seed from frozen queue control seed."""
+    if isinstance(control_seed, bool) or not isinstance(control_seed, int):
+        raise TypeError("control_seed must be an integer")
+    if not isinstance(instance_id, str) or not instance_id.strip():
+        raise ValueError("instance_id must be a non-empty string")
+    if not isinstance(method, str) or not method.strip():
+        raise ValueError("method must be a non-empty string")
+
+    key = f"simon_confirmation_control:{control_seed}:{instance_id.strip()}:{method.strip()}".encode()
+    digest = hashlib.sha256(key).digest()
+    return int.from_bytes(digest[:8], byteorder="big")
+
+
 @dataclass(frozen=True)
 class SimonComparisonInput:
     """Strict input object for SIMON32/64 R=10 comparison methods.

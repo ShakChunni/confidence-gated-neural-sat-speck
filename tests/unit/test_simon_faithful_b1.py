@@ -19,8 +19,19 @@ from neural_sat_speck.simon.faithful_b1_model import (
 )
 from neural_sat_speck.simon.key_schedule import expand_key
 from neural_sat_speck.simon.ranking_features import candidate_value_words
-from neural_sat_speck.simon.simon_b1_model import SimonB1Model
 from tests.fixtures.simon_reference_oracle import oracle_simon32_64_encrypt
+
+
+class SimonB1ToyModel(nn.Module):
+    """Archived toy prototype architecture for architectural contrast audit."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.pair_encoder = nn.Linear(64, 64)
+        self.head = nn.Linear(64, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.head(self.pair_encoder(x).mean(dim=1))
 
 
 def _pairs(count: int, seed: int = 260926) -> tuple[tuple[tuple[int, int], tuple[int, int]], ...]:
@@ -236,7 +247,7 @@ def test_faithful_hybrid_8parent_queue() -> None:
 
 def test_audit_contrast_faithful_vs_toy() -> None:
     """Explicitly verify architectural contrast between toy prototype and faithful Gohr model."""
-    toy = SimonB1Model()
+    toy = SimonB1ToyModel()
     faithful = SimonPairGroupRanker()
 
     # Toy: 0 Conv1d layers, <20k parameters

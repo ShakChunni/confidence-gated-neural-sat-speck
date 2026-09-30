@@ -66,6 +66,7 @@ from neural_sat_speck.simon.classical_ranking import (
 )
 from neural_sat_speck.simon.comparison_input import (
     SimonComparisonInput,
+    derive_confirmation_queue_seed,
     derive_random_control_seed,
 )
 from neural_sat_speck.simon.faithful_b1_model import (
@@ -141,6 +142,8 @@ class _RecoveredProgress:
     ranking_wall_seconds: float = 0.0
     solving_wall_seconds: float = 0.0
     verification_wall_seconds: float = 0.0
+    initial_construction_wall_seconds: float = 0.0
+    rebuild_wall_seconds: float = 0.0
     candidates_tested_count: int = 0
     candidates_remaining_count: int = 0
     attempts: list[CandidateAttemptLog] = field(default_factory=list)
@@ -242,6 +245,15 @@ def _read_progress_file(
     except OSError as exc:
         rec.journal_error = f"Cannot read progress journal: {exc}"
 
+    # Calculate base completed solving from discrete parts if journal didn't record current_solving_wall_seconds
+    base_completed_solving = max(
+        rec.solving_wall_seconds,
+        rec.initial_construction_wall_seconds
+        + sum(a.solve_wall_seconds for a in rec.attempts)
+        + rec.rebuild_wall_seconds,
+    )
+    rec.solving_wall_seconds = base_completed_solving
+
     # Handle interruptions across different phases:
     if last_attempt_start is not None:
         # Interrupted during a candidate attempt (solving or verification)
@@ -256,7 +268,9 @@ def _read_progress_file(
                     status="in_flight",
                     rebuild_occurred=False,
                 )
-                rec.solving_wall_seconds += cand_solve_time
+                rec.solving_wall_seconds = max(
+                    rec.solving_wall_seconds, base_completed_solving + cand_solve_time
+                )
                 if last_verification_start is not None:
                     verif_time = _interrupted_duration(
                         last_verification_start, parent_elapsed, stopped_at_monotonic,
@@ -277,7 +291,9 @@ def _read_progress_file(
                     status="in_flight",
                     rebuild_occurred=False,
                 )
-                rec.solving_wall_seconds += in_flight_time
+                rec.solving_wall_seconds = max(
+                    rec.solving_wall_seconds, base_completed_solving + in_flight_time
+                )
             except (KeyError, TypeError, ValueError, OverflowError) as exc:
                 rec.journal_error = f"Invalid in-flight attempt: {exc}"
     elif last_solving_start is not None and rec.last_phase == "solving":
@@ -303,26 +319,32 @@ def _read_progress_file(
     elif last_rebuild_start is not None and rec.last_phase == "rebuilding":
         # Interrupted during guided rebuild phase
         try:
-            rec.solving_wall_seconds += _interrupted_duration(
+            in_flight_reb = _interrupted_duration(
                 last_rebuild_start, parent_elapsed, stopped_at_monotonic,
+            )
+            rec.solving_wall_seconds = max(
+                rec.solving_wall_seconds, base_completed_solving + in_flight_reb
             )
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             rec.journal_error = f"Invalid in-flight rebuilding phase: {exc}"
     elif last_construction_start is not None and rec.last_phase == "initial_formula_construction":
         # Interrupted during guided initial formula construction
         try:
-            rec.solving_wall_seconds += _interrupted_duration(
+            rec.solving_wall_seconds = _interrupted_duration(
                 last_construction_start, parent_elapsed, stopped_at_monotonic,
             )
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             rec.journal_error = f"Invalid in-flight initial formula construction phase: {exc}"
+    else:
+        # Interrupted between phases (e.g. immediately after rebuild)
+        rec.solving_wall_seconds = max(rec.solving_wall_seconds, base_completed_solving)
 
     in_flight_count = 1 if rec.in_flight_attempt is not None else 0
     rec.candidates_tested_count = len(rec.attempts)
     rec.candidates_remaining_count = max(0, rec.total_queue_count - rec.candidates_tested_count - in_flight_count)
 
-    if rec.solving_wall_seconds == 0.0 and rec.attempts:
-        rec.solving_wall_seconds = sum(a.solve_wall_seconds for a in rec.attempts)
+    if rec.solving_wall_seconds == 0.0 and base_completed_solving > 0.0:
+        rec.solving_wall_seconds = base_completed_solving
     return rec
 
 
@@ -391,14 +413,34 @@ def _apply_progress_event(
             int(ev["candidate_k8"]), int(ev["candidate_k9"])
         ):
             raise ValueError("rebuild_complete candidate does not match prior attempt")
+        reb_sec = float(ev.get("rebuild_wall_seconds", 0.0))
+        if not math.isfinite(reb_sec) or reb_sec < 0.0:
+            raise ValueError("invalid rebuild_wall_seconds")
+        rec.rebuild_wall_seconds += reb_sec
         rec.attempts[-1] = CandidateAttemptLog(
             previous.candidate_k8, previous.candidate_k9, previous.solve_wall_seconds,
             previous.status, True,
         )
+        if "current_solving_wall_seconds" in ev:
+            c_solve = float(ev["current_solving_wall_seconds"])
+            if not math.isfinite(c_solve) or c_solve < 0.0:
+                raise ValueError("invalid current_solving_wall_seconds on rebuild_complete")
+            rec.solving_wall_seconds = max(rec.solving_wall_seconds, c_solve)
+        else:
+            rec.solving_wall_seconds = max(
+                rec.solving_wall_seconds,
+                rec.initial_construction_wall_seconds
+                + sum(a.solve_wall_seconds for a in rec.attempts)
+                + rec.rebuild_wall_seconds,
+            )
     elif event_type == "candidate_solve_complete":
         pass
     elif event_type == "initial_formula_construction_complete":
-        pass
+        c_duration = float(ev.get("initial_construction_wall_seconds", 0.0))
+        if not math.isfinite(c_duration) or c_duration < 0.0:
+            raise ValueError("invalid initial_construction_wall_seconds")
+        rec.initial_construction_wall_seconds = c_duration
+        rec.solving_wall_seconds = max(rec.solving_wall_seconds, c_duration)
     elif event_type == "solve_complete":
         duration = float(ev["solving_wall_seconds"])
         if not math.isfinite(duration) or duration < 0.0:
@@ -715,6 +757,7 @@ def generate_hybrid_8parent_queue(
     ddt_7r_path: Path | str = "/private/tmp/simon_predicted_ddt_7r.bin",
     *,
     tf_python_path: Path | str = "/private/tmp/simon_tf_venv/bin/python3.12",
+    checkpoint_dir: Path | str = "/private/tmp/bao-simon-audit/simonNDvsDD/SENet",
     worker_script_path: Path | str | None = None,
     ranking_time_limit: float = 120.0,
     progress_file: str | None = None,
@@ -735,12 +778,13 @@ def generate_hybrid_8parent_queue(
                 tf_python_path=tf_python_path,
                 worker_script_path=worker_script_path,
                 ranking_time_limit=ranking_time_limit,
+                checkpoint_dir=checkpoint_dir,
                 ddt_7r_path=ddt_7r_path,
                 progress_file=progress_file,
                 return_diagnostics=return_diagnostics,
             )
 
-        vv_dir = Path("/private/tmp/bao-simon-audit/simonNDvsDD/SENet")
+        vv_dir = Path(checkpoint_dir)
         vv9_model, _ = load_published_vv_checkpoint(vv_dir / "ND_VV_Simon32_9R.h5", 9)
     table_7r = FullPredictedDdt(ddt_7r_path, 7)
 
@@ -789,6 +833,8 @@ def generate_neural_1parent_queue(
     vv8_model: Any | None = None,
     *,
     tf_python_path: Path | str = "/private/tmp/simon_tf_venv/bin/python3.12",
+    checkpoint_dir: Path | str = "/private/tmp/bao-simon-audit/simonNDvsDD/SENet",
+    ddt_7r_path: Path | str = "/private/tmp/simon_predicted_ddt_7r.bin",
     worker_script_path: Path | str | None = None,
     ranking_time_limit: float = 180.0,
     progress_file: str | None = None,
@@ -809,11 +855,13 @@ def generate_neural_1parent_queue(
                 tf_python_path=tf_python_path,
                 worker_script_path=worker_script_path,
                 ranking_time_limit=ranking_time_limit,
+                checkpoint_dir=checkpoint_dir,
+                ddt_7r_path=ddt_7r_path,
                 progress_file=progress_file,
                 return_diagnostics=return_diagnostics,
             )
 
-        vv_dir = Path("/private/tmp/bao-simon-audit/simonNDvsDD/SENet")
+        vv_dir = Path(checkpoint_dir)
         if vv9_model is None:
             vv9_model, _ = load_published_vv_checkpoint(vv_dir / "ND_VV_Simon32_9R.h5", 9)
         if vv8_model is None:
@@ -940,6 +988,10 @@ def _run_method_worker_direct(
     solver_stub: Callable[[SimonSatModel, Sequence[int], float], SatSolveResult] | None = None,
     progress_file: str | None = None,
     test_interruption_point: str | None = None,
+    ddt_7r_path: Path | str | None = None,
+    tool_8r_binary_path: Path | str | None = None,
+    bao_checkpoint_dir: Path | str | None = None,
+    tf_python_path: Path | str | None = None,
 ) -> MethodWorkerOutcome:
     """Execute isolated worker logic directly within the worker process."""
     if method not in ALL_PERMITTED_METHODS:
@@ -1124,21 +1176,44 @@ def _run_method_worker_direct(
         elif method == "random_control_1024":
             queue = generate_random_tuples(1024, seed=random_seed)
         elif method == "fully_classical_8parent":
-            queue = generate_classical_8parent_queue(attack_pairs)
+            class_kwargs: dict[str, Any] = {}
+            if ddt_7r_path is not None:
+                class_kwargs["ddt_7r_path"] = ddt_7r_path
+            if tool_8r_binary_path is not None:
+                class_kwargs["tool_path"] = tool_8r_binary_path
+            queue = generate_classical_8parent_queue(attack_pairs, **class_kwargs)
         elif method == "neural_classical_hybrid_8parent":
-            queue = generate_hybrid_8parent_queue(
-                attack_pairs, ranking_time_limit=ranking_time_limit, progress_file=progress_file
-            )
+            hyb_kwargs: dict[str, Any] = {
+                "ranking_time_limit": ranking_time_limit,
+                "progress_file": progress_file,
+            }
+            if ddt_7r_path is not None:
+                hyb_kwargs["ddt_7r_path"] = ddt_7r_path
+            if tf_python_path is not None:
+                hyb_kwargs["tf_python_path"] = tf_python_path
+            if bao_checkpoint_dir is not None:
+                hyb_kwargs["checkpoint_dir"] = bao_checkpoint_dir
+            queue = generate_hybrid_8parent_queue(attack_pairs, **hyb_kwargs)
         elif method == "fully_neural_1parent":
-            queue = generate_neural_1parent_queue(
-                attack_pairs, ranking_time_limit=ranking_time_limit, progress_file=progress_file
-            )
+            neur_kwargs: dict[str, Any] = {
+                "ranking_time_limit": ranking_time_limit,
+                "progress_file": progress_file,
+            }
+            if tf_python_path is not None:
+                neur_kwargs["tf_python_path"] = tf_python_path
+            if bao_checkpoint_dir is not None:
+                neur_kwargs["checkpoint_dir"] = bao_checkpoint_dir
+            if ddt_7r_path is not None:
+                neur_kwargs["ddt_7r_path"] = ddt_7r_path
+            queue = generate_neural_1parent_queue(attack_pairs, **neur_kwargs)
         elif method in ("faithful_b1_hybrid", "faithful_b1_8parent"):
-            queue = generate_faithful_b1_hybrid_queue(
-                attack_pairs,
-                checkpoint_path=b1_checkpoint_path,
-                checkpoint_sha256=b1_checkpoint_sha256,
-            )
+            b1_kwargs: dict[str, Any] = {
+                "checkpoint_path": b1_checkpoint_path,
+                "checkpoint_sha256": b1_checkpoint_sha256,
+            }
+            if ddt_7r_path is not None:
+                b1_kwargs["ddt_7r_path"] = ddt_7r_path
+            queue = generate_faithful_b1_hybrid_queue(attack_pairs, **b1_kwargs)
         else:
             raise ValueError(f"Unhandled method queue: {method}")
 
@@ -1187,15 +1262,15 @@ def _run_method_worker_direct(
         })
         if test_interruption_point == "initial_formula_construction":
             time.sleep(10.0)
-        t_model0 = time.perf_counter()
+        t_solve_start = time.perf_counter()
         model = SimonSatModel.from_known_pairs(known_pairs=known_4obs, rounds=rounds)
-        initial_construction_time = time.perf_counter() - t_model0
+        initial_construction_time = time.perf_counter() - t_solve_start
         _log_progress_event(progress_file, {
             "event": "initial_formula_construction_complete",
             "initial_construction_wall_seconds": initial_construction_time,
+            "current_solving_wall_seconds": initial_construction_time,
         })
 
-        t_solve_start = time.perf_counter()
         candidates_tested = 0
         total_in_queue = len(queue)
 
@@ -1359,6 +1434,8 @@ def _run_method_worker_direct(
                         "candidate_k8": cand_k8,
                         "candidate_k9": cand_k9,
                         "rebuild_wall_seconds": reb_time,
+                        "current_solving_wall_seconds": max(0.0, (time.perf_counter() - t_solve_start) - verif_time),
+                        "current_verification_wall_seconds": verif_time,
                     })
             elif solve_res.status == "unsat":
                 cand_status = "unsat"
@@ -1430,6 +1507,8 @@ def _run_method_worker_direct(
                     "candidate_k8": cand_k8,
                     "candidate_k9": cand_k9,
                     "rebuild_wall_seconds": reb_time,
+                    "current_solving_wall_seconds": max(0.0, (time.perf_counter() - t_solve_start) - verif_time),
+                    "current_verification_wall_seconds": verif_time,
                 })
 
         solving_time = max(0.0, (time.perf_counter() - t_solve_start) - verif_time)
@@ -1506,6 +1585,11 @@ def run_method_worker(
     b1_checkpoint_path: Path | str | None = None,
     b1_checkpoint_sha256: str | None = None,
     random_seed: int | None = None,
+    queue_control_seed: int | None = None,
+    ddt_7r_path: Path | str | None = None,
+    tool_8r_binary_path: Path | str | None = None,
+    bao_checkpoint_dir: Path | str | None = None,
+    tf_python_path: Path | str | None = None,
     oracle_trailing_keys: tuple[int, int] | None = None,
     mock_candidate_queue: list[tuple[int, int]] | None = None,
     solver_stub: Callable[[SimonSatModel, Sequence[int], float], SatSolveResult] | None = None,
@@ -1560,14 +1644,16 @@ def run_method_worker(
             raise ValueError(f"Compared method {method} cannot receive mock candidate queue")
         if solver_stub is not None:
             raise ValueError(f"Production comparator {method} cannot use solver_stub")
+        if method.startswith("random_control_") and random_seed is not None:
+            raise ValueError(
+                "Production random controls require the manifest-derived seed (queue_control_seed), not caller-supplied random_seed"
+            )
         if not use_parent_watchdog:
             raise ValueError(
                 f"Production comparator {method} cannot bypass parent watchdog (use_parent_watchdog must be True)"
             )
         if test_interruption_point is not None:
             raise ValueError(f"Production comparator {method} cannot use test_interruption_point")
-        if method.startswith("random_control_") and random_seed is not None:
-            raise ValueError("Production random controls require the manifest-derived seed")
 
         if rounds != 10:
             raise ValueError(f"Production comparator {method} requires R=10 rounds, got {rounds}")
@@ -1622,9 +1708,15 @@ def run_method_worker(
         if p0 in verif_cts or p1 in verif_cts or p0 in verif_pts or p1 in verif_pts:
             raise ValueError("Verification observation leaked into ranking attack pairs")
 
-    # Deterministic random control stream derivation from manifest seed and instance/method IDs
+    # Deterministic random control stream derivation from manifest/control seed and instance/method IDs
     if method.startswith("random_control_"):
-        if random_seed is None:
+        if random_seed is not None:
+            raise ValueError(
+                "Production random controls require the manifest-derived queue_control_seed, not caller-supplied random_seed"
+            )
+        if queue_control_seed is not None:
+            random_seed = derive_confirmation_queue_seed(queue_control_seed, instance_id, method)
+        else:
             random_seed = derive_random_control_seed(manifest_seed, instance_id, method)
     elif random_seed is None:
         random_seed = 260926
@@ -1648,6 +1740,10 @@ def run_method_worker(
             mock_candidate_queue=mock_candidate_queue,
             solver_stub=solver_stub,
             test_interruption_point=test_interruption_point,
+            ddt_7r_path=ddt_7r_path,
+            tool_8r_binary_path=tool_8r_binary_path,
+            bao_checkpoint_dir=bao_checkpoint_dir,
+            tf_python_path=tf_python_path,
         )
 
     # Subprocess execution under OS process-group watchdog with external stream persistence
@@ -1672,10 +1768,15 @@ def run_method_worker(
             "b1_checkpoint_path": str(b1_checkpoint_path) if b1_checkpoint_path is not None else None,
             "b1_checkpoint_sha256": b1_checkpoint_sha256,
             "random_seed": random_seed,
+            "queue_control_seed": queue_control_seed,
             "oracle_trailing_keys": list(oracle_trailing_keys) if oracle_trailing_keys else None,
             "mock_candidate_queue": [list(t) for t in mock_candidate_queue] if mock_candidate_queue else None,
             "progress_file": progress_path,
             "test_interruption_point": test_interruption_point,
+            "ddt_7r_path": str(ddt_7r_path) if ddt_7r_path is not None else None,
+            "tool_8r_binary_path": str(tool_8r_binary_path) if tool_8r_binary_path is not None else None,
+            "bao_checkpoint_dir": str(bao_checkpoint_dir) if bao_checkpoint_dir is not None else None,
+            "tf_python_path": str(tf_python_path) if tf_python_path is not None else None,
         }
 
         cmd = [sys.executable, "-m", "neural_sat_speck.simon.method_worker", "--worker"]
@@ -1832,6 +1933,10 @@ def _worker_main() -> None:
         mock_candidate_queue=mock_queue,
         progress_file=payload.get("progress_file"),
         test_interruption_point=payload.get("test_interruption_point"),
+        ddt_7r_path=payload.get("ddt_7r_path"),
+        tool_8r_binary_path=payload.get("tool_8r_binary_path"),
+        bao_checkpoint_dir=payload.get("bao_checkpoint_dir"),
+        tf_python_path=payload.get("tf_python_path"),
     )
 
     sys.stdout.write(json.dumps(outcome.to_dict()))

@@ -1184,3 +1184,150 @@ def test_multiple_verification_failures_and_rebuilds_component_accounting(demo_i
     assert outcome.verification_wall_seconds > 0.0
     assert outcome.solving_wall_seconds > 0.0
     assert outcome.solving_wall_seconds + outcome.verification_wall_seconds <= outcome.complete_online_wall_seconds + 0.05
+
+
+def test_interrupted_candidate_solving_after_construction_retains_both(tmp_path):
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text("\n".join(json.dumps(ev) for ev in [
+        {"event": "queue", "total_queue_count": 2, "full_queue": [[1, 2], [3, 4]], "queue_sample": [[1, 2]]},
+        {"event": "phase", "phase": "initial_formula_construction", "started_at_monotonic": 100.0},
+        {"event": "initial_formula_construction_complete", "initial_construction_wall_seconds": 3.0},
+        {"event": "attempt_start", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2, "started_at_monotonic": 105.0},
+        {"event": "phase", "phase": "solving", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2, "started_at_monotonic": 105.0},
+    ]) + "\n", encoding="utf-8")
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=10.0, stopped_at_monotonic=107.0,
+    )
+    assert rec.journal_error is None
+    assert rec.initial_construction_wall_seconds == 3.0
+    assert rec.in_flight_attempt is not None
+    assert rec.in_flight_attempt.solve_wall_seconds == 2.0
+    assert rec.solving_wall_seconds == 5.0  # 3.0 construction + 2.0 in-flight solve
+
+
+def test_interrupted_immediately_after_rebuild_retains_construction_and_rebuild(tmp_path):
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text("\n".join(json.dumps(ev) for ev in [
+        {"event": "queue", "total_queue_count": 2, "full_queue": [[1, 2], [3, 4]], "queue_sample": [[1, 2]]},
+        {"event": "initial_formula_construction_complete", "initial_construction_wall_seconds": 2.0},
+        {"event": "attempt_start", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2, "started_at_monotonic": 100.0},
+        {"event": "candidate_solve_complete", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2, "solve_wall_seconds": 1.0, "status": "solver_timeout"},
+        {"event": "attempt", "candidate_k8": 1, "candidate_k9": 2, "solve_wall_seconds": 1.0, "status": "solver_timeout",
+         "rebuild_occurred": False, "current_solving_wall_seconds": 3.0},
+        {"event": "phase", "phase": "rebuilding", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2, "started_at_monotonic": 101.5},
+        {"event": "rebuild_complete", "candidate_k8": 1, "candidate_k9": 2, "rebuild_wall_seconds": 0.8},
+    ]) + "\n", encoding="utf-8")
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=6.0, stopped_at_monotonic=103.0,
+    )
+    assert rec.journal_error is None
+    assert len(rec.attempts) == 1
+    assert rec.attempts[0].rebuild_occurred is True
+    assert rec.in_flight_attempt is None
+    assert rec.solving_wall_seconds == 3.8  # 2.0 construction + 1.0 solve + 0.8 rebuild
+
+
+def test_interrupted_during_next_attempt_after_rebuild_retains_all_components(tmp_path):
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text("\n".join(json.dumps(ev) for ev in [
+        {"event": "queue", "total_queue_count": 2, "full_queue": [[1, 2], [3, 4]], "queue_sample": [[1, 2]]},
+        {"event": "initial_formula_construction_complete", "initial_construction_wall_seconds": 2.0},
+        {"event": "attempt_start", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2, "started_at_monotonic": 100.0},
+        {"event": "candidate_solve_complete", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2, "solve_wall_seconds": 1.0, "status": "solver_timeout"},
+        {"event": "attempt", "candidate_k8": 1, "candidate_k9": 2, "solve_wall_seconds": 1.0, "status": "solver_timeout",
+         "rebuild_occurred": False, "current_solving_wall_seconds": 3.0},
+        {"event": "phase", "phase": "rebuilding", "candidate_index": 0, "candidate_k8": 1, "candidate_k9": 2, "started_at_monotonic": 101.5},
+        {"event": "rebuild_complete", "candidate_k8": 1, "candidate_k9": 2, "rebuild_wall_seconds": 0.8},
+        {"event": "attempt_start", "candidate_index": 1, "candidate_k8": 3, "candidate_k9": 4, "started_at_monotonic": 103.0},
+        {"event": "phase", "phase": "solving", "candidate_index": 1, "candidate_k8": 3, "candidate_k9": 4, "started_at_monotonic": 103.0},
+    ]) + "\n", encoding="utf-8")
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=8.0, stopped_at_monotonic=104.5,
+    )
+    assert rec.journal_error is None
+    assert len(rec.attempts) == 1
+    assert rec.in_flight_attempt is not None
+    assert rec.in_flight_attempt.solve_wall_seconds == 1.5
+    assert rec.solving_wall_seconds == 5.3  # 2.0 construction + 1.0 solve + 0.8 rebuild + 1.5 in-flight
+
+
+def test_random_control_dispatch_rejects_caller_random_seed_and_accepts_queue_control_seed(demo_instance):
+    # Reject caller-supplied random_seed for production random control
+    with pytest.raises(ValueError, match="manifest-derived seed"):
+        run_method_worker(
+            method="random_control_128",
+            rounds=10,
+            attack_pairs=tuple((p.ciphertext0, p.ciphertext1) for p in demo_instance.pairs),
+            known_pairs=demo_instance.known_pairs,
+            verification_pairs=demo_instance.verification_pairs,
+            random_seed=12345,
+            use_parent_watchdog=True,
+        )
+
+    # Validate deterministic queue replay for both random arms
+    s1_128 = method_worker_module.derive_confirmation_queue_seed(20261001, "inst_0001", "random_control_128")
+    s2_128 = method_worker_module.derive_confirmation_queue_seed(20261001, "inst_0001", "random_control_128")
+    assert s1_128 == s2_128
+    q1_128 = method_worker_module.generate_random_tuples(128, s1_128)
+    q2_128 = method_worker_module.generate_random_tuples(128, s2_128)
+    assert q1_128 == q2_128
+    assert len(q1_128) == 128
+    assert len(set(q1_128)) == 128
+
+    s_1024 = method_worker_module.derive_confirmation_queue_seed(20261001, "inst_0001", "random_control_1024")
+    q_1024 = method_worker_module.generate_random_tuples(1024, s_1024)
+    assert len(q_1024) == 1024
+    assert len(set(q_1024)) == 1024
+    assert q1_128 != q_1024[:128]
+
+
+def test_run_method_worker_propagates_resource_paths_in_payload(demo_instance, monkeypatch):
+    captured_payload = None
+
+    class MockPopen:
+        def __init__(self, cmd, stdin=None, stdout=None, stderr=None, text=True, start_new_session=True):
+            self.pid = 98765
+            self.returncode = 0
+
+        def communicate(self, input=None, timeout=None):
+            nonlocal captured_payload
+            captured_payload = json.loads(input)
+            dummy_outcome = method_worker_module.MethodWorkerOutcome(
+                method="fully_classical_8parent",
+                outcome="queue_exhausted",
+                complete_online_wall_seconds=0.01,
+                ranking_wall_seconds=0.005,
+                solving_wall_seconds=0.005,
+                verification_wall_seconds=0.0,
+                candidates_tested_count=0,
+                candidates_remaining_count=1024,
+                recovered_master_key=None,
+                verified_on_fresh_pairs=False,
+                candidate_attempts=(),
+                peak_rss_gib=0.001,
+            )
+            return json.dumps(dummy_outcome.to_dict()), ""
+
+    monkeypatch.setattr(method_worker_module.subprocess, "Popen", MockPopen)
+
+    outcome = run_method_worker(
+        method="fully_classical_8parent",
+        rounds=10,
+        attack_pairs=tuple((p.ciphertext0, p.ciphertext1) for p in demo_instance.pairs),
+        known_pairs=demo_instance.known_pairs,
+        verification_pairs=demo_instance.verification_pairs,
+        ddt_7r_path="/custom/path/ddt_7r.bin",
+        tool_8r_binary_path="/custom/path/tool_8r",
+        bao_checkpoint_dir="/custom/path/bao_dir",
+        tf_python_path="/custom/path/tf_python",
+        queue_control_seed=20261001,
+        use_parent_watchdog=True,
+    )
+
+    assert captured_payload is not None
+    assert captured_payload["ddt_7r_path"] == "/custom/path/ddt_7r.bin"
+    assert captured_payload["tool_8r_binary_path"] == "/custom/path/tool_8r"
+    assert captured_payload["bao_checkpoint_dir"] == "/custom/path/bao_dir"
+    assert captured_payload["tf_python_path"] == "/custom/path/tf_python"
+    assert captured_payload["queue_control_seed"] == 20261001
+    assert outcome.outcome == "queue_exhausted"
