@@ -267,3 +267,110 @@ def test_interrupted_analysis_holds_before_duplicate_analyzer(tmp_path):
 def test_deliberate_ctrl_c_does_not_trigger_automatic_restart():
     assert -2 not in s.OS_INTERRUPTION_CODES
     assert 130 not in s.OS_INTERRUPTION_CODES
+
+
+def test_caffeinate_assertion_includes_full_power_and_user_flags(tmp_path):
+    cfg = {
+        "thread_environment": {},
+        "persistent_tmpdir": str(tmp_path / "tmp"),
+        "reviewed_baseline_ledger": str(tmp_path / "base.json"),
+        "reviewed_baseline_sha256": "0" * 64,
+        "argv": ["python", "fixture"],
+    }
+    base = tmp_path / "base.json"
+    base.write_text("corrupt")
+    with patch.object(s.subprocess, "Popen") as popen:
+        s.supervise(cfg, tmp_path)
+        assert popen.call_count == 1
+        caff_args = popen.call_args[0][0]
+        assert caff_args[0] == "/usr/bin/caffeinate"
+        for flag in ("-d", "-i", "-m", "-s", "-u", "-w"):
+            assert flag in caff_args
+
+
+def test_guarantee_ordinary_scheduling_behavior():
+    # Calling on current process (ordinary) succeeds
+    s.guarantee_ordinary_scheduling(0)
+
+    # If background scheduling is reported and cannot be cleared, ValueError is raised
+    class MockLibc:
+        def setiopolicy_np(self, *args):
+            return 0
+
+        def setpriority(self, which, who, prio):
+            return 0
+
+        def getpriority(self, which, who):
+            return 1  # Still in Background
+
+    with patch("ctypes.CDLL", return_value=MockLibc()):
+        with pytest.raises(ValueError, match="scheduling policy is Background"):
+            s.guarantee_ordinary_scheduling(0)
+
+
+def test_ephemeral_tmpdir_is_rejected(tmp_path):
+    base = tmp_path / "base.json"
+    ledger(base, [])
+    cfg = {
+        "thread_environment": {},
+        "persistent_tmpdir": "/tmp/worker_tmp",
+        "reviewed_baseline_ledger": str(base),
+        "reviewed_baseline_sha256": s.sha(base),
+        "argv": ["python", "fixture"],
+    }
+    with patch.object(s.subprocess, "Popen"):
+        s.supervise(cfg, tmp_path)
+    state = json.loads((tmp_path / "state.json").read_text())
+    assert state["status"] == "HOLD"
+    assert "persistent_tmpdir must be in a persistent project directory" in state["reason"]
+
+    cfg["persistent_tmpdir"] = "/private/tmp/worker_tmp"
+    with patch.object(s.subprocess, "Popen"):
+        s.supervise(cfg, tmp_path)
+    state = json.loads((tmp_path / "state.json").read_text())
+    assert state["status"] == "HOLD"
+    assert "persistent_tmpdir must be in a persistent project directory" in state["reason"]
+
+
+def test_default_persistent_tmpdir_in_project_workspace(tmp_path):
+    base = tmp_path / "base.json"
+    ledger(base, [])
+    out = tmp_path / "out.json"
+    ledger(out, [])
+    conf = tmp_path / "conf.json"
+    conf.write_text("{}")
+    cfg = {
+        "thread_environment": {},
+        # Omit persistent_tmpdir to test default resolution
+        "reviewed_baseline_ledger": str(base),
+        "reviewed_baseline_sha256": s.sha(base),
+        "argv": ["python", "fixture"],
+        "ledger": str(out),
+        "total_cells": 1,
+        "cwd": str(tmp_path),
+        "config_path": str(conf),
+        "storage_aliases": {},
+        "invocation_files": {},
+    }
+
+    class Process:
+        pid = 333
+        returncode = 0
+
+        def poll(self):
+            return 0
+
+        def terminate(self):
+            pass
+
+    with (
+        patch.object(s, "processes", return_value=[]),
+        patch.object(s.subprocess, "Popen", side_effect=[Process(), Process()]),
+    ):
+        assert s.supervise(cfg, tmp_path) == 0
+    receipt = json.loads((tmp_path / "invocation_001" / "receipt.json").read_text())
+    expected_tmp = str(tmp_path / "results" / "simon_confirmation_replacement" / "worker_tmp")
+    assert receipt["persistent_tmpdir"] == expected_tmp
+    assert Path(expected_tmp).is_dir()
+    assert receipt["task_scheduling"] == "standard_ordinary"
+

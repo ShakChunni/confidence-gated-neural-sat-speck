@@ -52,6 +52,18 @@ from neural_sat_speck.simon.classical_ranking import (  # noqa: E402
 from neural_sat_speck.simon.published_vv import load_published_vv_checkpoint  # noqa: E402
 from neural_sat_speck.simon.published_vv_ranking import rank_neural_domain  # noqa: E402
 
+_DEFAULT_RUNTIME = repo_root / "runtime"
+_DEFAULT_CHECKPOINT_DIR = (
+    str(_DEFAULT_RUNTIME / "bao-simon-audit" / "simonNDvsDD" / "SENet")
+    if (_DEFAULT_RUNTIME / "bao-simon-audit" / "simonNDvsDD" / "SENet").is_dir()
+    else "/private/tmp/bao-simon-audit/simonNDvsDD/SENet"
+)
+_DEFAULT_DDT_PATH = (
+    str(_DEFAULT_RUNTIME / "resources" / "simon_predicted_ddt_7r.bin")
+    if (_DEFAULT_RUNTIME / "resources" / "simon_predicted_ddt_7r.bin").is_file()
+    else "/private/tmp/simon_predicted_ddt_7r.bin"
+)
+
 
 def get_peak_rss_gib() -> float:
     """Measure peak RSS in GiB on macOS/Linux."""
@@ -65,10 +77,10 @@ def run_ranking(
     method: str,
     pairs: tuple[tuple[tuple[int, int], tuple[int, int]], ...],
     *,
-    checkpoint_dir: Path | str = "/private/tmp/bao-simon-audit/simonNDvsDD/SENet",
+    checkpoint_dir: Path | str = _DEFAULT_CHECKPOINT_DIR,
     vv9_path: Path | str | None = None,
     vv8_path: Path | str | None = None,
-    ddt_7r_path: Path | str = "/private/tmp/simon_predicted_ddt_7r.bin",
+    ddt_7r_path: Path | str = _DEFAULT_DDT_PATH,
     time_limit: float = 120.0,
 ) -> dict[str, Any]:
     if method not in ("fully_neural_1parent", "neural_classical_hybrid_8parent"):
@@ -159,10 +171,10 @@ def run_ranking(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Neural ranking worker for SIMON32/64")
     parser.add_argument("--method", choices=("fully_neural_1parent", "neural_classical_hybrid_8parent"), default=None)
-    parser.add_argument("--checkpoint-dir", type=str, default="/private/tmp/bao-simon-audit/simonNDvsDD/SENet")
+    parser.add_argument("--checkpoint-dir", type=str, default=_DEFAULT_CHECKPOINT_DIR)
     parser.add_argument("--vv9-path", type=str, default=None)
     parser.add_argument("--vv8-path", type=str, default=None)
-    parser.add_argument("--ddt-7r-path", type=str, default="/private/tmp/simon_predicted_ddt_7r.bin")
+    parser.add_argument("--ddt-7r-path", type=str, default=_DEFAULT_DDT_PATH)
     parser.add_argument("--time-limit", type=float, default=120.0)
     parser.add_argument("--pair-count", type=int, choices=(32, 64), default=32, help="Pair count for synthetic pairs (32 or 64)")
     parser.add_argument("--synthetic", action="store_true", help="Generate synthetic ciphertext pairs for testing")

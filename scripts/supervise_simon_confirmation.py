@@ -10,6 +10,7 @@ import json
 import os
 import signal
 import subprocess
+import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -22,6 +23,43 @@ OS_INTERRUPTION_CODES = {
     137,
     143,
 }
+
+
+def guarantee_ordinary_scheduling(pid: int = 0) -> None:
+    """Guarantee that the process and its threads are in ordinary (standard, NOT Background) scheduling.
+
+    Raises ValueError if Darwin background scheduling cannot be cleared or verified.
+    """
+    if sys.platform != "darwin":
+        return
+    import ctypes
+
+    libc = ctypes.CDLL(None)
+    PRIO_DARWIN_THREAD = 3
+    PRIO_DARWIN_PROCESS = 4
+    IOPOL_TYPE_DISK = 0
+    IOPOL_SCOPE_PROCESS = 0
+    IOPOL_DEFAULT = 0
+
+    # Reset disk I/O policy to default
+    try:
+        libc.setiopolicy_np(IOPOL_TYPE_DISK, IOPOL_SCOPE_PROCESS, IOPOL_DEFAULT)
+    except Exception:
+        pass
+
+    # Clear thread and process background scheduling
+    if pid == 0:
+        libc.setpriority(PRIO_DARWIN_THREAD, 0, 0)
+    libc.setpriority(PRIO_DARWIN_PROCESS, pid, 0)
+
+    # Verify background status is not active (1 means PRIO_DARWIN_BG is set)
+    bg_state = libc.getpriority(PRIO_DARWIN_PROCESS, pid)
+    if bg_state == 1 or (pid == 0 and bg_state != 0):
+        target_pid = os.getpid() if pid == 0 else pid
+        raise ValueError(
+            f"Process {target_pid} scheduling policy is Background (PRIO_DARWIN_BG={bg_state}); "
+            "ordinary task scheduling cannot be guaranteed."
+        )
 
 
 def sha(path):
@@ -72,7 +110,16 @@ def check_reviewed_records(ledger, baseline):
 
 def refresh_storage(config):
     """Restore missing invocation aliases only; never replace unexpected files."""
-    for alias_name, target_name in config["storage_aliases"].items():
+    repo_root = Path(config.get("cwd", Path.cwd()))
+    permanent_runtime = repo_root / "runtime"
+    permanent_tf = permanent_runtime / "simon_tf_venv"
+    if not permanent_tf.exists():
+        backup_tf = repo_root / "results" / "simon_confirmation" / "runtime_backup" / "tensorflow"
+        if backup_tf.exists():
+            permanent_runtime.mkdir(parents=True, exist_ok=True)
+            permanent_tf.symlink_to(backup_tf, target_is_directory=True)
+
+    for alias_name, target_name in config.get("storage_aliases", {}).items():
         alias, target = Path(alias_name), Path(target_name)
         if not target.exists():
             raise ValueError(f"Missing persistent runtime storage: {target}")
@@ -85,7 +132,7 @@ def refresh_storage(config):
             alias.parent.mkdir(parents=True, exist_ok=True)
             alias.symlink_to(target, target_is_directory=target.is_dir())
         os.utime(alias, None, follow_symlinks=False)
-    for destination, original in config["invocation_files"].items():
+    for destination, original in config.get("invocation_files", {}).items():
         path, source = Path(destination), Path(original)
         if path.exists() and path.read_bytes() != source.read_bytes():
             raise ValueError(f"Invocation file changed: {path}")
@@ -151,6 +198,7 @@ def main():
 
 
 def supervise(config, root):
+    guarantee_ordinary_scheduling(0)
     state_path = root / "state.json"
     state = (
         json.loads(state_path.read_text())
@@ -179,16 +227,40 @@ def supervise(config, root):
         state.update(status=status, updated_at=datetime.now(UTC).isoformat(), **fields)
         atomic(state_path, state)
 
-    env = os.environ.copy()
-    env.update(config["thread_environment"])
-    env["PYTHONUNBUFFERED"] = "1"
-    env["TMPDIR"] = config["persistent_tmpdir"]
-    Path(env["TMPDIR"]).mkdir(parents=True, exist_ok=True)
-    argv = list(config["argv"])
-    if "--resume" not in argv:
-        argv.append("--resume")
-    idle_guard = subprocess.Popen(["/usr/bin/caffeinate", "-i", "-w", str(os.getpid())])
+    idle_guard = None
     try:
+        guarantee_ordinary_scheduling(0)
+        env = os.environ.copy()
+        env.update(config.get("thread_environment", {}))
+        env["PYTHONUNBUFFERED"] = "1"
+
+        repo_root = Path(config.get("cwd", Path.cwd()))
+        persistent_tmpdir = config.get("persistent_tmpdir")
+        default_worker_tmp = repo_root / "results" / "simon_confirmation_replacement" / "worker_tmp"
+
+        if persistent_tmpdir:
+            p_tmp = Path(persistent_tmpdir)
+            if str(p_tmp) in ("/tmp", "/private/tmp") or str(p_tmp).startswith(("/tmp/", "/private/tmp/")):
+                raise ValueError(
+                    f"persistent_tmpdir must be in a persistent project directory, not ephemeral /tmp: {p_tmp}"
+                )
+            resolved_tmpdir = str(p_tmp)
+        else:
+            resolved_tmpdir = str(default_worker_tmp)
+
+        env["TMPDIR"] = resolved_tmpdir
+        Path(env["TMPDIR"]).mkdir(parents=True, exist_ok=True)
+
+        argv = list(config["argv"])
+        if "--resume" not in argv:
+            argv.append("--resume")
+        if any("evaluate_simon_confirmation.py" in arg for arg in argv):
+            if "--runtime-dir" not in argv and (repo_root / "runtime").is_dir():
+                argv.extend(["--runtime-dir", str(repo_root / "runtime")])
+
+        idle_guard = subprocess.Popen(
+            ["/usr/bin/caffeinate", "-d", "-i", "-m", "-s", "-u", "-w", str(os.getpid())]
+        )
         baseline = checked_ledger(config["reviewed_baseline_ledger"])
         if (
             sha(config["reviewed_baseline_ledger"])
@@ -241,7 +313,7 @@ def supervise(config, root):
                     prior_log=state.get("log_path"),
                     accounting="Uncommitted in-flight work may be repeated; retain invocation logs and audit separately from final-cell online times",
                 )
-            if state["os_restarts"] > config["max_os_restarts"]:
+            if state["os_restarts"] > config.get("max_os_restarts", 3):
                 raise ValueError("Bounded OS restart allowance exhausted")
             clean_orphans(config, emit)
             state["invocations"] += 1
@@ -258,6 +330,7 @@ def supervise(config, root):
                     stderr=subprocess.STDOUT,
                     start_new_session=True,
                 )
+                guarantee_ordinary_scheduling(runner.pid)
                 save(
                     "RUNNING",
                     runner_pid=runner.pid,
@@ -273,8 +346,10 @@ def supervise(config, root):
                     supervisor_sha256=sha(__file__),
                     config_sha256=sha(config["config_path"]),
                     completed_cells_before=len(ledger["records"]),
-                    thread_environment=config["thread_environment"],
+                    thread_environment=config.get("thread_environment", {}),
                     persistent_tmpdir=env["TMPDIR"],
+                    task_scheduling="standard_ordinary",
+                    runtime_directory=str(repo_root / "runtime"),
                 )
                 atomic(attempt / "receipt.json", receipt)
                 emit("launch", **receipt)
@@ -305,7 +380,8 @@ def supervise(config, root):
         save("HOLD", reason=f"{type(exc).__name__}: {exc}")
         return 0  # launchd must not loop on scientific/integrity rejection.
     finally:
-        idle_guard.terminate()
+        if idle_guard is not None:
+            idle_guard.terminate()
 
 
 if __name__ == "__main__":

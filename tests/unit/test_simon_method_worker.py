@@ -475,6 +475,10 @@ def test_watchdog_interruption_during_ranking(demo_instance):
     assert outcome.candidates_tested_count == 0
     assert outcome.candidates_remaining_count == 0
     assert len(outcome.candidate_attempts) == 0
+    assert outcome.ranking_wall_seconds > 0.0
+    assert outcome.ranking_wall_seconds <= outcome.complete_online_wall_seconds
+    assert outcome.solving_wall_seconds == 0.0
+    assert outcome.verification_wall_seconds == 0.0
 
 
 def test_watchdog_interruption_during_solving_preserves_attempts(demo_instance):
@@ -1331,3 +1335,361 @@ def test_run_method_worker_propagates_resource_paths_in_payload(demo_instance, m
     assert captured_payload["tf_python_path"] == "/custom/path/tf_python"
     assert captured_payload["queue_control_seed"] == 20261001
     assert outcome.outcome == "queue_exhausted"
+
+
+# 43. Target C: Interrupted-Ranking Telemetry and Phase Accounting Tests
+
+
+def test_interrupted_ranking_progress_file_recovery(tmp_path):
+    """Verify that interrupted ranking duration is recovered from progress journal."""
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text(
+        json.dumps({
+            "event": "phase",
+            "phase": "ranking",
+            "started_at_monotonic": 100.0,
+        })
+        + "\n",
+        encoding="utf-8",
+    )
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=5.0, stopped_at_monotonic=103.5,
+    )
+    assert rec.journal_error is None
+    assert rec.last_phase == "ranking"
+    assert rec.ranking_wall_seconds == pytest.approx(3.5, rel=1e-5)
+    assert rec.solving_wall_seconds == 0.0
+    assert rec.verification_wall_seconds == 0.0
+    assert rec.candidates_tested_count == 0
+    assert rec.candidates_remaining_count == 0
+    assert rec.in_flight_attempt is None
+
+
+def test_interrupted_ranking_recovery_under_watchdog(demo_instance):
+    """End-to-end watchdog termination during ranking recovers non-zero ranking time."""
+    outcome = run_method_worker(
+        method="test_slow_ranker",
+        rounds=10,
+        attack_pairs=tuple((p.ciphertext0, p.ciphertext1) for p in demo_instance.pairs),
+        known_pairs=demo_instance.known_pairs,
+        verification_pairs=demo_instance.verification_pairs,
+        global_deadline_seconds=1.0,
+        use_parent_watchdog=True,
+    )
+    assert outcome.outcome == "global_deadline"
+    assert "interrupted during ranking" in (outcome.error_message or "")
+    assert outcome.ranking_wall_seconds > 0.0
+    assert outcome.ranking_wall_seconds <= outcome.complete_online_wall_seconds
+    assert outcome.solving_wall_seconds == 0.0
+    assert outcome.verification_wall_seconds == 0.0
+    assert outcome.candidates_tested_count == 0
+    assert outcome.candidates_remaining_count == 0
+    assert len(outcome.candidate_attempts) == 0
+
+
+def test_completed_ranking_followed_by_solving(tmp_path):
+    """Verify completed ranking records queue duration without being overwritten by solving."""
+    # Scenario A: Completed ranking followed by completed solving
+    journal_complete = tmp_path / "progress_complete.jsonl"
+    journal_complete.write_text(
+        "\n".join(
+            json.dumps(ev)
+            for ev in [
+                {"event": "phase", "phase": "ranking", "started_at_monotonic": 100.0},
+                {
+                    "event": "queue",
+                    "ranking_wall_seconds": 4.0,
+                    "total_queue_count": 2,
+                    "full_queue": [[1, 2], [3, 4]],
+                    "queue_sample": [[1, 2]],
+                },
+                {"event": "phase", "phase": "initial_formula_construction", "started_at_monotonic": 104.0},
+                {"event": "initial_formula_construction_complete", "initial_construction_wall_seconds": 0.5},
+                {
+                    "event": "attempt_start",
+                    "candidate_index": 0,
+                    "candidate_k8": 1,
+                    "candidate_k9": 2,
+                    "started_at_monotonic": 104.5,
+                },
+                {
+                    "event": "phase",
+                    "phase": "solving",
+                    "candidate_index": 0,
+                    "candidate_k8": 1,
+                    "candidate_k9": 2,
+                    "started_at_monotonic": 104.5,
+                },
+                {
+                    "event": "candidate_solve_complete",
+                    "candidate_index": 0,
+                    "candidate_k8": 1,
+                    "candidate_k9": 2,
+                    "solve_wall_seconds": 1.2,
+                    "status": "sat",
+                },
+                {
+                    "event": "attempt",
+                    "candidate_k8": 1,
+                    "candidate_k9": 2,
+                    "solve_wall_seconds": 1.2,
+                    "status": "sat",
+                    "rebuild_occurred": False,
+                    "current_solving_wall_seconds": 1.7,
+                },
+                {
+                    "event": "phase",
+                    "phase": "verification",
+                    "candidate_index": 0,
+                    "candidate_k8": 1,
+                    "candidate_k9": 2,
+                    "started_at_monotonic": 105.7,
+                },
+                {
+                    "event": "completed",
+                    "outcome": "verified_recovery",
+                    "solving_wall_seconds": 1.7,
+                    "verification_wall_seconds": 0.3,
+                },
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    rec_a = method_worker_module._read_progress_file(
+        journal_complete, parent_elapsed=6.5, stopped_at_monotonic=106.0,
+    )
+    assert rec_a.journal_error is None
+    assert rec_a.ranking_wall_seconds == 4.0
+    assert rec_a.solving_wall_seconds == 1.7
+    assert rec_a.verification_wall_seconds == 0.3
+    assert rec_a.candidates_tested_count == 1
+    assert rec_a.candidates_remaining_count == 1
+
+    # Scenario B: Completed ranking followed by watchdog kill during solving
+    journal_interrupted = tmp_path / "progress_interrupted.jsonl"
+    journal_interrupted.write_text(
+        "\n".join(
+            json.dumps(ev)
+            for ev in [
+                {"event": "phase", "phase": "ranking", "started_at_monotonic": 100.0},
+                {
+                    "event": "queue",
+                    "ranking_wall_seconds": 4.0,
+                    "total_queue_count": 2,
+                    "full_queue": [[1, 2], [3, 4]],
+                    "queue_sample": [[1, 2]],
+                },
+                {"event": "phase", "phase": "initial_formula_construction", "started_at_monotonic": 104.0},
+                {"event": "initial_formula_construction_complete", "initial_construction_wall_seconds": 0.5},
+                {
+                    "event": "attempt_start",
+                    "candidate_index": 0,
+                    "candidate_k8": 1,
+                    "candidate_k9": 2,
+                    "started_at_monotonic": 104.5,
+                },
+                {
+                    "event": "phase",
+                    "phase": "solving",
+                    "candidate_index": 0,
+                    "candidate_k8": 1,
+                    "candidate_k9": 2,
+                    "started_at_monotonic": 104.5,
+                },
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    rec_b = method_worker_module._read_progress_file(
+        journal_interrupted, parent_elapsed=6.5, stopped_at_monotonic=106.0,
+    )
+    assert rec_b.journal_error is None
+    assert rec_b.last_phase == "solving"
+    assert rec_b.ranking_wall_seconds == 4.0
+    assert rec_b.solving_wall_seconds == pytest.approx(2.0, rel=1e-5)  # 0.5 construction + 1.5 in-flight solve
+    assert rec_b.verification_wall_seconds == 0.0
+    assert rec_b.in_flight_attempt is not None
+    assert rec_b.in_flight_attempt.solve_wall_seconds == pytest.approx(1.5, rel=1e-5)
+
+
+@pytest.mark.parametrize(
+    "timestamp",
+    [None, False, True, "not_a_number", -1.0, 0.0, float("nan"), float("inf"), 105.0, 10**400],
+)
+def test_malformed_ranking_monotonic_timestamp_handling(tmp_path, timestamp):
+    """Verify malformed ranking timestamps do not raise unhandled exceptions."""
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text(
+        json.dumps({
+            "event": "phase",
+            "phase": "ranking",
+            "started_at_monotonic": timestamp,
+        })
+        + "\n",
+        encoding="utf-8",
+    )
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=5.0, stopped_at_monotonic=100.0,
+    )
+    assert rec.journal_error is not None
+    assert "Invalid in-flight ranking phase" in rec.journal_error
+    assert rec.ranking_wall_seconds == 0.0
+
+
+def test_missing_ranking_monotonic_timestamp_handling(tmp_path):
+    """Verify ranking phase event with missing started_at_monotonic is handled cleanly."""
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text(
+        json.dumps({
+            "event": "phase",
+            "phase": "ranking",
+        })
+        + "\n",
+        encoding="utf-8",
+    )
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=5.0, stopped_at_monotonic=100.0,
+    )
+    assert rec.journal_error is not None
+    assert "Invalid in-flight ranking phase" in rec.journal_error
+    assert rec.ranking_wall_seconds == 0.0
+
+
+def test_ranking_monotonic_timestamp_preceding_parent_execution(tmp_path):
+    """Verify timestamp preceding parent start raises auditable journal error without crash."""
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text(
+        json.dumps({
+            "event": "phase",
+            "phase": "ranking",
+            "started_at_monotonic": 90.0,
+        })
+        + "\n",
+        encoding="utf-8",
+    )
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=5.0, stopped_at_monotonic=100.0,
+    )
+    assert rec.journal_error is not None
+    assert "Invalid in-flight ranking phase" in rec.journal_error
+    assert rec.ranking_wall_seconds == 0.0
+
+
+def test_absence_of_phase_double_counting(tmp_path):
+    """Verify ranking, construction, solving, verification, and rebuilding are strictly disjoint."""
+    journal = tmp_path / "progress.jsonl"
+    journal.write_text(
+        "\n".join(
+            json.dumps(ev)
+            for ev in [
+                # Ranking phase (2.5s)
+                {"event": "phase", "phase": "ranking", "started_at_monotonic": 100.0},
+                {
+                    "event": "queue",
+                    "ranking_wall_seconds": 2.5,
+                    "total_queue_count": 2,
+                    "full_queue": [[1, 2], [3, 4]],
+                    "queue_sample": [[1, 2]],
+                },
+                # Initial formula construction (1.0s)
+                {"event": "phase", "phase": "initial_formula_construction", "started_at_monotonic": 102.5},
+                {"event": "initial_formula_construction_complete", "initial_construction_wall_seconds": 1.0},
+                # Candidate 0: solving (1.2s), verification failure (0.4s)
+                {
+                    "event": "attempt_start",
+                    "candidate_index": 0,
+                    "candidate_k8": 1,
+                    "candidate_k9": 2,
+                    "started_at_monotonic": 103.5,
+                },
+                {
+                    "event": "phase",
+                    "phase": "solving",
+                    "candidate_index": 0,
+                    "candidate_k8": 1,
+                    "candidate_k9": 2,
+                    "started_at_monotonic": 103.5,
+                },
+                {
+                    "event": "candidate_solve_complete",
+                    "candidate_index": 0,
+                    "candidate_k8": 1,
+                    "candidate_k9": 2,
+                    "solve_wall_seconds": 1.2,
+                    "status": "sat",
+                },
+                {
+                    "event": "attempt",
+                    "candidate_k8": 1,
+                    "candidate_k9": 2,
+                    "solve_wall_seconds": 1.2,
+                    "status": "verification_failure",
+                    "rebuild_occurred": False,
+                    "current_solving_wall_seconds": 2.2,
+                    "current_verification_wall_seconds": 0.4,
+                },
+                # Rebuilding (0.8s)
+                {
+                    "event": "phase",
+                    "phase": "rebuilding",
+                    "candidate_index": 0,
+                    "candidate_k8": 1,
+                    "candidate_k9": 2,
+                    "started_at_monotonic": 105.1,
+                },
+                {"event": "rebuild_complete", "candidate_k8": 1, "candidate_k9": 2, "rebuild_wall_seconds": 0.8},
+                # Candidate 1: solving in flight (1.5s)
+                {
+                    "event": "attempt_start",
+                    "candidate_index": 1,
+                    "candidate_k8": 3,
+                    "candidate_k9": 4,
+                    "started_at_monotonic": 105.9,
+                },
+                {
+                    "event": "phase",
+                    "phase": "solving",
+                    "candidate_index": 1,
+                    "candidate_k8": 3,
+                    "candidate_k9": 4,
+                    "started_at_monotonic": 105.9,
+                },
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    rec = method_worker_module._read_progress_file(
+        journal, parent_elapsed=8.0, stopped_at_monotonic=107.4,
+    )
+    assert rec.journal_error is None
+    # Ranking is strictly 2.5s (from queue event)
+    assert rec.ranking_wall_seconds == 2.5
+    # Solving is 1.0 (construction) + 1.2 (cand 0) + 0.8 (rebuild) + 1.5 (cand 1 in flight) == 4.5s
+    assert rec.solving_wall_seconds == pytest.approx(4.5, rel=1e-5)
+    # Verification is strictly 0.4s
+    assert rec.verification_wall_seconds == pytest.approx(0.4, rel=1e-5)
+
+    # Disjointness checks:
+    # 1. Total phase time does not exceed parent elapsed
+    phase_sum = rec.ranking_wall_seconds + rec.solving_wall_seconds + rec.verification_wall_seconds
+    assert phase_sum == pytest.approx(7.4, rel=1e-5)
+    assert phase_sum <= 8.0
+
+    # 2. Ranking wall seconds does not include any solving or verification time
+    assert rec.ranking_wall_seconds == 2.5
+
+    # 3. Solving wall seconds does not include ranking or verification time
+    assert rec.solving_wall_seconds == pytest.approx(4.5, rel=1e-5)
+
+    # 4. In-flight attempt belongs strictly to candidate 1 solving
+    assert rec.in_flight_attempt is not None
+    assert rec.in_flight_attempt.candidate_k8 == 3
+    assert rec.in_flight_attempt.candidate_k9 == 4
+    assert rec.in_flight_attempt.solve_wall_seconds == pytest.approx(1.5, rel=1e-5)
+

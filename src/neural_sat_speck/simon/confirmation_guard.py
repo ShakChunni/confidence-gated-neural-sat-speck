@@ -78,6 +78,7 @@ INELIGIBLE_CONFIRMATION_SEEDS: Final[frozenset[int]] = frozenset(
         880001,
         880002,
         999999,
+        8398726052707596859,  # Retired SIMON confirmation Attempt 1 seed (Decision D-041)
     }
 )
 
@@ -144,11 +145,14 @@ def validate_confirmation_manifest(manifest_raw: dict[str, Any] | str | Path) ->
         raise TypeError("manifest_raw must be a dict, str, or Path")
 
     # 1. Header and Approval Status
-    if manifest.get("manifest_version") != "1.2.0":
+    if manifest.get("manifest_version") not in ("1.2.0", "1.3.0", "2.0.0"):
         raise ConfirmationPreflightError(
-            f"Unsupported manifest_version: {manifest.get('manifest_version')!r}; expected '1.2.0'"
+            f"Unsupported manifest_version: {manifest.get('manifest_version')!r}; expected '1.2.0', '1.3.0', or '2.0.0'"
         )
-    if manifest.get("protocol_id") != "simon32_64_r10_unseen_confirmation_v1":
+    if manifest.get("protocol_id") not in (
+        "simon32_64_r10_unseen_confirmation_v1",
+        "simon32_64_r10_unseen_confirmation_replacement_v1",
+    ):
         raise ConfirmationPreflightError(f"Invalid protocol_id: {manifest.get('protocol_id')!r}")
     if manifest.get("evidence_class") != "CONFIRMATION":
         raise ConfirmationPreflightError(f"Invalid evidence_class: {manifest.get('evidence_class')!r}")
@@ -273,27 +277,50 @@ def verify_runtime_provenance(
 
     resolved_paths: dict[str, Path] = {}
 
+    repo_root = Path(__file__).resolve().parents[3]
+    default_runtime = repo_root / "runtime"
+
+    def _resolve_default(filename: str, fallback: str) -> str:
+        candidate = default_runtime / filename
+        if candidate.exists():
+            return str(candidate)
+        candidate_res = default_runtime / "resources" / filename
+        if candidate_res.exists():
+            return str(candidate_res)
+        return fallback
+
+    default_bao = (
+        str(default_runtime / "bao-simon-audit" / "simonNDvsDD" / "SENet")
+        if (default_runtime / "bao-simon-audit" / "simonNDvsDD" / "SENet").is_dir()
+        else "/private/tmp/bao-simon-audit/simonNDvsDD/SENet"
+    )
+    default_tf = (
+        str(default_runtime / "simon_tf_venv" / "bin" / "python3.12")
+        if (default_runtime / "simon_tf_venv" / "bin" / "python3.12").is_file()
+        else "/private/tmp/simon_tf_venv/bin/python3.12"
+    )
+
     expected_hashes = {
         "ddt_7r": (
-            locs.get("ddt_7r", "/private/tmp/simon_predicted_ddt_7r.bin"),
+            locs.get("ddt_7r", _resolve_default("simon_predicted_ddt_7r.bin", "/private/tmp/simon_predicted_ddt_7r.bin")),
             provenance.get("simon_predicted_ddt_7r_bin_sha256"),
         ),
         "queried_row_8r_binary": (
-            locs.get("queried_row_8r_binary", "/private/tmp/simon_queried_row_8r"),
+            locs.get("queried_row_8r_binary", _resolve_default("simon_queried_row_8r", "/private/tmp/simon_queried_row_8r")),
             provenance.get("simon_queried_row_8r_bin_sha256"),
         ),
         "queried_row_8r_cpp": (
-            locs.get("queried_row_8r_cpp", Path(__file__).resolve().parents[3] / "tools" / "simon_queried_row_8r.cpp"),
+            locs.get("queried_row_8r_cpp", repo_root / "tools" / "simon_queried_row_8r.cpp"),
             provenance.get("simon_queried_row_8r_cpp_sha256"),
         ),
         "b1_checkpoint": (
-            locs.get("b1_checkpoint", Path(__file__).resolve().parents[3] / "models" / "simon" / "simon_b1_mean_speckhead.pt"),
+            locs.get("b1_checkpoint", repo_root / "models" / "simon" / "simon_b1_mean_speckhead.pt"),
             provenance.get("b1_checkpoint_sha256"),
         ),
     }
 
     # Unconditionally require Bao checkpoints
-    bao_dir = Path(locs.get("bao_vv_directory", "/private/tmp/bao-simon-audit/simonNDvsDD/SENet"))
+    bao_dir = Path(locs.get("bao_vv_directory", default_bao))
     expected_hashes["vv9_checkpoint"] = (
         bao_dir / "ND_VV_Simon32_9R.h5",
         provenance.get("vv9_checkpoint_sha256"),
@@ -318,7 +345,7 @@ def verify_runtime_provenance(
 
     resolved_paths["bao_vv_directory"] = bao_dir.resolve()
 
-    tf_python = Path(locs.get("tensorflow_python", "/private/tmp/simon_tf_venv/bin/python3.12"))
+    tf_python = Path(locs.get("tensorflow_python", default_tf))
     if not tf_python.is_file():
         raise ProvenanceVerificationError(f"Required TensorFlow Python binary missing: {tf_python}")
     # Preserve the virtualenv invocation path: resolving a venv interpreter
@@ -379,6 +406,10 @@ def check_key_overlaps_with_prior_families(
             keys, seed=seed, key_count=key_count,
         )
 
+    # 4. Confirmation Attempt 1: seed 8398726052707596859 (R=10, 64 keys, 64 pairs)
+    cfg_att1 = SimonAttackInstanceConfig(instance_count=64, pair_count=64, rounds=10, seed=8398726052707596859, split_role="confirmation")
+    prior_draws["confirmation_attempt1_seed_8398726052707596859"] = {inst.master_key for inst in generate_simon_attack_instances(cfg_att1)}
+
     key_set = set(keys)
     intersections: dict[str, list[tuple[int, int, int, int]]] = {}
     for role_name, prior_keys in prior_draws.items():
@@ -433,6 +464,7 @@ def build_disjoint_family_certificate(
         "development_seed_260926_p64",
         "synthetic_training_seed_880001",
         "synthetic_training_seed_880002",
+        "confirmation_attempt1_seed_8398726052707596859",
     ]
 
     # Compute dataset hash

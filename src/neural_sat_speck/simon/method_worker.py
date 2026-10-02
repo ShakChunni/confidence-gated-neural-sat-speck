@@ -127,6 +127,29 @@ ALL_PERMITTED_METHODS: Final[frozenset[str]] = frozenset(
     COMPARATOR_METHODS | DIAGNOSTIC_ORACLES | TEST_ONLY_METHODS
 )
 
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_DEFAULT_RUNTIME = _REPO_ROOT / "runtime"
+_PERM_TF_PY = _DEFAULT_RUNTIME / "simon_tf_venv" / "bin" / "python3.12"
+DEFAULT_TF_PYTHON: str = (
+    str(_PERM_TF_PY)
+    if _PERM_TF_PY.is_file()
+    else "/private/tmp/simon_tf_venv/bin/python3.12"
+)
+_PERM_CHECKPOINT = _DEFAULT_RUNTIME / "bao-simon-audit" / "simonNDvsDD" / "SENet"
+DEFAULT_CHECKPOINT_DIR: str = (
+    str(_PERM_CHECKPOINT)
+    if _PERM_CHECKPOINT.is_dir()
+    else "/private/tmp/bao-simon-audit/simonNDvsDD/SENet"
+)
+_PERM_DDT = _DEFAULT_RUNTIME / "resources" / "simon_predicted_ddt_7r.bin"
+if not _PERM_DDT.is_file():
+    _PERM_DDT = _DEFAULT_RUNTIME / "simon_predicted_ddt_7r.bin"
+DEFAULT_DDT_PATH: str = (
+    str(_PERM_DDT)
+    if _PERM_DDT.is_file()
+    else "/private/tmp/simon_predicted_ddt_7r.bin"
+)
+
 
 def get_process_peak_rss_gib() -> float:
     """Measure peak RSS in GiB honestly across concurrently alive process tree."""
@@ -185,6 +208,7 @@ def _read_progress_file(
     last_verification_start: dict[str, Any] | None = None
     last_rebuild_start: dict[str, Any] | None = None
     last_construction_start: dict[str, Any] | None = None
+    last_ranking_start: dict[str, Any] | None = None
 
     try:
         with open(path, encoding="utf-8") as f:
@@ -218,6 +242,8 @@ def _read_progress_file(
                     last_attempt_start = None
                     last_candidate_solve_complete = None
                     last_verification_start = None
+                elif event_type == "queue":
+                    last_ranking_start = None
                 elif event_type == "rebuild_complete":
                     last_rebuild_start = None
                 elif event_type == "initial_formula_construction_complete":
@@ -227,7 +253,9 @@ def _read_progress_file(
                     rec.solving_wall_seconds = float(ev["solving_wall_seconds"])
                 elif event_type == "phase":
                     phase_name = ev.get("phase")
-                    if phase_name == "solving" and ev.get("solving_kind") == "unguided":
+                    if phase_name == "ranking":
+                        last_ranking_start = ev
+                    elif phase_name == "solving" and ev.get("solving_kind") == "unguided":
                         last_solving_start = ev
                     elif phase_name == "verification":
                         last_verification_start = ev
@@ -242,6 +270,7 @@ def _read_progress_file(
                     last_construction_start = None
                     last_attempt_start = None
                     last_candidate_solve_complete = None
+                    last_ranking_start = None
     except OSError as exc:
         rec.journal_error = f"Cannot read progress journal: {exc}"
 
@@ -255,7 +284,15 @@ def _read_progress_file(
     rec.solving_wall_seconds = base_completed_solving
 
     # Handle interruptions across different phases:
-    if last_attempt_start is not None:
+    if last_ranking_start is not None and rec.last_phase == "ranking":
+        # Ranking interrupted
+        try:
+            rec.ranking_wall_seconds = _interrupted_duration(
+                last_ranking_start, parent_elapsed, stopped_at_monotonic,
+            )
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            rec.journal_error = f"Invalid in-flight ranking phase: {exc}"
+    elif last_attempt_start is not None:
         # Interrupted during a candidate attempt (solving or verification)
         if last_candidate_solve_complete is not None and rec.last_phase == "verification":
             # Solve completed before interruption; interrupted during verification
@@ -660,11 +697,11 @@ def run_neural_ranking_subprocess(
     method: str,
     pairs: Sequence[tuple[Block, Block]],
     *,
-    tf_python_path: Path | str = "/private/tmp/simon_tf_venv/bin/python3.12",
+    tf_python_path: Path | str = DEFAULT_TF_PYTHON,
     worker_script_path: Path | str | None = None,
     ranking_time_limit: float = 120.0,
-    checkpoint_dir: Path | str = "/private/tmp/bao-simon-audit/simonNDvsDD/SENet",
-    ddt_7r_path: Path | str = "/private/tmp/simon_predicted_ddt_7r.bin",
+    checkpoint_dir: Path | str = DEFAULT_CHECKPOINT_DIR,
+    ddt_7r_path: Path | str = DEFAULT_DDT_PATH,
     progress_file: str | None = None,
     return_diagnostics: bool = False,
 ) -> list[tuple[int, int]] | tuple[list[tuple[int, int]], dict[str, Any]]:
@@ -673,7 +710,7 @@ def run_neural_ranking_subprocess(
     if not tf_python.is_file():
         raise RuntimeError(
             f"Pinned TensorFlow Python binary not found at {tf_python}. "
-            "Please ensure /private/tmp/simon_tf_venv is configured."
+            "Please ensure permanent runtime simon_tf_venv is configured."
         )
 
     if worker_script_path is None:
@@ -754,10 +791,10 @@ def run_neural_ranking_subprocess(
 def generate_hybrid_8parent_queue(
     pairs: Sequence[tuple[Block, Block]],
     vv9_model: Any | None = None,
-    ddt_7r_path: Path | str = "/private/tmp/simon_predicted_ddt_7r.bin",
+    ddt_7r_path: Path | str = DEFAULT_DDT_PATH,
     *,
-    tf_python_path: Path | str = "/private/tmp/simon_tf_venv/bin/python3.12",
-    checkpoint_dir: Path | str = "/private/tmp/bao-simon-audit/simonNDvsDD/SENet",
+    tf_python_path: Path | str = DEFAULT_TF_PYTHON,
+    checkpoint_dir: Path | str = DEFAULT_CHECKPOINT_DIR,
     worker_script_path: Path | str | None = None,
     ranking_time_limit: float = 120.0,
     progress_file: str | None = None,
@@ -832,9 +869,9 @@ def generate_neural_1parent_queue(
     vv9_model: Any | None = None,
     vv8_model: Any | None = None,
     *,
-    tf_python_path: Path | str = "/private/tmp/simon_tf_venv/bin/python3.12",
-    checkpoint_dir: Path | str = "/private/tmp/bao-simon-audit/simonNDvsDD/SENet",
-    ddt_7r_path: Path | str = "/private/tmp/simon_predicted_ddt_7r.bin",
+    tf_python_path: Path | str = DEFAULT_TF_PYTHON,
+    checkpoint_dir: Path | str = DEFAULT_CHECKPOINT_DIR,
+    ddt_7r_path: Path | str = DEFAULT_DDT_PATH,
     worker_script_path: Path | str | None = None,
     ranking_time_limit: float = 180.0,
     progress_file: str | None = None,
@@ -1128,7 +1165,14 @@ def _run_method_worker_direct(
 
         # 2. Candidate Queue Generation
         t_rank0 = time.perf_counter()
-        _log_progress_event(progress_file, {"event": "phase", "phase": "ranking"})
+        _log_progress_event(
+            progress_file,
+            {
+                "event": "phase",
+                "phase": "ranking",
+                "started_at_monotonic": t_rank0,
+            },
+        )
         if test_interruption_point == "ranking" or method == "test_slow_ranker":
             time.sleep(10.0)
 
@@ -1149,7 +1193,7 @@ def _run_method_worker_direct(
             child_proc.wait()
             queue = [(0x1234, 0x5678)]
         elif method == "test_hanging_tf_child":
-            tf_py = Path("/private/tmp/simon_tf_venv/bin/python3.12")
+            tf_py = Path(DEFAULT_TF_PYTHON)
             py_bin = str(tf_py) if tf_py.is_file() else sys.executable
             child_proc = subprocess.Popen(
                 [py_bin, "-c", "import time; time.sleep(120)"],

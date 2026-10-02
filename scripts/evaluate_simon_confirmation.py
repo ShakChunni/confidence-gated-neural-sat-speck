@@ -102,6 +102,12 @@ def main() -> int:
         help="Execute synthetic plumbing check only; does not produce confirmation evidence.",
     )
     parser.add_argument("--log-dir", type=Path, default=None, help="Directory for durable per-cell monitoring journal.")
+    parser.add_argument(
+        "--runtime-dir",
+        type=Path,
+        default=REPOSITORY_ROOT / "runtime",
+        help="Path to persistent workspace runtime directory.",
+    )
     args = parser.parse_args()
 
     print("================================================================================")
@@ -115,7 +121,10 @@ def main() -> int:
             with open(args.manifest, encoding="utf-8") as f:
                 manifest_dict = json.load(f)
             # In dry-run mode, check if manifest has basic schema
-            if manifest_dict.get("protocol_id") != "simon32_64_r10_unseen_confirmation_v1":
+            if manifest_dict.get("protocol_id") not in (
+                "simon32_64_r10_unseen_confirmation_v1",
+                "simon32_64_r10_unseen_confirmation_replacement_v1",
+            ):
                 raise ConfirmationPreflightError("Invalid protocol_id in manifest")
             manifest = manifest_dict
             print("[+] Dry-run mode: manifest syntax validated.")
@@ -129,7 +138,47 @@ def main() -> int:
     # 2. Provenance Verification
     print("[*] Verifying runtime provenance and artifact hashes...")
     try:
-        resolved_paths = verify_runtime_provenance(manifest)
+        resource_locs = dict(manifest.get("development_resource_locations", {}))
+        permanent_runtime = (
+            args.runtime_dir
+            if getattr(args, "runtime_dir", None)
+            else (REPOSITORY_ROOT / "runtime")
+        )
+        if permanent_runtime.is_dir():
+            permanent_tf = permanent_runtime / "simon_tf_venv" / "bin" / "python3.12"
+            if not permanent_tf.is_file():
+                permanent_tf = permanent_runtime / "simon_tf_venv" / "bin" / "python"
+            cur_tf = Path(resource_locs.get("tensorflow_python", ""))
+            if permanent_tf.is_file() and (not cur_tf.is_file() or str(cur_tf).startswith(("/tmp", "/private/tmp"))):
+                resource_locs["tensorflow_python"] = str(permanent_tf)
+
+            permanent_ddt = permanent_runtime / "resources" / "simon_predicted_ddt_7r.bin"
+            if not permanent_ddt.is_file():
+                permanent_ddt = permanent_runtime / "simon_predicted_ddt_7r.bin"
+            cur_ddt = Path(resource_locs.get("ddt_7r", ""))
+            if permanent_ddt.is_file() and (not cur_ddt.is_file() or str(cur_ddt).startswith(("/tmp", "/private/tmp"))):
+                resource_locs["ddt_7r"] = str(permanent_ddt)
+
+            permanent_8r = permanent_runtime / "resources" / "simon_queried_row_8r"
+            if not permanent_8r.is_file():
+                permanent_8r = permanent_runtime / "simon_queried_row_8r"
+            cur_8r = Path(resource_locs.get("queried_row_8r_binary", ""))
+            if permanent_8r.is_file() and (not cur_8r.is_file() or str(cur_8r).startswith(("/tmp", "/private/tmp"))):
+                resource_locs["queried_row_8r_binary"] = str(permanent_8r)
+
+            permanent_bao = permanent_runtime / "bao-simon-audit" / "simonNDvsDD" / "SENet"
+            if not permanent_bao.is_dir():
+                permanent_bao = permanent_runtime / "bao" / "simonNDvsDD" / "SENet"
+            cur_bao = Path(resource_locs.get("bao_vv_directory", ""))
+            if permanent_bao.is_dir() and (not cur_bao.is_dir() or str(cur_bao).startswith(("/tmp", "/private/tmp"))):
+                resource_locs["bao_vv_directory"] = str(permanent_bao)
+
+        manifest = dict(manifest)
+        manifest["development_resource_locations"] = resource_locs
+        try:
+            resolved_paths = verify_runtime_provenance(manifest, resource_locs)
+        except TypeError:
+            resolved_paths = verify_runtime_provenance(manifest)
         print("[+] All runtime tools, tables, models, and libraries verified.")
     except ProvenanceVerificationError as exc:
         print(f"[!] PROVENANCE REJECTION: {exc}", file=sys.stderr)
