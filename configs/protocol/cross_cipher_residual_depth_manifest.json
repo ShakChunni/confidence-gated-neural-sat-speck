@@ -1,0 +1,66 @@
+{
+  "manifest_id": "cross_cipher_residual_depth_map_v1",
+  "protocol_version": "1.0.0",
+  "execution_status": "authorized_execution",
+  "created_at": "2026-10-03T21:40:00+08:00",
+  "authorized_at": "2026-10-03T22:30:00+08:00",
+  "governing_decisions": ["D-024", "D-029", "D-034", "D-043"],
+  "objective": "Controlled empirical mapping of exact SAT solvability across residual depth, total rounds, and observation counts",
+  "ciphers": {
+    "speck32_64": {
+      "key_count": 8,
+      "seed_role": "demo",
+      "seed": 999999,
+      "pair_count_cohort": 64,
+      "observations": [4, 128],
+      "grid_points": [
+        {"rounds": 6, "assumed_keys": 0, "residual_depth": 6},
+        {"rounds": 6, "assumed_keys": 1, "residual_depth": 5},
+        {"rounds": 7, "assumed_keys": 1, "residual_depth": 6},
+        {"rounds": 7, "assumed_keys": 2, "residual_depth": 5},
+        {"rounds": 8, "assumed_keys": 2, "residual_depth": 6},
+        {"rounds": 8, "assumed_keys": 3, "residual_depth": 5}
+      ]
+    },
+    "simon32_64": {
+      "key_count": 8,
+      "seed_role": "demo",
+      "seed": 999999,
+      "pair_count_cohort": 64,
+      "observations": [4, 128],
+      "grid_points": [
+        {"rounds": 9, "assumed_keys": 0, "residual_depth": 9},
+        {"rounds": 9, "assumed_keys": 1, "residual_depth": 8},
+        {"rounds": 10, "assumed_keys": 1, "residual_depth": 9},
+        {"rounds": 10, "assumed_keys": 2, "residual_depth": 8},
+        {"rounds": 11, "assumed_keys": 2, "residual_depth": 9},
+        {"rounds": 11, "assumed_keys": 3, "residual_depth": 8}
+      ]
+    }
+  },
+  "dataset": {
+    "relpath": "datasets/demo_cross_cipher_depth_r6_r11/dataset.json",
+    "sha256": "a8bf7ccdf468f49a0ba67cb7cd7454a5912fec7f96c86d9b5f2a0e5878c49dc5"
+  },
+  "solver_configuration": {
+    "backend": "pycryptosat",
+    "version": "5.14.7",
+    "threads": 1,
+    "per_cell_timeout_seconds": 300.0,
+    "process_isolation": true
+  },
+  "compute_cap": {
+    "total_cells": 192,
+    "worst_case_seconds": 57600.0,
+    "worst_case_hours": 16.0
+  },
+  "verification": {
+    "verification_blocks_count": 2,
+    "verification_seed": 999999,
+    "require_master_key_match": true
+  },
+  "output": {
+    "results_relpath": "results/phase11_scaling_diagnostics/cross_cipher_residual_depth_map.json"
+  }
+}
+

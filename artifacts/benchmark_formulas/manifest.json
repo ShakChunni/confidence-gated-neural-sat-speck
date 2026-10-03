@@ -1,0 +1,111 @@
+{
+  "manifest_id": "benchmark_formula_artifacts_v1",
+  "created_at": "2026-10-03T13:52:22Z",
+  "description": "Cryptographic SAT benchmark instances for SPECK32/64 and SIMON32/64 in native-XOR and pure CNF formats",
+  "instances": [
+    {
+      "cipher": "speck32_64",
+      "rounds": 7,
+      "assumed_keys": 1,
+      "nominal_residual_depth": 6,
+      "build_wall_seconds": 0.0021550829987972975,
+      "files": {
+        "native_xor_dimacs": {
+          "path": "speck32_64_r7_m1_inst00_native_xor.dimacs",
+          "sha256": "e8d32adad3135867fcf11c4052cdd36e889b75a1fd538f8595286fc1e90d9856"
+        },
+        "pure_cnf": {
+          "path": "speck32_64_r7_m1_inst00_pure.cnf",
+          "sha256": "5169a0c67b97c93e22f8a685f6a638f4058562aacf5d97c638d90e3277ea243b"
+        },
+        "varmap": {
+          "path": "speck32_64_r7_m1_inst00_varmap.json",
+          "sha256": "227a1bf6d85a4da12063ee5221b1600831ac613931b4856056cfbbad14b38647"
+        }
+      },
+      "regeneration_commands": {
+        "cms_native": "cryptominisat5 --verb 0 --threads 1 --maxmatrixcols 2500 --autodisablegauss 0 speck32_64_r7_m1_inst00_native_xor.dimacs",
+        "cms_pure_cnf": "cryptominisat5 --verb 0 --threads 1 --xor 0 --zero-exit-status speck32_64_r7_m1_inst00_pure.cnf",
+        "cadical": "cadical -q speck32_64_r7_m1_inst00_pure.cnf"
+      }
+    },
+    {
+      "cipher": "speck32_64",
+      "rounds": 7,
+      "assumed_keys": 2,
+      "nominal_residual_depth": 5,
+      "build_wall_seconds": 0.002225792035460472,
+      "files": {
+        "native_xor_dimacs": {
+          "path": "speck32_64_r7_m2_inst00_native_xor.dimacs",
+          "sha256": "f7924361a8647d22ea155f569cb4022d6f750f8529a8de8f1ea58ccdba105507"
+        },
+        "pure_cnf": {
+          "path": "speck32_64_r7_m2_inst00_pure.cnf",
+          "sha256": "a6630c31980654677039f7fdbc000cf0d2d688165a6436ecf22aa191b9c406fe"
+        },
+        "varmap": {
+          "path": "speck32_64_r7_m2_inst00_varmap.json",
+          "sha256": "d667ce6f82d0f980828e34fef3aef5b6eb7c135c957a87a670819e9d6a0b5b79"
+        }
+      },
+      "regeneration_commands": {
+        "cms_native": "cryptominisat5 --verb 0 --threads 1 --maxmatrixcols 2500 --autodisablegauss 0 speck32_64_r7_m2_inst00_native_xor.dimacs",
+        "cms_pure_cnf": "cryptominisat5 --verb 0 --threads 1 --xor 0 --zero-exit-status speck32_64_r7_m2_inst00_pure.cnf",
+        "cadical": "cadical -q speck32_64_r7_m2_inst00_pure.cnf"
+      }
+    },
+    {
+      "cipher": "simon32_64",
+      "rounds": 10,
+      "assumed_keys": 1,
+      "nominal_residual_depth": 9,
+      "build_wall_seconds": 0.013479624991305172,
+      "files": {
+        "native_xor_dimacs": {
+          "path": "simon32_64_r10_m1_inst00_native_xor.dimacs",
+          "sha256": "4251b9d2b7a60001ce19d8049be1e0673c423df100858ecebef25de2602c6775"
+        },
+        "pure_cnf": {
+          "path": "simon32_64_r10_m1_inst00_pure.cnf",
+          "sha256": "8a0d62535d13afd5ea9d9f3f3c39ea5c16600471f9fdf460a100ed1f99baf101"
+        },
+        "varmap": {
+          "path": "simon32_64_r10_m1_inst00_varmap.json",
+          "sha256": "c26a540d4a003ac3916f59b917bc8cb6273678ea3231a1077d5ceb967dce7f91"
+        }
+      },
+      "regeneration_commands": {
+        "cms_native": "cryptominisat5 --verb 0 --threads 1 --maxmatrixcols 2500 --autodisablegauss 0 simon32_64_r10_m1_inst00_native_xor.dimacs",
+        "cms_pure_cnf": "cryptominisat5 --verb 0 --threads 1 --xor 0 --zero-exit-status simon32_64_r10_m1_inst00_pure.cnf",
+        "cadical": "cadical -q simon32_64_r10_m1_inst00_pure.cnf"
+      }
+    },
+    {
+      "cipher": "simon32_64",
+      "rounds": 10,
+      "assumed_keys": 2,
+      "nominal_residual_depth": 8,
+      "build_wall_seconds": 0.011178084067068994,
+      "files": {
+        "native_xor_dimacs": {
+          "path": "simon32_64_r10_m2_inst00_native_xor.dimacs",
+          "sha256": "bd07725b3e7912b10a50cf867c21940696b4c9e8db0e33ac7ca2a33b0edc7a49"
+        },
+        "pure_cnf": {
+          "path": "simon32_64_r10_m2_inst00_pure.cnf",
+          "sha256": "4d57a2944b9fa47e2565dc0a683d07e6326dc0cc821d7da9c559444b52fd7d37"
+        },
+        "varmap": {
+          "path": "simon32_64_r10_m2_inst00_varmap.json",
+          "sha256": "af9d57ad756edf4ee9436378bc0b46362054c15f47b2a532682ea56e16ce890a"
+        }
+      },
+      "regeneration_commands": {
+        "cms_native": "cryptominisat5 --verb 0 --threads 1 --maxmatrixcols 2500 --autodisablegauss 0 simon32_64_r10_m2_inst00_native_xor.dimacs",
+        "cms_pure_cnf": "cryptominisat5 --verb 0 --threads 1 --xor 0 --zero-exit-status simon32_64_r10_m2_inst00_pure.cnf",
+        "cadical": "cadical -q simon32_64_r10_m2_inst00_pure.cnf"
+      }
+    }
+  ]
+}

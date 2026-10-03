@@ -176,3 +176,39 @@ def test_dimacs_export_and_native_cli_solver() -> None:
         assert cli_res.solution is not None
         rec_key = model.master_key_from_solution(cli_res.solution)
         assert rec_key == key
+
+
+def test_simon_pure_cnf_export_solved_by_cadical_and_cms() -> None:
+    """Verify that SIMON pure CNF export (XORs converted) is solved correctly by cadical and CMS --xor 0."""
+    key = (0x2468, 0x1357, 0x9BDF, 0xACE0)
+    rounds = 4
+    known = [
+        ((0x0100, 0x0200), encrypt_block((0x0100, 0x0200), key, rounds)),
+        ((0x0300, 0x0400), encrypt_block((0x0300, 0x0400), key, rounds)),
+    ]
+    model = SimonSatModel.from_known_pairs(known, rounds=rounds)
+    cnf_text, total_vars = model.to_dimacs_cnf()
+
+    assert "x " not in cnf_text
+    assert cnf_text.startswith("p cnf ")
+
+    # 1. Solve with cryptominisat5 in pure CNF mode (--xor 0)
+    proc_cms = subprocess.run(
+        ["cryptominisat5", "--xor", "0", "--verb", "0", "--zero-exit-status"],
+        input=cnf_text,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    assert "s SATISFIABLE" in proc_cms.stdout
+
+    # 2. Solve with cadical (pure CDCL solver)
+    proc_cad = subprocess.run(
+        ["cadical", "-q"],
+        input=cnf_text,
+        text=True,
+        capture_output=True,
+    )
+    assert proc_cad.returncode == 10
+    assert "s SATISFIABLE" in proc_cad.stdout
+

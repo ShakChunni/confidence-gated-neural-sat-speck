@@ -308,6 +308,45 @@ def test_guarantee_ordinary_scheduling_behavior():
             s.guarantee_ordinary_scheduling(0)
 
 
+@pytest.mark.parametrize("qos,raises", [(9, True), (33, False)])
+def test_zero_darwin_priority_does_not_hide_background_qos(qos, raises):
+    class MockLibc:
+        def setiopolicy_np(self, *args):
+            return 0
+
+        def setpriority(self, *args):
+            return 0
+
+        def getpriority(self, *args):
+            return 0
+
+        def qos_class_self(self):
+            return qos
+
+    with patch.object(s.sys, "platform", "darwin"), patch("ctypes.CDLL", return_value=MockLibc()):
+        if raises:
+            with pytest.raises(ValueError, match="Background QoS despite zero Darwin priority"):
+                s.guarantee_ordinary_scheduling(0)
+        else:
+            s.guarantee_ordinary_scheduling(0)
+
+
+def test_unobservable_calling_thread_qos_blocks_launch():
+    class MockLibc:
+        def setiopolicy_np(self, *args):
+            return 0
+
+        def setpriority(self, *args):
+            return 0
+
+        def getpriority(self, *args):
+            return 0
+
+    with patch.object(s.sys, "platform", "darwin"), patch("ctypes.CDLL", return_value=MockLibc()):
+        with pytest.raises(ValueError, match="Cannot observe calling-thread QoS"):
+            s.guarantee_ordinary_scheduling(0)
+
+
 def test_ephemeral_tmpdir_is_rejected(tmp_path):
     base = tmp_path / "base.json"
     ledger(base, [])
@@ -372,5 +411,4 @@ def test_default_persistent_tmpdir_in_project_workspace(tmp_path):
     expected_tmp = str(tmp_path / "results" / "simon_confirmation_replacement" / "worker_tmp")
     assert receipt["persistent_tmpdir"] == expected_tmp
     assert Path(expected_tmp).is_dir()
-    assert receipt["task_scheduling"] == "standard_ordinary"
-
+    assert receipt["task_scheduling"] == "caller_thread_not_background; worker_qos_unverified"

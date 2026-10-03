@@ -100,6 +100,27 @@ class DimacsClauseRecorder:
 
         return "\n".join(lines) + "\n"
 
+    def to_dimacs_cnf(
+        self,
+        num_vars: int,
+        assumptions: Sequence[int] = (),
+        pool: VariablePool | None = None,
+    ) -> tuple[str, int]:
+        """Render recorded clauses into standard pure-CNF DIMACS format."""
+        from neural_sat_speck.sat.xor_to_cnf import convert_xor_clauses_to_cnf
+
+        expanded_xor_cnf, aux_count = convert_xor_clauses_to_cnf(
+            self.xor_clauses, pool=pool, max_direct_size=5
+        )
+        extra_unit_clauses = [[lit] for lit in assumptions]
+        total_clauses = self.cnf_clauses + extra_unit_clauses + expanded_xor_cnf
+        final_num_vars = num_vars + aux_count
+        lines: list[str] = [f"p cnf {final_num_vars} {len(total_clauses)}"]
+        for clause in total_clauses:
+            lines.append(" ".join(str(lit) for lit in clause) + " 0")
+        return "\n".join(lines) + "\n", final_num_vars
+
+
 
 class RecordingSolverWrapper:
     """Pass-through solver wrapper that mirrors clause additions into a recorder."""
@@ -485,3 +506,23 @@ class SimonSatModel:
         target.parent.mkdir(parents=True, exist_ok=True)
         with open(target, "w", encoding="utf-8") as f:
             f.write(self.to_dimacs(assumptions=assumptions))
+
+    def to_dimacs_cnf(self, assumptions: Sequence[int] = ()) -> tuple[str, int]:
+        """Render model to standard pure-CNF DIMACS format with XORs converted."""
+        return self.recorder.to_dimacs_cnf(
+            self.variable_count, assumptions=assumptions, pool=self.pool
+        )
+
+    def export_dimacs_cnf(
+        self,
+        path: Path | str,
+        assumptions: Sequence[int] = (),
+    ) -> int:
+        """Save model to a pure-CNF DIMACS file. Returns total variables."""
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        cnf_text, total_vars = self.to_dimacs_cnf(assumptions=assumptions)
+        with open(target, "w", encoding="utf-8") as f:
+            f.write(cnf_text)
+        return total_vars
+

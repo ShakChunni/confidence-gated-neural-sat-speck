@@ -26,9 +26,11 @@ OS_INTERRUPTION_CODES = {
 
 
 def guarantee_ordinary_scheduling(pid: int = 0) -> None:
-    """Guarantee that the process and its threads are in ordinary (standard, NOT Background) scheduling.
+    """Clear legacy background flags and reject Background QoS on this thread.
 
-    Raises ValueError if Darwin background scheduling cannot be cleared or verified.
+    A zero Darwin priority is insufficient: Background QoS can coexist with it.
+    This check does not establish other threads' QoS, remote workers' QoS,
+    performance-core placement, or an execution-long scheduling guarantee.
     """
     if sys.platform != "darwin":
         return
@@ -60,6 +62,15 @@ def guarantee_ordinary_scheduling(pid: int = 0) -> None:
             f"Process {target_pid} scheduling policy is Background (PRIO_DARWIN_BG={bg_state}); "
             "ordinary task scheduling cannot be guaranteed."
         )
+    if pid == 0:
+        try:
+            qos = libc.qos_class_self()
+        except AttributeError as exc:
+            raise ValueError("Cannot observe calling-thread QoS before launch") from exc
+        if qos == 9:  # QOS_CLASS_BACKGROUND; can occur with bg_state == 0.
+            raise ValueError(
+                "Calling thread remains at Background QoS despite zero Darwin priority"
+            )
 
 
 def sha(path):
@@ -348,7 +359,7 @@ def supervise(config, root):
                     completed_cells_before=len(ledger["records"]),
                     thread_environment=config.get("thread_environment", {}),
                     persistent_tmpdir=env["TMPDIR"],
-                    task_scheduling="standard_ordinary",
+                    task_scheduling="caller_thread_not_background; worker_qos_unverified",
                     runtime_directory=str(repo_root / "runtime"),
                 )
                 atomic(attempt / "receipt.json", receipt)
