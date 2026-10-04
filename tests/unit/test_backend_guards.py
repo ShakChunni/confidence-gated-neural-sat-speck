@@ -291,7 +291,7 @@ def _synthetic_runner_setup(profile, monkeypatch, tmp_path):
     )
     monkeypatch.setattr(
         "neural_sat_speck.backend.evidence.audit_cell_evidence",
-        lambda *args: {"scope": "scheduling_fixture_only"},
+        lambda *args, **kwargs: {"scope": "scheduling_fixture_only"},
     )
     monkeypatch.setattr(
         runner, "power_sample", lambda: {"supported": False, "accepted": None}
@@ -491,7 +491,7 @@ def _analysis_script(monkeypatch, root):
     )
     monkeypatch.setattr(
         "neural_sat_speck.backend.evidence.audit_cell_evidence",
-        lambda *args: {"scope": "numeric_fixture_only"},
+        lambda *args, **kwargs: {"scope": "numeric_fixture_only"},
     )
     return module
 

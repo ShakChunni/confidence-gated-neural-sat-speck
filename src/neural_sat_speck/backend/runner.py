@@ -410,6 +410,18 @@ def run(
     # Authorization/identity validation occurs before cohort loading or dispatch.
     from .artifacts import validate_case_inputs, validate_cohort
     from .evidence import audit_cell_evidence
+    from .reviewed_resume import (
+        load_prefix,
+        original_stop_only,
+        provenance,
+        transition_identity,
+        validate_preserved_prefix,
+        validate_review_history,
+    )
+
+    prefix = load_prefix(manifest, root, output)
+    if prefix is not None and not resume:
+        raise ValueError("A reviewed continuation requires explicit --resume")
 
     cohort = json.loads(paths["cohort"].read_bytes())
     validate_cohort(cohort)
@@ -439,13 +451,27 @@ def run(
                 "status": "incomplete",
             }
         )
+        ledger = transition_identity(ledger, prefix, manifest_sha)
+        validate_preserved_prefix(ledger, prefix)
+        validate_review_history(ledger, prefix, manifest_sha)
         validate_ledger(ledger, manifest, manifest_sha)
-        if ledger.get("status") == "safety_stop":
+        if ledger.get("status") == "safety_stop" and not original_stop_only(
+            ledger, prefix
+        ):
             raise RuntimeError("Prior safety stop requires independent review")
         for ident, record in ledger["records"].items():
-            _verify_recovery(record, paths)
+            recorded_manifest, recorded_paths = provenance(
+                ident, manifest, paths, prefix
+            )
+            _verify_recovery(record, recorded_paths)
             audit_cell_evidence(
-                record, ledger["starts"][ident], manifest, paths, output
+                record,
+                ledger["starts"][ident],
+                recorded_manifest,
+                recorded_paths,
+                output,
+                reviewed_environment_stop=prefix is not None
+                and ident in prefix["power_stop_cells"],
             )
         for ident, start in ledger["starts"].items():
             group = start.get("process_group")
@@ -478,11 +504,17 @@ def run(
                 "worker_exception",
                 "audit_rejected",
             }
-            for r in ledger["records"].values()
+            and not (
+                prefix is not None
+                and ident in prefix["power_stop_cells"]
+                and r["outcome"] == "environment_rejected"
+            )
+            for ident, r in ledger["records"].items()
         ):
             raise RuntimeError(
                 "Prior correctness/environment/parser failure requires review"
             )
+        ledger["status"] = "incomplete"
         atomic_json(output, ledger)
         ledger.setdefault("run_receipts", []).append(
             {

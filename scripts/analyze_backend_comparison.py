@@ -30,6 +30,12 @@ def analyze(manifest_path: Path, ledger_path: Path) -> dict:
 
     from neural_sat_speck.backend.artifacts import validate_case_inputs, validate_cohort
     from neural_sat_speck.backend.evidence import audit_cell_evidence
+    from neural_sat_speck.backend.reviewed_resume import (
+        load_prefix,
+        provenance,
+        validate_preserved_prefix,
+        validate_review_history,
+    )
 
     manifest = read_checked_json(manifest_path)
     paths = validate_manifest(manifest, ROOT)
@@ -37,15 +43,25 @@ def analyze(manifest_path: Path, ledger_path: Path) -> dict:
     validate_cohort(cohort)
     validate_case_inputs(cohort, paths)
     ledger = read_checked_json(ledger_path)
+    prefix = load_prefix(manifest, ROOT, ledger_path)
+    validate_preserved_prefix(ledger, prefix)
+    validate_review_history(ledger, prefix, sha256_file(manifest_path))
     validate_ledger(ledger, manifest, sha256_file(manifest_path))
     records = ledger["records"]
     if ledger.get("status") != "complete" or len(records) != 160:
         raise ValueError("Final analysis requires the complete 160-cell grid")
     evidence_audits = {}
     for ident, record in records.items():
-        _verify_recovery(record, paths)
+        recorded_manifest, recorded_paths = provenance(ident, manifest, paths, prefix)
+        _verify_recovery(record, recorded_paths)
         evidence_audits[ident] = audit_cell_evidence(
-            record, ledger["starts"][ident], manifest, paths, ledger_path
+            record,
+            ledger["starts"][ident],
+            recorded_manifest,
+            recorded_paths,
+            ledger_path,
+            reviewed_environment_stop=prefix is not None
+            and ident in prefix["power_stop_cells"],
         )
     groups = defaultdict(list)
     blocks = defaultdict(dict)
@@ -114,6 +130,7 @@ def analyze(manifest_path: Path, ledger_path: Path) -> dict:
         "manifest_sha256": sha256_file(manifest_path),
         "ledger_sha256": sha256_file(ledger_path),
         "completed_cells": 160,
+        "resume_reviews": ledger.get("resume_reviews", []),
         "summaries": summaries,
         "paired_descriptive_contrasts": paired,
         "cell_evidence_audits": evidence_audits,
@@ -123,6 +140,7 @@ def analyze(manifest_path: Path, ledger_path: Path) -> dict:
             "Wrapper/native builds and internal defaults may differ",
             "Requested Gauss policy requires raw-log evidence of matrix construction/use",
             "Native pre-exec and process samples do not certify all threads continuously",
+            "Any retained power-stop failure and reviewed source continuation remain part of the evidence",
         ],
     }
 

@@ -423,10 +423,16 @@ def _worker_result(
     cell: dict[str, Any],
     worker_directory: Path,
     verified: set[str],
+    *,
+    reviewed_environment_stop: bool = False,
 ) -> dict[str, Any] | None:
     name = "result.json"
     if name not in verified:
-        if record["outcome"] == "global_deadline":
+        if record["outcome"] == "global_deadline" or (
+            record["outcome"] == "environment_rejected"
+            and reviewed_environment_stop is True
+            and record.get("guardian_receipt", {}).get("status") == "coordinator_stop"
+        ):
             return None
         _fail("non-deadline record lacks a sealed worker result")
     result = _checked_json(worker_directory, name, verified)
@@ -594,6 +600,8 @@ def audit_cell_evidence(
     manifest: dict[str, Any],
     paths: dict[str, Path],
     ledger_path: Path,
+    *,
+    reviewed_environment_stop: bool = False,
 ) -> dict[str, Any]:
     """Audit one final record against its durable start and raw worker files.
 
@@ -605,6 +613,10 @@ def audit_cell_evidence(
     """
     if not all(isinstance(value, dict) for value in (record, start, manifest, paths)):
         _fail("record/start/manifest/paths must be mappings")
+    if type(reviewed_environment_stop) is not bool or (
+        reviewed_environment_stop and record.get("outcome") != "environment_rejected"
+    ):
+        _fail("Invalid reviewed environment-stop audit scope")
     cell = _cell_for(record, manifest)
     invocation = start.get("invocation")
     if (
@@ -646,7 +658,13 @@ def audit_cell_evidence(
     process, guardian, guardian_receipt, _payload = _audit_process_chain(
         record, start, manifest, paths, worker_directory, ledger_path, verified
     )
-    worker_result = _worker_result(record, cell, worker_directory, verified)
+    worker_result = _worker_result(
+        record,
+        cell,
+        worker_directory,
+        verified,
+        reviewed_environment_stop=reviewed_environment_stop,
+    )
     deadline_outcome = record["outcome"] == "global_deadline"
     if worker_result is not None and deadline_outcome:
         # Validate its cell identity, but never let late worker keys or success

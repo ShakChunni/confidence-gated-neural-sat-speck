@@ -357,6 +357,65 @@ def test_interruption_reports_unavailable_time_without_normal_receipts(tmp_path)
     assert audit["solver_evidence"]["model_claimed"] is False
 
 
+@pytest.mark.parametrize(
+    "guardian_status,reviewed",
+    [("coordinator_stop", True), ("coordinator_stop", False), ("worker_exit", True)],
+)
+def test_missing_environment_result_requires_parent_stop_proof(
+    tmp_path, guardian_status, reviewed
+):
+    record, start, manifest, paths, ledger_path = _fixture(
+        tmp_path, profile="cms_wrapper"
+    )
+    directory = Path(record["worker_directory"])
+    (directory / "result.json").unlink()
+    (directory / "result.json.sha256").unlink()
+    receipt = dict(record["guardian_receipt"])
+    receipt.update(
+        status=guardian_status,
+        worker_returncode=-9 if guardian_status == "coordinator_stop" else 0,
+    )
+    atomic_json(directory / "guardian_receipt.json", receipt)
+    record.update(
+        outcome="environment_rejected",
+        verified_known=False,
+        verified_fresh=False,
+        assigned_key_match=False,
+        recovered_key=None,
+        solver_status=None,
+        guardian_receipt=receipt,
+    )
+    coordinator = {
+        k: v
+        for k, v in record.items()
+        if k
+        not in {"raw_artifacts", "pre_dispatch_seconds", "post_dispatch_audit_seconds"}
+    }
+    atomic_json(directory / "coordinator_received.json", coordinator)
+    record["raw_artifacts"] = _seal_raw_artifacts(directory)
+    if guardian_status == "coordinator_stop" and reviewed:
+        audit = audit_cell_evidence(
+            record,
+            start,
+            manifest,
+            paths,
+            ledger_path,
+            reviewed_environment_stop=reviewed,
+        )
+        assert audit["outcome"] == "environment_rejected"
+        assert audit["solver_evidence"]["model_claimed"] is False
+    else:
+        with pytest.raises(ValueError, match="lacks a sealed worker result"):
+            audit_cell_evidence(
+                record,
+                start,
+                manifest,
+                paths,
+                ledger_path,
+                reviewed_environment_stop=reviewed,
+            )
+
+
 def test_coordinator_record_mutation_is_rejected(tmp_path):
     record, start, manifest, paths, ledger_path = _fixture(tmp_path)
     record["recovered_key"] = [1, 2, 3, 5]

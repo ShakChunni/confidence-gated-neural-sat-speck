@@ -1,0 +1,2136 @@
+{
+  "assumption_policy": "unit_clauses_all_profiles",
+  "authorization_decision": "D-045",
+  "cells": [
+    {
+      "case_id": "speck32_64_k0_o4_m1",
+      "cell_id": "speck32_64_k0_o4_m1__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m1",
+      "cell_id": "speck32_64_k0_o4_m1__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m1",
+      "cell_id": "speck32_64_k0_o4_m1__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m1",
+      "cell_id": "speck32_64_k0_o4_m1__cms_native_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m1",
+      "cell_id": "speck32_64_k0_o4_m1__cms_cnf_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m1",
+      "cell_id": "speck32_64_k0_o4_m1__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m2",
+      "cell_id": "speck32_64_k0_o4_m2__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m2",
+      "cell_id": "speck32_64_k0_o4_m2__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m2",
+      "cell_id": "speck32_64_k0_o4_m2__cms_native_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m2",
+      "cell_id": "speck32_64_k0_o4_m2__cms_cnf_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m2",
+      "cell_id": "speck32_64_k0_o4_m2__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m2",
+      "cell_id": "speck32_64_k0_o4_m2__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m0",
+      "cell_id": "speck32_64_k0_o4_m0__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m0",
+      "cell_id": "speck32_64_k0_o4_m0__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m0",
+      "cell_id": "speck32_64_k0_o4_m0__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k0_o4_m0",
+      "cell_id": "speck32_64_k0_o4_m0__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k0_o128_m0",
+      "cell_id": "speck32_64_k0_o128_m0__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 128,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k0_o128_m0",
+      "cell_id": "speck32_64_k0_o128_m0__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 128,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k0_o128_m0",
+      "cell_id": "speck32_64_k0_o128_m0__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 128,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k0_o128_m0",
+      "cell_id": "speck32_64_k0_o128_m0__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 0,
+      "observations": 128,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m1",
+      "cell_id": "simon32_64_k0_o4_m1__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m1",
+      "cell_id": "simon32_64_k0_o4_m1__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m1",
+      "cell_id": "simon32_64_k0_o4_m1__cms_native_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m1",
+      "cell_id": "simon32_64_k0_o4_m1__cms_cnf_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m1",
+      "cell_id": "simon32_64_k0_o4_m1__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m1",
+      "cell_id": "simon32_64_k0_o4_m1__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m2",
+      "cell_id": "simon32_64_k0_o4_m2__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m2",
+      "cell_id": "simon32_64_k0_o4_m2__cms_native_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m2",
+      "cell_id": "simon32_64_k0_o4_m2__cms_cnf_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m2",
+      "cell_id": "simon32_64_k0_o4_m2__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m2",
+      "cell_id": "simon32_64_k0_o4_m2__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m2",
+      "cell_id": "simon32_64_k0_o4_m2__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m0",
+      "cell_id": "simon32_64_k0_o4_m0__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m0",
+      "cell_id": "simon32_64_k0_o4_m0__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m0",
+      "cell_id": "simon32_64_k0_o4_m0__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k0_o4_m0",
+      "cell_id": "simon32_64_k0_o4_m0__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k0_o128_m0",
+      "cell_id": "simon32_64_k0_o128_m0__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 128,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k0_o128_m0",
+      "cell_id": "simon32_64_k0_o128_m0__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 128,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k0_o128_m0",
+      "cell_id": "simon32_64_k0_o128_m0__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 128,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k0_o128_m0",
+      "cell_id": "simon32_64_k0_o128_m0__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 0,
+      "observations": 128,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m1",
+      "cell_id": "speck32_64_k1_o4_m1__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m1",
+      "cell_id": "speck32_64_k1_o4_m1__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m1",
+      "cell_id": "speck32_64_k1_o4_m1__cms_native_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m1",
+      "cell_id": "speck32_64_k1_o4_m1__cms_cnf_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m1",
+      "cell_id": "speck32_64_k1_o4_m1__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m1",
+      "cell_id": "speck32_64_k1_o4_m1__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m2",
+      "cell_id": "speck32_64_k1_o4_m2__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m2",
+      "cell_id": "speck32_64_k1_o4_m2__cms_native_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m2",
+      "cell_id": "speck32_64_k1_o4_m2__cms_cnf_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m2",
+      "cell_id": "speck32_64_k1_o4_m2__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m2",
+      "cell_id": "speck32_64_k1_o4_m2__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m2",
+      "cell_id": "speck32_64_k1_o4_m2__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m0",
+      "cell_id": "speck32_64_k1_o4_m0__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m0",
+      "cell_id": "speck32_64_k1_o4_m0__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m0",
+      "cell_id": "speck32_64_k1_o4_m0__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k1_o4_m0",
+      "cell_id": "speck32_64_k1_o4_m0__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k1_o128_m0",
+      "cell_id": "speck32_64_k1_o128_m0__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 128,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k1_o128_m0",
+      "cell_id": "speck32_64_k1_o128_m0__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 128,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k1_o128_m0",
+      "cell_id": "speck32_64_k1_o128_m0__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 128,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k1_o128_m0",
+      "cell_id": "speck32_64_k1_o128_m0__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 1,
+      "observations": 128,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m1",
+      "cell_id": "simon32_64_k1_o4_m1__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m1",
+      "cell_id": "simon32_64_k1_o4_m1__cms_native_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m1",
+      "cell_id": "simon32_64_k1_o4_m1__cms_cnf_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m1",
+      "cell_id": "simon32_64_k1_o4_m1__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m1",
+      "cell_id": "simon32_64_k1_o4_m1__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m1",
+      "cell_id": "simon32_64_k1_o4_m1__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m2",
+      "cell_id": "simon32_64_k1_o4_m2__cms_native_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m2",
+      "cell_id": "simon32_64_k1_o4_m2__cms_cnf_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m2",
+      "cell_id": "simon32_64_k1_o4_m2__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m2",
+      "cell_id": "simon32_64_k1_o4_m2__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m2",
+      "cell_id": "simon32_64_k1_o4_m2__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m2",
+      "cell_id": "simon32_64_k1_o4_m2__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m0",
+      "cell_id": "simon32_64_k1_o4_m0__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m0",
+      "cell_id": "simon32_64_k1_o4_m0__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m0",
+      "cell_id": "simon32_64_k1_o4_m0__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k1_o4_m0",
+      "cell_id": "simon32_64_k1_o4_m0__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k1_o128_m0",
+      "cell_id": "simon32_64_k1_o128_m0__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 128,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k1_o128_m0",
+      "cell_id": "simon32_64_k1_o128_m0__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 128,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k1_o128_m0",
+      "cell_id": "simon32_64_k1_o128_m0__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 128,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k1_o128_m0",
+      "cell_id": "simon32_64_k1_o128_m0__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 1,
+      "observations": 128,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m1",
+      "cell_id": "speck32_64_k2_o4_m1__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m1",
+      "cell_id": "speck32_64_k2_o4_m1__cms_native_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m1",
+      "cell_id": "speck32_64_k2_o4_m1__cms_cnf_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m1",
+      "cell_id": "speck32_64_k2_o4_m1__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m1",
+      "cell_id": "speck32_64_k2_o4_m1__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m1",
+      "cell_id": "speck32_64_k2_o4_m1__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m2",
+      "cell_id": "speck32_64_k2_o4_m2__cms_native_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m2",
+      "cell_id": "speck32_64_k2_o4_m2__cms_cnf_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m2",
+      "cell_id": "speck32_64_k2_o4_m2__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m2",
+      "cell_id": "speck32_64_k2_o4_m2__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m2",
+      "cell_id": "speck32_64_k2_o4_m2__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m2",
+      "cell_id": "speck32_64_k2_o4_m2__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m0",
+      "cell_id": "speck32_64_k2_o4_m0__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m0",
+      "cell_id": "speck32_64_k2_o4_m0__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m0",
+      "cell_id": "speck32_64_k2_o4_m0__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k2_o4_m0",
+      "cell_id": "speck32_64_k2_o4_m0__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k2_o128_m0",
+      "cell_id": "speck32_64_k2_o128_m0__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 128,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k2_o128_m0",
+      "cell_id": "speck32_64_k2_o128_m0__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 128,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k2_o128_m0",
+      "cell_id": "speck32_64_k2_o128_m0__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 128,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k2_o128_m0",
+      "cell_id": "speck32_64_k2_o128_m0__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 2,
+      "observations": 128,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m1",
+      "cell_id": "simon32_64_k2_o4_m1__cms_native_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m1",
+      "cell_id": "simon32_64_k2_o4_m1__cms_cnf_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m1",
+      "cell_id": "simon32_64_k2_o4_m1__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m1",
+      "cell_id": "simon32_64_k2_o4_m1__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m1",
+      "cell_id": "simon32_64_k2_o4_m1__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m1",
+      "cell_id": "simon32_64_k2_o4_m1__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m2",
+      "cell_id": "simon32_64_k2_o4_m2__cms_cnf_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m2",
+      "cell_id": "simon32_64_k2_o4_m2__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m2",
+      "cell_id": "simon32_64_k2_o4_m2__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m2",
+      "cell_id": "simon32_64_k2_o4_m2__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m2",
+      "cell_id": "simon32_64_k2_o4_m2__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m2",
+      "cell_id": "simon32_64_k2_o4_m2__cms_native_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m0",
+      "cell_id": "simon32_64_k2_o4_m0__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m0",
+      "cell_id": "simon32_64_k2_o4_m0__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m0",
+      "cell_id": "simon32_64_k2_o4_m0__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k2_o4_m0",
+      "cell_id": "simon32_64_k2_o4_m0__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k2_o128_m0",
+      "cell_id": "simon32_64_k2_o128_m0__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 128,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k2_o128_m0",
+      "cell_id": "simon32_64_k2_o128_m0__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 128,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k2_o128_m0",
+      "cell_id": "simon32_64_k2_o128_m0__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 128,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k2_o128_m0",
+      "cell_id": "simon32_64_k2_o128_m0__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 2,
+      "observations": 128,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m1",
+      "cell_id": "speck32_64_k3_o4_m1__cms_native_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m1",
+      "cell_id": "speck32_64_k3_o4_m1__cms_cnf_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m1",
+      "cell_id": "speck32_64_k3_o4_m1__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m1",
+      "cell_id": "speck32_64_k3_o4_m1__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m1",
+      "cell_id": "speck32_64_k3_o4_m1__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m1",
+      "cell_id": "speck32_64_k3_o4_m1__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m2",
+      "cell_id": "speck32_64_k3_o4_m2__cms_cnf_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m2",
+      "cell_id": "speck32_64_k3_o4_m2__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m2",
+      "cell_id": "speck32_64_k3_o4_m2__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m2",
+      "cell_id": "speck32_64_k3_o4_m2__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m2",
+      "cell_id": "speck32_64_k3_o4_m2__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m2",
+      "cell_id": "speck32_64_k3_o4_m2__cms_native_no_gauss",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 7,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m0",
+      "cell_id": "speck32_64_k3_o4_m0__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m0",
+      "cell_id": "speck32_64_k3_o4_m0__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m0",
+      "cell_id": "speck32_64_k3_o4_m0__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k3_o4_m0",
+      "cell_id": "speck32_64_k3_o4_m0__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k3_o128_m0",
+      "cell_id": "speck32_64_k3_o128_m0__cms_native_gauss",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 128,
+      "profile": "cms_native_gauss",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k3_o128_m0",
+      "cell_id": "speck32_64_k3_o128_m0__cadical_cnf",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 128,
+      "profile": "cadical_cnf",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k3_o128_m0",
+      "cell_id": "speck32_64_k3_o128_m0__cms_wrapper",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 128,
+      "profile": "cms_wrapper",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "speck32_64_k3_o128_m0",
+      "cell_id": "speck32_64_k3_o128_m0__cms_native_default",
+      "cipher": "speck32_64",
+      "key_index": 3,
+      "observations": 128,
+      "profile": "cms_native_default",
+      "rounds": 7,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m1",
+      "cell_id": "simon32_64_k3_o4_m1__cms_cnf_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m1",
+      "cell_id": "simon32_64_k3_o4_m1__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m1",
+      "cell_id": "simon32_64_k3_o4_m1__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m1",
+      "cell_id": "simon32_64_k3_o4_m1__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m1",
+      "cell_id": "simon32_64_k3_o4_m1__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m1",
+      "cell_id": "simon32_64_k3_o4_m1__cms_native_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 1
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m2",
+      "cell_id": "simon32_64_k3_o4_m2__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m2",
+      "cell_id": "simon32_64_k3_o4_m2__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m2",
+      "cell_id": "simon32_64_k3_o4_m2__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m2",
+      "cell_id": "simon32_64_k3_o4_m2__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m2",
+      "cell_id": "simon32_64_k3_o4_m2__cms_native_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m2",
+      "cell_id": "simon32_64_k3_o4_m2__cms_cnf_no_gauss",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_cnf_no_gauss",
+      "rounds": 10,
+      "trailing_keys": 2
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m0",
+      "cell_id": "simon32_64_k3_o4_m0__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m0",
+      "cell_id": "simon32_64_k3_o4_m0__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m0",
+      "cell_id": "simon32_64_k3_o4_m0__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k3_o4_m0",
+      "cell_id": "simon32_64_k3_o4_m0__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 4,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k3_o128_m0",
+      "cell_id": "simon32_64_k3_o128_m0__cadical_cnf",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 128,
+      "profile": "cadical_cnf",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k3_o128_m0",
+      "cell_id": "simon32_64_k3_o128_m0__cms_wrapper",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 128,
+      "profile": "cms_wrapper",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k3_o128_m0",
+      "cell_id": "simon32_64_k3_o128_m0__cms_native_default",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 128,
+      "profile": "cms_native_default",
+      "rounds": 10,
+      "trailing_keys": 0
+    },
+    {
+      "case_id": "simon32_64_k3_o128_m0",
+      "cell_id": "simon32_64_k3_o128_m0__cms_native_gauss",
+      "cipher": "simon32_64",
+      "key_index": 3,
+      "observations": 128,
+      "profile": "cms_native_gauss",
+      "rounds": 10,
+      "trailing_keys": 0
+    }
+  ],
+  "cohort_key_count": 8,
+  "deadline_seconds": 300.0,
+  "execution_authorized": true,
+  "files": {
+    "cadical": {
+      "path": "/opt/homebrew/Cellar/cadical/3.0.1/bin/cadical",
+      "sha256": "3f43a01a40ed865a1babc7ac46b80bc0b2ce6ec0d9f129b9d84674eca9c1500a"
+    },
+    "catalog": {
+      "path": "/Users/ashfaq/Dev/comp-sci-project/runtime/backend_study_20261004/formulas/catalog.json",
+      "sha256": "5e3bb5559b9862a10af53554ffa551c8e2132e5d460401095fbceb4915a6428f"
+    },
+    "cms": {
+      "path": "/opt/homebrew/Cellar/cryptominisat/5.14.7/bin/cryptominisat5",
+      "sha256": "a3f85c3709b5e2a040bf82a4a604d1c7b9f10219bbf180a9e0f72319a2e892ac"
+    },
+    "cohort": {
+      "path": "/Users/ashfaq/Dev/comp-sci-project/datasets/demo_cross_cipher_depth_r6_r11/dataset.json",
+      "sha256": "a8bf7ccdf468f49a0ba67cb7cd7454a5912fec7f96c86d9b5f2a0e5878c49dc5"
+    },
+    "library:/opt/homebrew/opt/gmp/lib/libgmp.10.dylib": {
+      "path": "/opt/homebrew/opt/gmp/lib/libgmp.10.dylib",
+      "sha256": "8e5e329ef23a12e39885bbdf417f87654e163078916d904c5909d2224305e0cc"
+    },
+    "library:/opt/homebrew/opt/gmp/lib/libgmpxx.4.dylib": {
+      "path": "/opt/homebrew/opt/gmp/lib/libgmpxx.4.dylib",
+      "sha256": "8cdc977c1033556209e672a3080c00caf69a7ead9bd11c47488b3c5378501627"
+    },
+    "protocol": {
+      "path": "/Users/ashfaq/Dev/comp-sci-project/runtime/backend_execution_snapshot_20261004/docs/CONTROLLED_BACKEND_COMPARISON_PROTOCOL_V2_20261003.md",
+      "sha256": "000d2098365ffac4ce80dad31d5235b107fd0ad566d80faab91d31f78dfeb401"
+    },
+    "pycryptosat": {
+      "path": "/opt/homebrew/lib/python3.14/site-packages/pycryptosat.cpython-314-darwin.so",
+      "sha256": "3a93bc7cede5a69458d033095f677aedf8415dfbcdf478fbe44264f61cfc51bd"
+    },
+    "python": {
+      "path": "/Users/ashfaq/Dev/comp-sci-project/.venv/bin/python",
+      "sha256": "f2bb9677ea7661fcf4703fa704c2049d7b7066dc4a1ffb0cfd1ceceed3b2a79c"
+    },
+    "source:scripts/analyze_backend_comparison.py": {
+      "path": "scripts/analyze_backend_comparison.py",
+      "sha256": "dd049d00fb86da07ec17fe8a025d03ac9f1f1d556059f712af242c343799ae18"
+    },
+    "source:scripts/evaluate_backend_comparison.py": {
+      "path": "scripts/evaluate_backend_comparison.py",
+      "sha256": "bfa6d0b5bfc7a82f8b60b191ea9d6e18d998fc6f031ea4a067b8ba7d7602a9c9"
+    },
+    "source:scripts/generate_demo_depth_dataset.py": {
+      "path": "scripts/generate_demo_depth_dataset.py",
+      "sha256": "f5a1c0fbafa8a1820a89312a4755324a17c438ad24d855eac690e6a0cda56658"
+    },
+    "source:scripts/prepare_backend_comparison.py": {
+      "path": "scripts/prepare_backend_comparison.py",
+      "sha256": "ff749febdd5ad0f48ef9fdefd832fd920ab8b82bcb51d156fd909a038ecb8e04"
+    },
+    "source:src/neural_sat_speck/__init__.py": {
+      "path": "src/neural_sat_speck/__init__.py",
+      "sha256": "6492ae67e16bb8608498e61ccb6428dd0f7f36fde1a2e3e363b85803abd2156b"
+    },
+    "source:src/neural_sat_speck/analysis/__init__.py": {
+      "path": "src/neural_sat_speck/analysis/__init__.py",
+      "sha256": "327a482ee6f080570b9ce7f505f2be843acbac87583437c5a5e5d95c2fda2951"
+    },
+    "source:src/neural_sat_speck/analysis/paired_stats.py": {
+      "path": "src/neural_sat_speck/analysis/paired_stats.py",
+      "sha256": "cb1ac6a5665e58a5a1ebfce8d69dcf0c5fdcaf088a877db0b814988ef2c82075"
+    },
+    "source:src/neural_sat_speck/attacks/__init__.py": {
+      "path": "src/neural_sat_speck/attacks/__init__.py",
+      "sha256": "7d25ea91fa561cf02e4b8653e0a00130d632b4ace6690bbb39203ebb5389e9e4"
+    },
+    "source:src/neural_sat_speck/attacks/cascade.py": {
+      "path": "src/neural_sat_speck/attacks/cascade.py",
+      "sha256": "91e20746f0d98728ad6f4f0f56fbf2b260dff82c649dd3e3ce1ec66ebfe967f6"
+    },
+    "source:src/neural_sat_speck/attacks/classical_ranking.py": {
+      "path": "src/neural_sat_speck/attacks/classical_ranking.py",
+      "sha256": "23ca85d15d836b44bc0a29325c89119162f03b3a0cb7cf050f7ae85c7bd253a4"
+    },
+    "source:src/neural_sat_speck/attacks/diversity_fallback.py": {
+      "path": "src/neural_sat_speck/attacks/diversity_fallback.py",
+      "sha256": "b86079e630de2794408adb11d51a3e98f7863c88e811d7da8561a45c9e64e93d"
+    },
+    "source:src/neural_sat_speck/attacks/group_ranking.py": {
+      "path": "src/neural_sat_speck/attacks/group_ranking.py",
+      "sha256": "ace647405031bacd9934de08dabb8c38a70b833b9d3305d09615a700050d20df"
+    },
+    "source:src/neural_sat_speck/attacks/hierarchical_multi_round.py": {
+      "path": "src/neural_sat_speck/attacks/hierarchical_multi_round.py",
+      "sha256": "c23d3aa710e287f2cbb0fd10a4f8d435dc1affc4d48820575860fc944ec76d1c"
+    },
+    "source:src/neural_sat_speck/attacks/hierarchical_ranking.py": {
+      "path": "src/neural_sat_speck/attacks/hierarchical_ranking.py",
+      "sha256": "f076ca310da2591d491be0089a68c6fdbaa91c77a305467cb6df7b5a10de5538"
+    },
+    "source:src/neural_sat_speck/attacks/multi_round_instance.py": {
+      "path": "src/neural_sat_speck/attacks/multi_round_instance.py",
+      "sha256": "7a58f24d9d8a3223d8bfe286cd60348f0f2441e97f41709dba5ac5bfd797ea82"
+    },
+    "source:src/neural_sat_speck/attacks/multi_round_recovery.py": {
+      "path": "src/neural_sat_speck/attacks/multi_round_recovery.py",
+      "sha256": "0712396e9c762d3c1abfffe45cdc4511ba88ca5bfc9b775bdbdfb4d74bc2445e"
+    },
+    "source:src/neural_sat_speck/attacks/r1.py": {
+      "path": "src/neural_sat_speck/attacks/r1.py",
+      "sha256": "ea623238b4ed2ef74dcadbbee850c6ecf7c0e4131345521907b924e360430b35"
+    },
+    "source:src/neural_sat_speck/attacks/ranking.py": {
+      "path": "src/neural_sat_speck/attacks/ranking.py",
+      "sha256": "cdd866c802e5e220ede1ccb101d82572852915ea36a264af88d82ae8eb387d43"
+    },
+    "source:src/neural_sat_speck/attacks/recovery.py": {
+      "path": "src/neural_sat_speck/attacks/recovery.py",
+      "sha256": "d60861fb161f45c9f0df8001fd1768cac0d222f2a4fab198c682f881d64edf4d"
+    },
+    "source:src/neural_sat_speck/attacks/screened_group_ranking.py": {
+      "path": "src/neural_sat_speck/attacks/screened_group_ranking.py",
+      "sha256": "8a8587841dfc92a715014239c1259377d43c84c5922200c3ea4c1c53db2f92ba"
+    },
+    "source:src/neural_sat_speck/attacks/vtc.py": {
+      "path": "src/neural_sat_speck/attacks/vtc.py",
+      "sha256": "810de3cba77ff6ae1222bd68dcda0927bd1a0ce24c4ce5ffdf5ea8da43d665e2"
+    },
+    "source:src/neural_sat_speck/backend/__init__.py": {
+      "path": "src/neural_sat_speck/backend/__init__.py",
+      "sha256": "e90e7736069164dc36a3dce4926f3d8985a17c047e7f75b6ba18eba620417562"
+    },
+    "source:src/neural_sat_speck/backend/artifacts.py": {
+      "path": "src/neural_sat_speck/backend/artifacts.py",
+      "sha256": "b14ce944cd2ffc78fb24552ad56e4308c1bfd869f236f287af28c9f0f48de02e"
+    },
+    "source:src/neural_sat_speck/backend/environment.py": {
+      "path": "src/neural_sat_speck/backend/environment.py",
+      "sha256": "25f5d9c7a0cf8a07b6f85828d2b65038451238ab919bd294a2fb2d640917d634"
+    },
+    "source:src/neural_sat_speck/backend/evidence.py": {
+      "path": "src/neural_sat_speck/backend/evidence.py",
+      "sha256": "1ce80507323ea3cdce30e0196c5ba8045ccca0ac14d8af02646570f8fed760a5"
+    },
+    "source:src/neural_sat_speck/backend/formula.py": {
+      "path": "src/neural_sat_speck/backend/formula.py",
+      "sha256": "1b5bd357d0c3c28ed1bc26e29706b4573576a424bf8315620bb4914bd908281f"
+    },
+    "source:src/neural_sat_speck/backend/guard.py": {
+      "path": "src/neural_sat_speck/backend/guard.py",
+      "sha256": "8ba7c4f26039195507fb39c726f7462c2521a853e240c0cc818c45e163af266e"
+    },
+    "source:src/neural_sat_speck/backend/native_launcher.py": {
+      "path": "src/neural_sat_speck/backend/native_launcher.py",
+      "sha256": "803188be0bc89aac09afda3f46b08bba502d032276a3c8796087ed9adedac122"
+    },
+    "source:src/neural_sat_speck/backend/reviewed_resume.py": {
+      "path": "src/neural_sat_speck/backend/reviewed_resume.py",
+      "sha256": "ea29be93cd9db6b02fe7034b850b5e76a10a5a78fb88b288ec2bdabe3db6c643"
+    },
+    "source:src/neural_sat_speck/backend/runner.py": {
+      "path": "src/neural_sat_speck/backend/runner.py",
+      "sha256": "3b2d67b8d9deecaaab55899c91903eb5992bb873e8e365566ed693d57ee6fdb4"
+    },
+    "source:src/neural_sat_speck/backend/solver_io.py": {
+      "path": "src/neural_sat_speck/backend/solver_io.py",
+      "sha256": "0fbf09d1ecb0d3d841f1eaba06905f753488c067587a4465ba2a019fd5a8a090"
+    },
+    "source:src/neural_sat_speck/backend/watchdog.py": {
+      "path": "src/neural_sat_speck/backend/watchdog.py",
+      "sha256": "c3dcd51b72c508414750217cbfd4aee9e4cc8a019eea0fdda1b345acff47436c"
+    },
+    "source:src/neural_sat_speck/backend/worker.py": {
+      "path": "src/neural_sat_speck/backend/worker.py",
+      "sha256": "4da1f712b0f99a6b50ef34f7df8ae4d27fcddddc047e6af3e073ffef625e0611"
+    },
+    "source:src/neural_sat_speck/cli.py": {
+      "path": "src/neural_sat_speck/cli.py",
+      "sha256": "90094b5dc4877c490fefc2f3aa2860b97bac4ec6b43a455af066dbbd79cd216c"
+    },
+    "source:src/neural_sat_speck/confidence/__init__.py": {
+      "path": "src/neural_sat_speck/confidence/__init__.py",
+      "sha256": "23f93cfdee144da19c9ec46b6aea3ec8ab0fa6d9555aef94a6785ea96dc27379"
+    },
+    "source:src/neural_sat_speck/confidence/calibration.py": {
+      "path": "src/neural_sat_speck/confidence/calibration.py",
+      "sha256": "22c6b355952ecdd4347a506000fab15f9a8691d05751fd713be9e73fc9d327af"
+    },
+    "source:src/neural_sat_speck/confidence/features.py": {
+      "path": "src/neural_sat_speck/confidence/features.py",
+      "sha256": "a3488e62e1cfb1c09ceb1c0d371a02e543ca1d1bbef1b03b19b44e21b51565b1"
+    },
+    "source:src/neural_sat_speck/confidence/g2_features.py": {
+      "path": "src/neural_sat_speck/confidence/g2_features.py",
+      "sha256": "9328bdb45d55748d596f057fd3c17197a8f9f656d1005ffb9469a099064bc661"
+    },
+    "source:src/neural_sat_speck/confidence/g2_models.py": {
+      "path": "src/neural_sat_speck/confidence/g2_models.py",
+      "sha256": "3e824bc9d4e37efe10081d2bf97e1b58500bcf0a3edcd5a638c80bdf53cad281"
+    },
+    "source:src/neural_sat_speck/confidence/metrics.py": {
+      "path": "src/neural_sat_speck/confidence/metrics.py",
+      "sha256": "8d2d83b40674e981a005391fe0b3a0dc0aaa67b95f93dc1f53f9276a5467cef2"
+    },
+    "source:src/neural_sat_speck/confidence/stability.py": {
+      "path": "src/neural_sat_speck/confidence/stability.py",
+      "sha256": "67534c1bf02fa0c3f61ad2ece6a26d40cc98a31d1a141347d4ae884d2e4ab942"
+    },
+    "source:src/neural_sat_speck/data/__init__.py": {
+      "path": "src/neural_sat_speck/data/__init__.py",
+      "sha256": "fefbcdead601806b41b1ef3ebaa98ec43f2eaeafb4113b7160a65a3902b99371"
+    },
+    "source:src/neural_sat_speck/data/attack.py": {
+      "path": "src/neural_sat_speck/data/attack.py",
+      "sha256": "c37535e1798e17d35037ae66c0fc4da45f4fe902958ca40f8e5e8a8c2ab53e3f"
+    },
+    "source:src/neural_sat_speck/data/export.py": {
+      "path": "src/neural_sat_speck/data/export.py",
+      "sha256": "d002a49c59bc530134052eb85872d2d70cd9731bd4bae5f71db83702592f3590"
+    },
+    "source:src/neural_sat_speck/data/format.py": {
+      "path": "src/neural_sat_speck/data/format.py",
+      "sha256": "d4a4f587b9ef77efbea4a0f97e6dda4c6253aac84b71a428669ce8d9a67b53e6"
+    },
+    "source:src/neural_sat_speck/data/generator.py": {
+      "path": "src/neural_sat_speck/data/generator.py",
+      "sha256": "83f49c09bef53aeb81f0ef9c826cf202f1a68c2fdabe74445902521ca87749b3"
+    },
+    "source:src/neural_sat_speck/data/metadata.py": {
+      "path": "src/neural_sat_speck/data/metadata.py",
+      "sha256": "17ae8382ca28cc6dc929d64b07673d1e0981672add18852bf783880321adff29"
+    },
+    "source:src/neural_sat_speck/data/pair_groups.py": {
+      "path": "src/neural_sat_speck/data/pair_groups.py",
+      "sha256": "8710d63135a7db3191c969ca550dc166870ec1fe0d43a36a7939f3bcfbe91e77"
+    },
+    "source:src/neural_sat_speck/data/phase6a.py": {
+      "path": "src/neural_sat_speck/data/phase6a.py",
+      "sha256": "c7c047bc14a4a6ae50b69abda8a09fcd04b05f6b4e154caf5c1cbb31d3a05524"
+    },
+    "source:src/neural_sat_speck/data/seed_policy.py": {
+      "path": "src/neural_sat_speck/data/seed_policy.py",
+      "sha256": "c8c3f12bdf7e2c12ac9a68654314fa5d68e06caf155cf2c9be39d42850ab226b"
+    },
+    "source:src/neural_sat_speck/evaluation/__init__.py": {
+      "path": "src/neural_sat_speck/evaluation/__init__.py",
+      "sha256": "1acdc72e46760c757378b167861c9d76b0859abe11dbb4c5080faa544ed3823f"
+    },
+    "source:src/neural_sat_speck/evaluation/audit.py": {
+      "path": "src/neural_sat_speck/evaluation/audit.py",
+      "sha256": "89241eac9f5655747cb0a7d1deafc219c04bec640e27368b47c99ea30e25597e"
+    },
+    "source:src/neural_sat_speck/evaluation/metrics.py": {
+      "path": "src/neural_sat_speck/evaluation/metrics.py",
+      "sha256": "c38ead7ca7b05be539eb1144b26b5b15b54592351e705cde6e8da55eaba21292"
+    },
+    "source:src/neural_sat_speck/experiments/depth_map_runner.py": {
+      "path": "src/neural_sat_speck/experiments/depth_map_runner.py",
+      "sha256": "d4510e6d61c4c9fb38920efe909de4baf41506b3637345e8cf225114f6c15762"
+    },
+    "source:src/neural_sat_speck/neural/__init__.py": {
+      "path": "src/neural_sat_speck/neural/__init__.py",
+      "sha256": "42f570b1697a8c8e91877ae56220acd048059f2e150d37aff12a9dbbe7502466"
+    },
+    "source:src/neural_sat_speck/neural/dataset.py": {
+      "path": "src/neural_sat_speck/neural/dataset.py",
+      "sha256": "a3df563c8e696c8dab26432196b3f03c2ca67762d233378fa51046b741929ecb"
+    },
+    "source:src/neural_sat_speck/neural/group_dataset.py": {
+      "path": "src/neural_sat_speck/neural/group_dataset.py",
+      "sha256": "198d4d7abcae47bc9803e513498ce89aa8dff03f1e7b22edeaf6cbf0d3c1fd4d"
+    },
+    "source:src/neural_sat_speck/neural/group_model.py": {
+      "path": "src/neural_sat_speck/neural/group_model.py",
+      "sha256": "1d2227d4b1885d5a39cb3edd92574e258f463ce76b04718e395dea1f2c4e3cb8"
+    },
+    "source:src/neural_sat_speck/neural/group_train.py": {
+      "path": "src/neural_sat_speck/neural/group_train.py",
+      "sha256": "2d8a23767fbbbc5412a73350d23537c46be3bd197988f62ed7776bc4f5de778a"
+    },
+    "source:src/neural_sat_speck/neural/metrics.py": {
+      "path": "src/neural_sat_speck/neural/metrics.py",
+      "sha256": "f47f34dcc854a212989a4739a4e14d539674618e367b9fc998479746196e7ed9"
+    },
+    "source:src/neural_sat_speck/neural/model.py": {
+      "path": "src/neural_sat_speck/neural/model.py",
+      "sha256": "412f52f733b46bfc5682d6a379314392c67013bf05c4f525202ee866ad435b30"
+    },
+    "source:src/neural_sat_speck/neural/numpy_inference.py": {
+      "path": "src/neural_sat_speck/neural/numpy_inference.py",
+      "sha256": "bd21c1055c6fdf3acd73f19d92aa957637b4f57698685620e09a798c2f004629"
+    },
+    "source:src/neural_sat_speck/neural/train.py": {
+      "path": "src/neural_sat_speck/neural/train.py",
+      "sha256": "5eb647ada04ec0a02ded1eb1597defb8d2635082ce67951591b827350e91ea64"
+    },
+    "source:src/neural_sat_speck/protocol/__init__.py": {
+      "path": "src/neural_sat_speck/protocol/__init__.py",
+      "sha256": "ae262f7e3f20dde0a76baf3c2fcfc4c6329a102e6ee362348cbbfc3970b8accf"
+    },
+    "source:src/neural_sat_speck/protocol/manifest_validator.py": {
+      "path": "src/neural_sat_speck/protocol/manifest_validator.py",
+      "sha256": "a357be1a24159db49ef342a6aba4982626ac139c206cf9f34b549fe5f06e590a"
+    },
+    "source:src/neural_sat_speck/protocol/worker_telemetry.py": {
+      "path": "src/neural_sat_speck/protocol/worker_telemetry.py",
+      "sha256": "2aa14646b75a305d4f0047536b34fa811dc9faae474cf3e7e395fb3f938ce11f"
+    },
+    "source:src/neural_sat_speck/sat/__init__.py": {
+      "path": "src/neural_sat_speck/sat/__init__.py",
+      "sha256": "a91a089fdd572f5c42df13a403036d8442472be2530fc71c5f3110e7c61ed8a3"
+    },
+    "source:src/neural_sat_speck/sat/dimacs.py": {
+      "path": "src/neural_sat_speck/sat/dimacs.py",
+      "sha256": "3c54f68921092b5690aba357205a6170c833caf8d4866d776e7d02f282d422b3"
+    },
+    "source:src/neural_sat_speck/sat/encoding.py": {
+      "path": "src/neural_sat_speck/sat/encoding.py",
+      "sha256": "f035a7938ea7e64642410f6d82c25c16032bea378e9b54bd005420d5f6d1c4e5"
+    },
+    "source:src/neural_sat_speck/sat/isolation.py": {
+      "path": "src/neural_sat_speck/sat/isolation.py",
+      "sha256": "15cd556f68befacbc4e4065a8e8ced4927a37efb97a3ee196295436d4c529aac"
+    },
+    "source:src/neural_sat_speck/sat/model.py": {
+      "path": "src/neural_sat_speck/sat/model.py",
+      "sha256": "f9678b143e8f05d0dcec869b733f01d775a0af46a73d3a587129db3feca6ba79"
+    },
+    "source:src/neural_sat_speck/sat/multi_round.py": {
+      "path": "src/neural_sat_speck/sat/multi_round.py",
+      "sha256": "8085fdd5b8770772566417695dd67e8f225c168a927a1d6bb02297dfd2742b25"
+    },
+    "source:src/neural_sat_speck/sat/native_sensitivity.py": {
+      "path": "src/neural_sat_speck/sat/native_sensitivity.py",
+      "sha256": "9d37f6491a6e82b951a6010ef32b0c493c6f53dc769db563c2ddfddd77b1c96d"
+    },
+    "source:src/neural_sat_speck/sat/pure_cnf.py": {
+      "path": "src/neural_sat_speck/sat/pure_cnf.py",
+      "sha256": "23edb4ea95a9532fe45c56fd6f3842e05b5345398d217e48badef67b4a2ab14d"
+    },
+    "source:src/neural_sat_speck/sat/xor_to_cnf.py": {
+      "path": "src/neural_sat_speck/sat/xor_to_cnf.py",
+      "sha256": "b4e6b863802ddb5f136bd390cfc46f0f90cbd864078f7f0c734e331676d27d4d"
+    },
+    "source:src/neural_sat_speck/simon/__init__.py": {
+      "path": "src/neural_sat_speck/simon/__init__.py",
+      "sha256": "7085f09848ba84bdd142961584f2323e234f70bccf8771113db96b116e6d39d7"
+    },
+    "source:src/neural_sat_speck/simon/attack_instance.py": {
+      "path": "src/neural_sat_speck/simon/attack_instance.py",
+      "sha256": "c8255ca4b4beb900684b3b239e231a2d8474718a8baae3511467f44337adb632"
+    },
+    "source:src/neural_sat_speck/simon/b1_data.py": {
+      "path": "src/neural_sat_speck/simon/b1_data.py",
+      "sha256": "ef306707bcc84e81ed6e4606120570f8b53145bf24882f37e28561e1f44fed7e"
+    },
+    "source:src/neural_sat_speck/simon/b1_training_runner.py": {
+      "path": "src/neural_sat_speck/simon/b1_training_runner.py",
+      "sha256": "1c2d09ed7faa7b3b55cade816e2e9afc08af882f7e06c207a2f2aeb91b65a1e3"
+    },
+    "source:src/neural_sat_speck/simon/cipher.py": {
+      "path": "src/neural_sat_speck/simon/cipher.py",
+      "sha256": "7a1552852a9c4d844fb69bf38146f2bd593d8ae0e7f4ab803be40b853a86655d"
+    },
+    "source:src/neural_sat_speck/simon/classical_ranking.py": {
+      "path": "src/neural_sat_speck/simon/classical_ranking.py",
+      "sha256": "34b90409a8e4e5c8b7d9a10b881b7d50aade213d5309316141596dad020e0aa8"
+    },
+    "source:src/neural_sat_speck/simon/comparison_input.py": {
+      "path": "src/neural_sat_speck/simon/comparison_input.py",
+      "sha256": "04875288a05edf939e93125cac9392defb68d113a18153bc434dcc8e89550885"
+    },
+    "source:src/neural_sat_speck/simon/confirmation_guard.py": {
+      "path": "src/neural_sat_speck/simon/confirmation_guard.py",
+      "sha256": "f72c7b9bb9731e02d7df6a44a3178345df4b09a180f23426c57c24612d0ff829"
+    },
+    "source:src/neural_sat_speck/simon/confirmation_profile.py": {
+      "path": "src/neural_sat_speck/simon/confirmation_profile.py",
+      "sha256": "044b9405e3ba5561838a78ca1dcdb909ea3d62c7805cfb9b8c95e776ac3b26e1"
+    },
+    "source:src/neural_sat_speck/simon/faithful_b1_model.py": {
+      "path": "src/neural_sat_speck/simon/faithful_b1_model.py",
+      "sha256": "7bd89d931860189aff2fa90020c260928bbd1ae6255b46fd01e02be1511f76ca"
+    },
+    "source:src/neural_sat_speck/simon/key_schedule.py": {
+      "path": "src/neural_sat_speck/simon/key_schedule.py",
+      "sha256": "508e87e1d3254a221d972b16803c94737f49b7bbe8d353dd63a6d3142a5c8b02"
+    },
+    "source:src/neural_sat_speck/simon/method_worker.py": {
+      "path": "src/neural_sat_speck/simon/method_worker.py",
+      "sha256": "9688b95a1cb3f38907ee305b1441783662ecb57a6264f05528a2e6ede1b8100a"
+    },
+    "source:src/neural_sat_speck/simon/partial.py": {
+      "path": "src/neural_sat_speck/simon/partial.py",
+      "sha256": "416d9185ca4f1aa8245e3589eb249d926639494576fb4fb5f9f93a15f6905da0"
+    },
+    "source:src/neural_sat_speck/simon/predicted_ddt.py": {
+      "path": "src/neural_sat_speck/simon/predicted_ddt.py",
+      "sha256": "d7c353ada6cf2961f7ec23641b5d56f5b07f29a5ff38d12a1213b20596792173"
+    },
+    "source:src/neural_sat_speck/simon/primitives.py": {
+      "path": "src/neural_sat_speck/simon/primitives.py",
+      "sha256": "f36472cec27fe67492ca920d038e891f4406a1b7e8b378eaf3fd2e70ea984cb9"
+    },
+    "source:src/neural_sat_speck/simon/published_vv.py": {
+      "path": "src/neural_sat_speck/simon/published_vv.py",
+      "sha256": "b7d3c3df8112e333ca0c50a7812d097a7ce1c65a6836cead8d9397acfabb616e"
+    },
+    "source:src/neural_sat_speck/simon/published_vv_ranking.py": {
+      "path": "src/neural_sat_speck/simon/published_vv_ranking.py",
+      "sha256": "9f9ee1128504948e39b052795d6d3cfe87fa8fee06d1a61826fcc5e0a9cce383"
+    },
+    "source:src/neural_sat_speck/simon/ranking_features.py": {
+      "path": "src/neural_sat_speck/simon/ranking_features.py",
+      "sha256": "bc6d82662c6df5de0cafd858b71580180010c7c76e02dafb77a2127fefee8998"
+    },
+    "source:src/neural_sat_speck/simon/sat_model.py": {
+      "path": "src/neural_sat_speck/simon/sat_model.py",
+      "sha256": "b4b677c4f6414e9e0e635b293e1c83990ba782e54f996879b337b8b0cb0195cd"
+    },
+    "source:src/neural_sat_speck/simon/verification.py": {
+      "path": "src/neural_sat_speck/simon/verification.py",
+      "sha256": "2f34d7f6cc945f4720be10f42c61a3df253b145419fd271ebed52a3f17fab0e6"
+    },
+    "source:src/neural_sat_speck/speck/__init__.py": {
+      "path": "src/neural_sat_speck/speck/__init__.py",
+      "sha256": "3c17df706cf03b098ff98686885bb16c4b48c4d2eeb8436d8b396e3526726c37"
+    },
+    "source:src/neural_sat_speck/speck/cipher.py": {
+      "path": "src/neural_sat_speck/speck/cipher.py",
+      "sha256": "99d594e00d5149d967a027b786a3afebeb5b377f05744d73e59913aba50e7f43"
+    },
+    "source:src/neural_sat_speck/speck/key_schedule.py": {
+      "path": "src/neural_sat_speck/speck/key_schedule.py",
+      "sha256": "fcb3a847f514af3a06721463d03ba75f2c4b75fd575b77dcb9720d7e766ab8d9"
+    },
+    "source:src/neural_sat_speck/speck/partial.py": {
+      "path": "src/neural_sat_speck/speck/partial.py",
+      "sha256": "0aa8693f835b8f27521d3e3e215e647fb871b7d46dfc0f36c6d7f2d3009be562"
+    },
+    "source:src/neural_sat_speck/speck/primitives.py": {
+      "path": "src/neural_sat_speck/speck/primitives.py",
+      "sha256": "ebec8a113cc27c94df1e2db7f60ab50767964c55cbd7de5e5a2dc3a13df95cd6"
+    },
+    "venv_config": {
+      "path": "/Users/ashfaq/Dev/comp-sci-project/.venv/pyvenv.cfg",
+      "sha256": "43d01f508d05635d484ad965e60626946a038078c5748577626fb4b7769d47bd"
+    }
+  },
+  "fresh_block_count": 2,
+  "interruption_policy": "retain_started_without_retry",
+  "key_count": 4,
+  "launch_approval_source": "Author restored AC and explicitly requested resume on 2026-10-04",
+  "launch_blockers": [],
+  "max_cell_starts": 160,
+  "native_policy_review_passed": true,
+  "pair_count": 64,
+  "python_version": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.3.34.2)]",
+  "qualification": {
+    "path": "/Users/ashfaq/Dev/comp-sci-project/runtime/backend_study_20261004/qualification_01/qualification.json",
+    "scope": "public_constant_fixtures_preexec_calling_thread_and_raw_receipts",
+    "sha256": "6f5d8112cb702f936e557bbe555a58dd8d7c436dbaac6e4619fe30b99ee72f6e"
+  },
+  "repetitions": 1,
+  "reviewed_power_resume": {
+    "decision": "D-045",
+    "output_path": "/Users/ashfaq/Dev/comp-sci-project/results/backend_comparison/backend_comparison_20261004.json",
+    "power_stop_cells": [
+      "simon32_64_k1_o128_m0__cms_wrapper"
+    ],
+    "prior_authorization": {
+      "path": "/Users/ashfaq/Dev/comp-sci-project/docs/BACKEND_LAUNCH_AUTHORIZATION_20261004.json",
+      "sha256": "ad7fbaf85e756d7cab7e1dc8e8e02ba2a1b7c29f293fac3647f765199019bfee"
+    },
+    "prior_manifest": {
+      "path": "/Users/ashfaq/Dev/comp-sci-project/configs/protocol/backend_comparison_approved_20261004.json",
+      "sha256": "6c5d067c28ecc09b8990b6f66a263c11bf52bd9de9908ebfc2754efd3252a92d"
+    },
+    "prior_source_root": "/Users/ashfaq/Dev/comp-sci-project/runtime/backend_execution_snapshot_20261004",
+    "schema": "backend_ac_resume_v1",
+    "status": "AUTHOR_APPROVED",
+    "stopped_ledger": {
+      "path": "/Users/ashfaq/Dev/comp-sci-project/results/backend_comparison/backend_stopped_ac_20261004_075744.json",
+      "sha256": "83b44e56959f4ffb676faa4bf8e75ffe75d61b315fc461fb46499eca48325f5c"
+    }
+  },
+  "role": "opened_demo_diagnostic",
+  "runtime_versions": {
+    "cadical": "3.0.1",
+    "cms": "5.14.7",
+    "pycryptosat": "5.14.7"
+  },
+  "schema": "backend_demo_v1",
+  "seed": 999999,
+  "source_commit_at_preparation": "03f70bb3a70150702eeddb958839415d09638449",
+  "source_isolation": "git_worktree",
+  "status": "APPROVED",
+  "thread_environment": {
+    "MKL_NUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "VECLIB_MAXIMUM_THREADS": "1"
+  },
+  "threads": 1,
+  "tools": {
+    "cadical": {
+      "--help": {
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "usage: cadical [ <option> ... ] [ <input> [ <proof> ] ]\n\nwhere '<option>' is one of the following common options:\n\n  -h             print alternatively only a list of common options\n  --help         print this complete list of all options\n  --version      print version\n\n  -n             do not print witness (same as '--no-witness')\n  -v             increase verbosity (see also '--verbose' below)\n  -q             be quiet (same as '--quiet')\n  -t <sec>       set wall clock time limit\n\nOr '<option>' is one of the less common options\n\n  -L<rounds>     run local search initially (default '0' rounds)\n  -O<level>      increase limits by '2^<level>' or '10^<level>'\n  -P<rounds>     initial preprocessing (default '0' rounds)\n\nNote there is no separating space for the options above while the\nfollowing options require a space after the option name:\n\n  -c <limit>     limit the number of conflicts (default unlimited)\n  -d <limit>     limit the number of decisions (default unlimited)\n\n  -o <output>    write simplified CNF in DIMACS format to file\n  -e <extend>    write reconstruction/extension stack to file\n\n  --force | -f   parsing broken DIMACS header and writing proofs\n  --strict       strict parsing (no white space in header)\n\n  -r <sol>       read solution in competition output format\n                 to check consistency of learned clauses\n                 during testing and debugging\n\n  -w <sol>       write result including a potential witness\n                 solution in competition format to the given file\n\n  --colors       force colored output\n  --no-colors    disable colored output to terminal\n  --no-witness   do not print witness (see also '-n' above)\n\n  --build        print build configuration\n  --copyright    print copyright information\n\nThere are pre-defined configurations of advanced internal options:\n\n  --default      set default advanced internal options\n  --plain        disable all internal preprocessing options\n  --sat          set internal options to target satisfiable instances\n  --unsat        set internal options to target unsatisfiable instances\n\nOr '<option>' is one of the following advanced internal options:\n\n  --arena=bool               allocate clauses in arena [true]\n  --arenacompact=bool        keep clauses compact [true]\n  --arenasort=bool           sort clauses in arena [true]\n  --arenatype=1..3           1=clause, 2=var, 3=queue [3]\n  --backbone=0..2            binary clause backbone [1]\n  --backboneeffort=0..1e5    binary effort in per mile [20]\n  --backbonemaxrounds=0..1e5 backbone rounds limit [1e3]\n  --backbonerounds=0..1e5    backbone rounds limit [100]\n  --backbonethresh=0..1e9    delay if ticks smaller thresh*clauses [5]\n  --binary=bool              use binary proof format [true]\n  --block=bool               blocked clause elimination [false]\n  --blockmaxclslim=1..2e9    maximum clause size [1e5]\n  --blockminclslim=2..2e9    minimum clause size [2]\n  --blockocclim=1..2e9       occurrence limit [1e2]\n  --bump=bool                bump variables [true]\n  --bumpreason=bool          bump reason literals too [true]\n  --bumpreasondepth=1..3     bump reason depth [1]\n  --bumpreasonlimit=1..2e9   bump reason limit [10]\n  --bumpreasonrate=1..2e9    bump reason decision rate [100]\n  --check=bool               enable internal checking [false]\n  --checkassumptions=bool    check assumptions satisfied [true]\n  --checkconstraint=bool     check constraint satisfied [true]\n  --checkfailed=bool         check failed literals form core [true]\n  --checkfrozen=bool         check all frozen semantics [false]\n  --checkproof=0..3          1=drat, 2=lrat, 3=both [3]\n  --checkwitness=bool        check witness internally [true]\n  --chrono=0..2              chronological backtracking [1]\n  --chronoalways=bool        force always chronological [false]\n  --chronolevelim=0..2e9     chronological level limit [1e2]\n  --chronoreusetrail=bool    reuse trail chronologically [true]\n  --compact=bool             compact internal variables [true]\n  --compactint=1..2e9        compacting interval [2e3]\n  --compactlim=0..1e3        inactive limit per mille [1e2]\n  --compactmin=1..2e9        minimum inactive limit [1e2]\n  --condition=bool           globally blocked clause elim [false]\n  --conditioneffort=1..1e5   relative efficiency per mille [100]\n  --conditionint=1..2e9      initial conflict interval [1e4]\n  --conditionmaxeff=0..2e9   maximum condition efficiency [1e7]\n  --conditionmaxrat=1..2e9   maximum clause variable ratio [100]\n  --conditionmineff=0..2e9   minimum condition efficiency [0]\n  --congruence=bool          congruence closure [true]\n  --congruenceand=bool       extract AND gates [true]\n  --congruenceandarity=2..5e7 AND gate arity limit [1e6]\n  --congruencebinaries=bool  extract binary and strengthen ternary clauses [true]\n  --congruenceite=bool       extract ITE gates [true]\n  --congruencexor=bool       extract XOR gates [true]\n  --congruencexorarity=2..31 XOR gate arity limit [4]\n  --congruencexorcounts=1..5e6 XOR gate round [1]\n  --cover=bool               covered clause elimination [false]\n  --covereffort=1..1e5       relative efficiency per mille [4]\n  --covermaxclslim=1..2e9    maximum clause size [1e5]\n  --covermaxeff=0..2e9       maximum cover efficiency [1e8]\n  --coverminclslim=2..2e9    minimum clause size [2]\n  --covermineff=0..2e9       minimum cover efficiency [0]\n  --decompose=bool           decompose BIG in SCCs and ELS [true]\n  --decomposerounds=1..16    number of decompose rounds [2]\n  --deduplicate=bool         remove duplicated binaries [true]\n  --deduplicateallinit=bool  remove duplicated clauses once before solving [false]\n  --eagersubsume=bool        subsume recently learned [true]\n  --eagersubsumelim=1..1e3   limit on subsumed candidates [20]\n  --elevate=-1..3            elevate during clause addition [2]\n  --elim=bool                bounded variable elimination [true]\n  --elimands=bool            find AND gates [true]\n  --elimbackward=bool        eager backward subsumption [true]\n  --elimboundmax=-1..2e6     maximum elimination bound [16]\n  --elimboundmin=-1..2e6     minimum elimination bound [0]\n  --elimclslim=2..2e9        resolvent size limit [1e2]\n  --elimdef=bool             mine definitions with kitten [false]\n  --elimdefcores=1..100      number of unsat cores [1]\n  --elimdefticks=0..2e9      kitten ticks limit [2e5]\n  --elimeffort=1..1e5        relative efficiency per mille [1e3]\n  --elimequivs=bool          find equivalence gates [true]\n  --elimint=1..2e9           elimination interval [2e3]\n  --elimites=bool            find if-then-else gates [true]\n  --elimlimited=bool         limit resolutions [true]\n  --elimmaxeff=0..2e9        maximum elimination efficiency [2e9]\n  --elimmineff=0..2e9        minimum elimination efficiency [1e7]\n  --elimocclim=0..2e9        occurrence limit [1e2]\n  --elimprod=0..1e4          elim score product weight [1]\n  --elimrounds=1..512        usual number of rounds [2]\n  --elimsubst=bool           elimination by substitution [true]\n  --elimsum=0..1e4           elimination score sum weight [1]\n  --elimxorlim=2..27         maximum XOR size [5]\n  --elimxors=bool            find XOR gates [true]\n  --emadecisions=1..2e9      window decision rate [1e5]\n  --emagluefast=1..2e9       window fast glue [33]\n  --emaglueslow=1..2e9       window slow glue [1e5]\n  --emajump=1..2e9           window back-jump level [1e5]\n  --emalevel=1..2e9          window back-track level [1e5]\n  --emasize=1..2e9           window learned clause size [1e5]\n  --ematrailfast=1..2e9      window fast trail [1e2]\n  --ematrailslow=1..2e9      window slow trail [1e5]\n  --exteagerreasons=bool     eagerly ask for all reasons (0: only when needed) [false]\n  --exteagerrecalc=bool      after eagerly asking for reasons recalculate all levels (0: trust the external tool) [true]\n  --exttracecalls=bool       trace propagator call-backs when tracing API calls [false]\n  --factor=bool              bounded variable addition [false]\n  --factorcandrounds=0..2e9  candidates reduction rounds [2]\n  --factorcheck=0..2         API checks that variables have been declared (1 = only with factor on, 2 = always) [1]\n  --factordelay=0..12        delay bounded variable addition between eliminations [4]\n  --factoreffort=0..1e6      relative effort per mille [50]\n  --factoriniticks=1..1e6    initial effort in millions [300]\n  --factorsize=2..2e9        clause size limit [5]\n  --factorthresh=0..100      delay if ticks smaller thresh*clauses [7]\n  --factorunbump=bool        extension variable with lowest importance [1: as in kissat] [true]\n  --fastelim=bool            fast BVE during preprocessing [true]\n  --fastelimbound=1..1e3     fast BVE bound during preprocessing [8]\n  --fastelimclslim=2..2e9    fast BVE resolvent size limit [1e2]\n  --fastelimocclim=1..2e9    fast BVE occurence limit during preprocessing [100]\n  --fastelimrounds=1..512    number of fastelim rounds [4]\n  --flush=bool               flush redundant clauses [false]\n  --flushfactor=1..1e3       interval increase [3]\n  --flushint=1..2e9          initial limit [1e5]\n  --forcephase=bool          always use initial phase [false]\n  --frat=0..2                1=frat(lrat), 2=frat(drat) [0]\n  --idrup=bool               incremental proof format [false]\n  --ilb=0..2                 ILB (incremental lazy backtrack) (0: no, 1: assumptions only, 2: everything) [0]\n  --incdecay=0..4            decay clauses when doing incremental clauses [1]\n  --incdecayint=1..2e9       decay interval when doing incremental clauses [1e6]\n  --inprobeint=1..2e9        inprobing interval [100]\n  --inprobing=bool           enable probe inprocessing [true]\n  --inprocessing=bool        enable general inprocessing [true]\n  --instantiate=bool         variable instantiation [false]\n  --instantiateclslim=2..2e9 minimum clause size [3]\n  --instantiateocclim=1..2e9 maximum occurrence limit [1]\n  --instantiateonce=bool     instantiate each clause once [true]\n  --lidrup=bool              linear incremental proof format [false]\n  --lrat=bool                use LRAT proof format [false]\n  --lucky=bool               lucky phases [true]\n  --luckyassumptions=bool    lucky phases with assumptions [true]\n  --luckyearly=bool          lucky phases before preprocessing [true]\n  --luckylate=bool           lucky phases after preprocessing [true]\n  --minimize=bool            minimize learned clauses [true]\n  --minimizedepth=0..1e3     minimization depth [1e3]\n  --minimizeticks=bool       increment ticks in minimization [true]\n  --otfs=bool                on-the-fly self subsumption [true]\n  --phase=bool               initial phase [true]\n  --preprocessinit=0..2e9    initial preprocessing base limit [2e6]\n  --preprocesslight=bool     lightweight preprocessing [false]\n  --probe=bool               failed literal probing [true]\n  --probeeffort=1..1e5       relative efficiency per mille [8]\n  --probehbr=bool            learn hyper binary clauses [true]\n  --probethresh=0..100       delay if ticks smaller thresh*clauses [0]\n  --profile=0..4             profiling level [2]\n  --quiet=bool               disable all messages [false]\n  --radixsortlim=0..2e9      radix sort limit [32]\n  --randec=bool              random decisions [false]\n  --randecfocused=bool       random decisions in focused mode [true]\n  --randecinit=2..2e9        inital random decision interval [1e3]\n  --randecint=0..2e9         random conflict length [500]\n  --randeclength=1..1e9      length random decisions phases [10]\n  --randecstable=bool        random decisions in stable mode [false]\n  --realtime=bool            real instead of process time [false]\n  --recomputetier=bool       recompute tiers [true]\n  --reduce=bool              reduce useless clauses [true]\n  --reduceinit=1..1e6        initial interval [300]\n  --reduceint=2..1e6         reduce interval [25]\n  --reduceopt=0..2           0=prct,1=sqrt,2=max [1]\n  --reducetarget=10..1e2     reduce fraction in percent [75]\n  --reducetier1glue=1..2e9   glue of kept learned clauses [2]\n  --reducetier2glue=1..2e9   glue of tier two clauses [6]\n  --reluctant=bool           stable reluctant doubling restarts [true]\n  --reluctantint=0..2e9      reluctant doubling period [1024]\n  --reluctantmax=0..2e9      maximum reluctant doubling period [1048576]\n  --rephase=0..2             enable resetting phase (0=no,1=always,2=stable-only) [1]\n  --rephaseint=1..2e9        rephase interval [1e3]\n  --report=bool              enable reporting [false]\n  --reportall=bool           report even if not successful [false]\n  --reportsolve=bool         use solving not process time [false]\n  --restart=bool             enable restarts [true]\n  --restartint=1..2e9        restart interval [2]\n  --restartmarginfocused=0..25 focused slow fast margin in percent [10]\n  --restartmarginstable=0..25 stable slow fast margin in percent [25]\n  --restartreusetrail=bool   enable trail reuse [true]\n  --restoreall=0..2          restore all clauses (2=really) [0]\n  --restoreflush=bool        remove satisfied clauses [false]\n  --reverse=bool             reverse variable ordering [false]\n  --score=bool               use EVSIDS scores [true]\n  --scorefactor=500..1e3     score factor per mille [950]\n  --seed=0..2e9              random seed [0]\n  --shrink=0..3              shrink conflict clause (1=binary-only,2=minimize-on-pulling,3=full) [3]\n  --shrinkreap=bool          use a reap for shrinking [true]\n  --shuffle=bool             shuffle variables [false]\n  --shufflequeue=bool        shuffle variable queue [true]\n  --shufflerandom=bool       not reverse but random [false]\n  --shufflescores=bool       shuffle variable scores [true]\n  --stabilize=bool           enable stabilizing phases [true]\n  --stabilizeinit=1..2e9     stabilizing interval [1e3]\n  --stabilizeonly=bool       only stabilizing phases [false]\n  --stats=bool               print all statistics at the end of the run [false]\n  --stubbornIOfocused=bool   force phases to I/O in focused mode every once in a while (requires rephase==2) [false]\n  --subsume=bool             enable clause subsumption [true]\n  --subsumebinlim=0..2e9     watch list length limit [1e4]\n  --subsumeclslim=0..2e9     clause length limit [1e2]\n  --subsumeeffort=1..1e5     relative efficiency per mille [1e3]\n  --subsumelimited=bool      limit subsumption checks [true]\n  --subsumemaxeff=0..2e9     maximum subsuming efficiency [1e8]\n  --subsumemineff=0..2e9     minimum subsuming efficiency [0]\n  --subsumeocclim=0..2e9     watch list length limit [1e2]\n  --subsumestr=bool          subsume strengthen [true]\n  --sweep=bool               enable SAT sweeping [true]\n  --sweepclauses=0..2e9      environment clauses [1024]\n  --sweepcomplete=bool       run SAT sweeping to completion [false]\n  --sweepcountbinary=bool    count binaries to environment [true]\n  --sweepdepth=0..2e9        environment depth [2]\n  --sweepeffort=0..1e4       relative effort in ticks per mille [1e2]\n  --sweepfliprounds=0..2e9   flipping rounds [1]\n  --sweepmaxclauses=2..2e9   maximum environment clauses [3e5]\n  --sweepmaxdepth=1..2e9     maximum environment depth [3]\n  --sweepmaxvars=2..2e9      maximum environment variables [8192]\n  --sweeprand=bool           randomize sweeping environment [false]\n  --sweepthresh=0..100       delay if ticks smaller thresh*clauses [5]\n  --sweepvars=0..2e9         environment variables [256]\n  --target=0..2              target phases (1=stable only) [1]\n  --terminateint=0..1e4      termination check interval [10]\n  --ternary=bool             hyper ternary resolution [true]\n  --ternaryeffort=1..1e5     relative efficiency per mille [8]\n  --ternarymaxadd=0..1e4     max clauses added in percent [1e3]\n  --ternaryocclim=1..2e9     ternary occurrence limit [1e2]\n  --ternaryrounds=1..16      maximum ternary rounds [2]\n  --ternarythresh=0..100     delay if ticks smaller thresh*clauses [6]\n  --tier1limit=0..100        limit of tier1 usage in percentage [50]\n  --tier1minglue=0..100      lowest tier1 limit [0]\n  --tier2limit=0..100        limit of tier2 usage in percentage [90]\n  --tier2minglue=0..100      lowest tier2 limit [0]\n  --transred=bool            transitive reduction of BIG [true]\n  --transredeffort=1..1e5    relative efficiency per mille [1e2]\n  --transredmaxeff=0..2e9    maximum efficiency [1e8]\n  --transredmineff=0..2e9    minimum efficiency [0]\n  --verbose=0..3             more verbose messages [0]\n  --veripb=0..4              odd=check-deletions, >2 drat [0]\n  --vivify=bool              vivification [true]\n  --vivifycalctier=bool      recalculate tier limits [false]\n  --vivifydemote=bool        demote irredundant or delete directly [false]\n  --vivifyeffort=0..1e5      overall efficiency per mille [50]\n  --vivifyflush=bool         flush subsumed before vivification rounds [true]\n  --vivifyinst=bool          instantiate last literal when vivify [true]\n  --vivifyirred=bool         vivification of irredundant clauses [true]\n  --vivifyirredeff=1..100    irredundant efficiency per mille [3]\n  --vivifyonce=0..2          vivify once: 1=red, 2=red+irr [0]\n  --vivifyretry=0..5         re-vivify clause if vivify was successful [0]\n  --vivifyschedmax=10..2e9   maximum schedule size [5e3]\n  --vivifythresh=0..100      delay if ticks smaller thresh*clauses [20]\n  --vivifytier1=bool         vivification tier1 [true]\n  --vivifytier1eff=0..100    relative tier1 effort [4]\n  --vivifytier2=bool         vivification tier2 [true]\n  --vivifytier2eff=1..100    relative tier2 effort [2]\n  --vivifytier3=bool         vivification tier3 [true]\n  --vivifytier3eff=1..100    relative tier3 effort [1]\n  --walk=bool                enable random walks [true]\n  --walkeffort=1..1e5        relative efficiency per mille [80]\n  --walkfullocc=bool         use Kissat's full occurrences instead of the single watched [false]\n  --walkmaxeff=0..2e9        maximum efficiency (in 1e3 ticks) [1e7]\n  --walkmineff=0..1e7        minimum efficiency [0]\n  --walknonstable=bool       walk in non-stabilizing phase [true]\n  --walkredundant=bool       walk redundant clauses too [false]\n  --warmup=bool              warmup before walk using propagation [true]\n\nThe internal options have their default value printed in brackets\nafter their description.  They can also be used in the form\n'--<name>' which is equivalent to '--<name>=1' and in the form\n'--no-<name>' which is equivalent to '--<name>=0'.  One can also\nuse 'true' instead of '1', 'false' instead of '0', as well as\nnumbers with positive exponent such as '1e3' instead of '1000'.\n\nAlternatively option values can also be specified in the header\nof the DIMACS file, e.g., 'c --elim=false', or through environment\nvariables, such as 'CADICAL_ELIM=false'.  The embedded options in\nthe DIMACS file have highest priority, followed by command line\noptions and then values specified through environment variables.\n\nThe input is read from '<input>' assumed to be in DIMACS format.\nIncremental 'p inccnf' files are supported too with cubes at the end.\nIf '<proof>' is given then a DRAT proof is written to that file.\n\nIf '<input>' is missing then the solver reads from '<stdin>',\nalso if '-' is used as input path name '<input>'.  Similarly,\n\nFor incremental files each cube is solved in turn. The solver\nstops at the first satisfied cube if there is one and uses that\none for the witness to print.  Conflict and decision limits are\napplied to each individual cube solving call while '-P', '-L' and\n'-t' remain global.  Only if all cubes were unsatisfiable the solver\nprints the standard unsatisfiable solution line ('s UNSATISFIABLE').\n\nBy default the proof is stored in the binary DRAT format unless\nthe option '--no-binary' is specified or the proof is written\nto '<stdout>' and '<stdout>' is connected to a terminal.\n\nThe input is assumed to be compressed if it is given explicitly\nand has a '.gz', '.bz2', '.xz' or '.7z' suffix.  The same applies\nto the output file.  In order to use compression and decompression\nthe corresponding utilities 'gzip', 'bzip', 'xz', and '7z' (depending\non the format) are required and need to be installed on the system.\nThe solver checks file type signatures though and falls back to\nnon-compressed file reading if the signature does not match.\n"
+      },
+      "--version": {
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "3.0.1\n"
+      },
+      "linked_libraries_raw": "/opt/homebrew/Cellar/cadical/3.0.1/bin/cadical:\n\t/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2200.27.0)\n\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1359.0.0)\n"
+    },
+    "cms": {
+      "--help": {
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Usage: cryptominisat [--help] [--version] [--verb VAR] [--maxtime VAR] [--maxconfl VAR] [--random VAR] [--threads VAR] [--mult VAR] [--nextm VAR] [--memoutmult VAR] [--maxsol VAR] [--polar VAR] [--scc VAR] [--restart VAR] [--rstfirst VAR] [--gluehist VAR] [--lwrbndblkrest VAR] [--locgmult VAR] [--ratiogluegeom VAR] [--blockingglue VAR] [--gluecut0 VAR] [--gluecut1 VAR] [--adjustglue VAR] [--everylev1 VAR] [--everylev2 VAR] [--lev1usewithin VAR] [--branchstr VAR] [--nobansol] [--debuglib VAR] [--breakid VAR] [--breakideveryn VAR] [--breakidmaxlits VAR] [--breakidmaxcls VAR] [--breakidmaxvars VAR] [--breakidtime VAR] [--breakidcls VAR] [--breakidmatrix VAR] [--sls VAR] [--slstype VAR] [--slsmaxmem VAR] [--slseveryn VAR] [--yalsatmems VAR] [--walksatruns VAR] [--slsgetphase VAR] [--slsccnraspire VAR] [--slstobump VAR] [--slstobumpmaxpervar VAR] [--slsbumptype VAR] [--transred VAR] [--intree VAR] [--intreemaxm VAR] [--otfhyper VAR] [--schedsimp VAR] [--presimp VAR] [--allpresimp VAR] [--nonstop VAR] [--maxnumsimppersolve VAR] [--schedule VAR] [--preschedule VAR] [--occsimp VAR] [--confbtwsimp VAR] [--confbtwsimpinc VAR] [--tern VAR] [--terntimelim VAR] [--ternkeep VAR] [--terncreate VAR] [--ternbincreate VAR] [--occredmax VAR] [--occredmaxmb VAR] [--occirredmaxmb VAR] [--strengthen VAR] [--weakentimelim VAR] [--substimelim VAR] [--substimelimbinratio VAR] [--substimelimlongratio VAR] [--strstimelim VAR] [--sublonggothrough VAR] [--bva VAR] [--bvaeveryn VAR] [--bvalim VAR] [--bva2lit VAR] [--bvato VAR] [--varelim VAR] [--varelimto VAR] [--varelimover VAR] [--emptyelim VAR] [--varelimmaxmb VAR] [--eratio VAR] [--varelimcheckres VAR] [--xor VAR] [--maxxorsize VAR] [--xorfindtout VAR] [--maxxormat VAR] [--gates VAR] [--printgatedot VAR] [--gatefindto VAR] [--recur VAR] [--moreminim VAR] [--moremoreminim VAR] [--moremorealways VAR] [--decbased VAR] [--updateglueonanalysis VAR] [--maxgluehistltlimited VAR] [--diffdeclevelchrono VAR] [--verbstat VAR] [--verbrestart VAR] [--verballrestarts VAR] [--printsol VAR] [--restartprint VAR] [--distill VAR] [--distillbin VAR] [--distillmaxm VAR] [--distillincconf VAR] [--distillminconf VAR] [--distilltier0ratio VAR] [--distilltier1ratio VAR] [--distillirredalsoremratio VAR] [--distillirrednoremratio VAR] [--distillshuffleeveryn VAR] [--distillsort VAR] [--renumber VAR] [--mustconsolidate VAR] [--savemem VAR] [--mustrenumber VAR] [--fullwatchconseveryn VAR] [--strmaxt VAR] [--implicitmanip VAR] [--implsubsto VAR] [--implstrto VAR] [--cardfind VAR] [--sync VAR] [--clearinter VAR] [--zero-exit-status] [--printtimes VAR] [--maxsccdepth VAR] [--sampling VAR] [--assump VAR] [--maxmatrixrows VAR] [--maxmatrixcols VAR] [--autodisablegauss VAR] [--minmatrixrows VAR] [--maxnummatrices VAR] [--gaussusefulcutoff VAR] [--dumpresult VAR] files\n\nPositional arguments:\n  files                       input file and FRAT output [nargs: 0 or more] \n\nOptional arguments:\n  -h, --help                  shows help message and exits \n  -v, --version               Print version information \n  --verb                      [0-10] Verbosity of solver. 0 = only solution [nargs=0..1] [default: 1]\n  --maxtime                   Stop solving after this much time (s) \n  --maxconfl                  Stop solving after this many conflicts \n  -r, --random                [0..] Random seed [nargs=0..1] [default: 0]\n  -t, --threads               Number of threads [nargs=0..1] [default: 1]\n  -m, --mult                  Time multiplier for all simplification cutoffs [nargs=0..1] [default: 3]\n  --nextm                     Global multiplier when the next inprocessing should take place [nargs=0..1] [default: 1]\n  --memoutmult                Multiplier for memory-out checks on inprocessing functions. It limits things such as clause-link-in. Useful when you have limited memory but still want to do some inprocessing [nargs=0..1] [default: 1]\n  --maxsol                    Search for given amount of solutions. Thanks to Jannis Harder for the decision-based banning idea [nargs=0..1] [default: 1]\n  --polar                     {true,false,rnd,auto,stable} Selects polarity mode. 'true' -> selects only positive polarity when branching. 'false' -> selects only negative polarity when branching. 'auto' -> selects last polarity used (also called 'caching') [nargs=0..1] [default: \"auto\"]\n  --scc                       Find equivalent literals through SCC and replace them [nargs=0..1] [default: 1]\n  --restart                   {geom, glue, luby}  Restart strategy to follow. [nargs=0..1] [default: \"auto\"]\n  --rstfirst                  The size of the base restart [nargs=0..1] [default: 100]\n  --gluehist                  The size of the moving window for short-term glue history of redundant clauses. If higher, the minimal number of conflicts between restarts is longer [nargs=0..1] [default: 50]\n  --lwrbndblkrest             Lower bound on blocking restart -- don't block before this many conflicts [nargs=0..1] [default: 10000]\n  --locgmult                  The multiplier used to determine if we should restart during glue-based restart [nargs=0..1] [default: 0.8]\n  --ratiogluegeom             Ratio of glue vs geometric restarts -- more is more glue [nargs=0..1] [default: 5]\n  --blockingglue              Do blocking restart for glues [nargs=0..1] [default: 1]\n  --gluecut0                  Glue value for lev 0 ('keep') cut [nargs=0..1] [default: 3]\n  --gluecut1                  Glue value for lev 1 cut ('give another shot') [nargs=0..1] [default: 6]\n  --adjustglue                If more than this % of clauses is LOW glue (level 0) then lower the glue cutoff by 1 -- once and never again [nargs=0..1] [default: 0.7]\n  --everylev1                 Reduce lev1 clauses every N [nargs=0..1] [default: 10000]\n  --everylev2                 Reduce lev2 clauses every N [nargs=0..1] [default: 15000]\n  --lev1usewithin             Learnt clause must be used in lev1 within this timeframe or be dropped to lev2 [nargs=0..1] [default: 70000]\n  --branchstr                 Branch strategy string that switches between different branch strategies while solving e.g. 'vsids1+vsids2' [nargs=0..1] [default: \"vmtf+vsids\"]\n  --nobansol                  Don't ban the solution once it's found \n  --debuglib                  Parse special comments to run solve/simplify during parsing of CNF \n  --breakid                   Run BreakID to break symmetries. [nargs=0..1] [default: false]\n  --breakideveryn             Run BreakID every N simplification iterations [nargs=0..1] [default: 5]\n  --breakidmaxlits            Maximum number of literals in thousands. If exceeded, BreakID will not run [nargs=0..1] [default: 3500]\n  --breakidmaxcls             Maximum number of clauses in thousands. If exceeded, BreakID will not run [nargs=0..1] [default: 600]\n  --breakidmaxvars            Maximum number of variables in thousands. If exceeded, BreakID will not run [nargs=0..1] [default: 300]\n  --breakidtime               Maximum number of steps taken during automorphism finding. [nargs=0..1] [default: 2000]\n  --breakidcls                Maximum number of breaking clauses per permutation. [nargs=0..1] [default: 50]\n  --breakidmatrix             Detect matrix row interchangability [nargs=0..1] [default: true]\n  --sls                       Run SLS during simplification [nargs=0..1] [default: 1]\n  --slstype                   Which SLS to run. Allowed values: walksat, yalsat, ccnr, ccnr_yalsat [nargs=0..1] [default: \"ccnr\"]\n  --slsmaxmem                 Maximum number of MB to give to SLS solver. Doesn't run SLS solver if the memory usage would be more than this. [nargs=0..1] [default: 500]\n  --slseveryn                 Run SLS solver every N simplifications only [nargs=0..1] [default: 2]\n  --yalsatmems                Run Yalsat with this many mems*million timeout. Limits time of yalsat run [nargs=0..1] [default: 10]\n  --walksatruns               Max 'runs' for WalkSAT. Limits time of WalkSAT run [nargs=0..1] [default: 50]\n  --slsgetphase               Get phase from SLS solver, set as new phase for CDCL [nargs=0..1] [default: 1]\n  --slsccnraspire             Turn aspiration on/off for CCNR [nargs=0..1] [default: 1]\n  --slstobump                 How many variables to bump in CCNR [nargs=0..1] [default: 100]\n  --slstobumpmaxpervar        How many times to bump an individual variable's activity in CCNR [nargs=0..1] [default: 100]\n  --slsbumptype               How to calculate what variable to bump. 1 = clause-based, 2 = var-flip-based, 3 = var-score-based [nargs=0..1] [default: 6]\n  --transred                  Remove useless binary clauses (transitive reduction) [nargs=0..1] [default: 1]\n  --intree                    Carry out intree-based probing [nargs=0..1] [default: 1]\n  --intreemaxm                Time in mega-bogoprops to perform intree probing [nargs=0..1] [default: 400]\n  --otfhyper                  Perform hyper-binary resolution during probing [nargs=0..1] [default: 1]\n  --schedsimp                 Perform simplification rounds. If 0, we never perform any. [nargs=0..1] [default: 1]\n  --presimp                   Perform simplification at the very start [nargs=0..1] [default: 0]\n  --allpresimp                Perform simplification at EVERY start -- only matters in library mode [nargs=0..1] [default: 0]\n  -n, --nonstop               Never stop the search() process in class SATSolver [nargs=0..1] [default: 0]\n  --maxnumsimppersolve        Maximum number of simplifications to perform for every solve() call. After this, no more inprocessing will take place. [nargs=0..1] [default: 25]\n  --schedule                  Schedule for simplification during run \n  --preschedule               Schedule for simplification at startup \n  --occsimp                   Perform occurrence-list-based optimisations (variable elimination, subsumption, bounded variable addition...) [nargs=0..1] [default: 1]\n  --confbtwsimp               Start first simplification after this many conflicts [nargs=0..1] [default: 40000]\n  --confbtwsimpinc            Simp rounds increment by this power of N [nargs=0..1] [default: 1.4]\n  --tern                      Perform Ternary resolution [nargs=0..1] [default: true]\n  --terntimelim               Time-out in bogoprops M of ternary resolution as per paper 'Look-Ahead Versus Look-Back for Satisfiability Problems' [nargs=0..1] [default: 100]\n  --ternkeep                  Keep ternary resolution clauses only if they are touched within this multiple of 'lev1usewithin' [nargs=0..1] [default: 5]\n  --terncreate                Create only this multiple (of linked in cls) ternary resolution clauses per simp run [nargs=0..1] [default: 0.3]\n  --ternbincreate             Allow ternary resolving to generate binary clauses [nargs=0..1] [default: 0]\n  --occredmax                 Don't add to occur list any redundant clause larger than this [nargs=0..1] [default: 50]\n  --occredmaxmb               Don't allow redundant occur size to be beyond this many MB [nargs=0..1] [default: 600]\n  --occirredmaxmb             Don't allow irredundant occur size to be beyond this many MB [nargs=0..1] [default: 2500]\n  --strengthen                Perform clause contraction through self-subsuming resolution as part of the occurrence-subsumption system [nargs=0..1] [default: 1]\n  --weakentimelim             Time-out in bogoprops M of weakening used [nargs=0..1] [default: 300]\n  --substimelim               Time-out in bogoprops M of subsumption of long clauses with long clauses, after computing occur [nargs=0..1] [default: 300]\n  --substimelimbinratio       Ratio of subsumption time limit to spend on sub&str long clauses with bin [nargs=0..1] [default: 0.1]\n  --substimelimlongratio      Ratio of subsumption time limit to spend on sub long clauses with long [nargs=0..1] [default: 0.9]\n  --strstimelim               Time-out in bogoprops M of strengthening of long clauses with long clauses, after computing occur [nargs=0..1] [default: 300]\n  --sublonggothrough          How many times go through subsume [nargs=0..1] [default: 1]\n  --bva                       Perform bounded variable addition [nargs=0..1] [default: 0]\n  --bvaeveryn                 Perform BVA only every N occ-simplify calls [nargs=0..1] [default: 7]\n  --bvalim                    Maximum number of variables to add by BVA per call [nargs=0..1] [default: 250000]\n  --bva2lit                   BVA with 2-lit difference hack, too. Beware, this reduces the effectiveness of 1-lit diff [nargs=0..1] [default: 1]\n  --bvato                     BVA time limit in bogoprops M [nargs=0..1] [default: 50]\n  --varelim                   Perform variable elimination as per Een and Biere [nargs=0..1] [default: 1]\n  --varelimto                 Var elimination bogoprops M time limit [nargs=0..1] [default: 750]\n  --varelimover               Do BVE until the resulting no. of clause increase is less than X. Only power of 2 makes sense, i.e. 2,4,8... [nargs=0..1] [default: 16]\n  --emptyelim                 Perform empty resolvent elimination using bit-map trick [nargs=0..1] [default: 1]\n  --varelimmaxmb              Maximum extra MB of memory to use for new clauses during varelim [nargs=0..1] [default: 1000]\n  --eratio                    Eliminate this ratio of free variables at most per variable elimination iteration [nargs=0..1] [default: 1.6]\n  --varelimcheckres           BVE should check whether resolvents subsume others and check for exact size increase [nargs=0..1] [default: 0]\n  --xor                       Discover long XORs [nargs=0..1] [default: 1]\n  --maxxorsize                Maximum XOR size to find [nargs=0..1] [default: 7]\n  --xorfindtout               Time limit for finding XORs [nargs=0..1] [default: 400]\n  --maxxormat                 Maximum matrix size (=num elements) that we should try to echelonize [nargs=0..1] [default: 400]\n  --gates                     Find gates. [nargs=0..1] [default: 0]\n  --printgatedot              Print gate structure regularly to file 'gatesX.dot' [nargs=0..1] [default: 0]\n  --gatefindto                Max time in bogoprops M to find gates [nargs=0..1] [default: 200]\n  --recur                     Perform recursive minimisation [nargs=0..1] [default: 1]\n  --moreminim                 Perform strong minimisation at conflict gen. [nargs=0..1] [default: 1]\n  --moremoreminim             Perform even stronger minimisation at conflict gen. [nargs=0..1] [default: 2]\n  --moremorealways            Always strong-minimise clause [nargs=0..1] [default: 0]\n  --decbased                  Create decision-based conflict clauses when the UIP clause is too large [nargs=0..1] [default: 1]\n  --updateglueonanalysis      Update glues while analyzing [nargs=0..1] [default: 1]\n  --maxgluehistltlimited      Maximum glue used by glue-based restart strategy when populating glue history. [nargs=0..1] [default: 50]\n  --diffdeclevelchrono        Difference in decision level is more than this, perform chronological backtracking instead of non-chronological backtracking. Giving -1 means it is never turned on (overrides '--confltochrono -1' in this case). [nargs=0..1] [default: 20]\n  --verbstat                  Change verbosity of statistics at the end of the solving [0..3] [nargs=0..1] [default: 2]\n  --verbrestart               Print more thorough, but different stats [nargs=0..1] [default: 0]\n  --verballrestarts           Print a line for every restart [nargs=0..1] [default: 0]\n  -s, --printsol              Print assignment if solution is SAT [nargs=0..1] [default: 1]\n  --restartprint              Print restart status lines at least every N conflicts [nargs=0..1] [default: 8192]\n  --distill                   Regularly execute clause distillation [nargs=0..1] [default: 1]\n  --distillbin                Regularly execute binary clause distillation [nargs=0..1] [default: 1]\n  --distillmaxm               Maximum number of Mega-bogoprops(~time) to spend on vivifying/distilling long cls by enqueueing and propagating [nargs=0..1] [default: 200]\n  --distillincconf            Multiplier for current number of conflicts OTF distill [nargs=0..1] [default: 0.1]\n  --distillminconf            Minimum number of conflicts between OTF distill [nargs=0..1] [default: 10000]\n  --distilltier0ratio         How much of tier 0 to distill [nargs=0..1] [default: 10]\n  --distilltier1ratio         How much of tier 1 to distill [nargs=0..1] [default: 0.03]\n  --distillirredalsoremratio  How much of irred to distill when doing also removal [nargs=0..1] [default: 1.2]\n  --distillirrednoremratio    How much of irred to distill when doing no removal [nargs=0..1] [default: 1]\n  --distillshuffleeveryn      Shuffle to-be-distilled clauses every N cases randomly [nargs=0..1] [default: 3]\n  --distillsort               Distill sorting type [nargs=0..1] [default: 1]\n  --renumber                  Renumber variables to increase CPU cache efficiency [nargs=0..1] [default: 1]\n  --mustconsolidate           Always consolidate, even if not useful. This is used for debugging ONLY [nargs=0..1] [default: 0]\n  --savemem                   Save memory by deallocating variable space after renumbering. Only works if renumbering is active. [nargs=0..1] [default: 1]\n  --mustrenumber              Treat all 'renumber' strategies as 'must-renumber' [nargs=0..1] [default: 0]\n  --fullwatchconseveryn       Consolidate watchlists fully once every N conflicts. Scheduled during simplification rounds. [nargs=0..1] [default: 4000000]\n  --strmaxt                   Maximum MBP to spend on distilling long irred cls through watches [nargs=0..1] [default: 20]\n  --implicitmanip             Subsume and strengthen implicit clauses with each other [nargs=0..1] [default: 1]\n  --implsubsto                Timeout (in bogoprop Millions) of implicit subsumption [nargs=0..1] [default: 100]\n  --implstrto                 Timeout (in bogoprop Millions) of implicit strengthening [nargs=0..1] [default: 200]\n  --cardfind                  Find cardinality constraints [nargs=0..1] [default: 0]\n  --sync                      Sync threads every N conflicts [nargs=0..1] [default: 7000]\n  --clearinter                Interrupt threads cleanly, all the time [nargs=0..1] [default: 0]\n  --zero-exit-status          Exit with status zero in case the solving has finished without an issue \n  --printtimes                Print time it took for each simplification run. If set to 0, logs are easier to compare [nargs=0..1] [default: 1]\n  --maxsccdepth               The maximum for scc search depth [nargs=0..1] [default: 10000]\n  --sampling                  Set sampling vars such as '1,84,44'. Can also be set via CNF using 'c p show 1 84 44 0' \n  --assump                    Assumptions file [nargs=0..1] [default: \"\"]\n  --maxmatrixrows             Set maximum no. of rows for gaussian matrix. Too large matrices should be discarded for reasons of efficiency [nargs=0..1] [default: 2000]\n  --maxmatrixcols             Set maximum no. of columns for gaussian matrix. Too large matrices should be discarded for reasons of efficiency [nargs=0..1] [default: 1000]\n  --autodisablegauss          Automatically disable gauss when performing badly [nargs=0..1] [default: true]\n  --minmatrixrows             Set minimum no. of rows for gaussian matrix. Normally, too small matrices are discarded for reasons of efficiency [nargs=0..1] [default: 3]\n  --maxnummatrices            Maximum number of matrices to treat. [nargs=0..1] [default: 5]\n  --gaussusefulcutoff         Turn off Gauss if less than this many usefulness ratio is recorded [nargs=0..1] [default: 0.2]\n  --dumpresult                Write solution(s) to this file \n"
+      },
+      "--version": {
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "c CMS SHA1: GIT-notfound\nc CryptoMiniSat version 5.14.7\nc CMS compilation env CMAKE_CXX_COMPILER = clang++ | CMAKE_CXX_FLAGS =  -fno-stack-protector -msse4.2 -Wno-bitfield-constant-conversion -Wlogical-op -Wrestrict -Wnull-dereference -Wdouble-promotion -Wshadow -Wformat=2 -Wextra-semi -pedantic | COMPILE_DEFINES =  -DNDEBUG -D_FORTIFY_SOURCE=0 -DUSE_ZLIB | BUILD_SHARED_LIBS = ON | ONLY_SIMPLE =  | STATS = OFF | SQLITE3_FOUND =  | ZLIB_FOUND = TRUE | VALGRIND_FOUND =  | ENABLE_TESTING = OFF | SLOW_DEBUG = OFF | ENABLE_ASSERTIONS = OFF | PYTHON_EXECUTABLE =  | PYTHON_LIBRARY =  | PYTHON_INCLUDE_DIRS =  | MY_TARGETS =  | LARGEMEM = OFF | LIMITMEM = OFF | BREAKID_LIBRARIES =  | BREAKID-VER = . | c c Using VMTF, picosat, CaDiCaL, and CadiBack code by Armin Biere\nc CMS is MIT licensed\nc Using code from 'When Boolean Satisfiability Meets Gauss-E. in a Simplex Way'\nc       by C.-S. Han and J.-H. Roland Jiang in CAV 2012. Fixes by M. Soos\nc Using CCAnr from 'CCAnr: A Conf. Checking Based Local Search Solver [...]'\nc       by Shaowei Cai, Chuan Luo, and Kaile Su, SAT 2015\nc Using Oracle code from 'Integrating Tree Decompositions [...]'\nc       by Tuukka Korhonen and Matti Jarvisalo, CP 2021\n"
+      },
+      "linked_libraries_raw": "/opt/homebrew/Cellar/cryptominisat/5.14.7/bin/cryptominisat5:\n\t@rpath/libcryptominisat5.5.14.dylib (compatibility version 5.14.0, current version 5.14.0)\n\t/usr/lib/libz.1.dylib (compatibility version 1.0.0, current version 1.2.12)\n\t/opt/homebrew/opt/gmp/lib/libgmpxx.4.dylib (compatibility version 12.0.0, current version 12.0.0)\n\t/opt/homebrew/opt/gmp/lib/libgmp.10.dylib (compatibility version 16.0.0, current version 16.0.0)\n\t/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2100.43.0)\n\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)\n"
+    }
+  },
+  "worst_case_cutoff_seconds": 48000.0
+}
