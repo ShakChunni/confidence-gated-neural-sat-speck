@@ -21,3 +21,8 @@ checkpoints/
 models/
 results/
 *.pt
+
+# Local portable evidence and final publication deliveries; code/catalogs tracked.
+output/reproducibility_20261004/
+output/writing_handoff_20261004/
+output/publication_figures_20261004/

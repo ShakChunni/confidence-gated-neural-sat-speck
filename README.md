@@ -23,6 +23,7 @@ reduced-round scientific study, not a claim to break deployed full-round SPECK.
 | Matched screening and controlled solver audits | Screening retained the recorded top-32 ordering in `4/4` true-prefix cases with mean paired speedup `30.60x`; revised native matrix settings solved `2/3` opened diagnostics within 60 s versus `0/3` for each default treatment | `ENGINEERING/DIAGNOSTIC`: useful controls, not prospective recovery claims or universal causal conclusions. |
 | SIMON R10 replacement confirmation, 64 keys (D-041) | Classical `53/64`; Bao hybrid `49/64`; Bao fully neural `26/64`; B1-style hybrid, random controls and SAT-only `0/64`; true-tuple diagnostic `54/64` | Fixed-method comparison closed with [documented provenance limits](docs/SIMON_CONFIRMATION_REPLACEMENT_CLOSURE_20261003.md). All 182 recoveries independently checked. Classical versus hybrid recovery difference is inconclusive (`p=0.34375`); B1 stopped during ranking in all 64 cells. |
 | Cross-cipher depth map, eight opened demo keys per cipher (D-043) | `151/192` verified recoveries, `41/192` parent timeouts | [Reviewed closure](docs/CROSS_CIPHER_DEPTH_CLOSURE_20261004.md) preserves raw results and corrects unavailable timeout metrics. Equal nominal depth does not summarize observed recovery; source/runtime/chronology limits prevent universal or causal claims. |
+| Controlled backend diagnostic, four opened keys per cipher (D-044/D-045) | `80` recoveries, `79` deadlines and `1` infrastructure interruption across `160` assigned cells. With one true trailing key, explicit matrix profile `4/4` on both ciphers versus matched zero-matrix `2/4` SPECK and `0/4` SIMON; all profiles `4/4` with two true keys | [Reviewed closure](docs/BACKEND_COMPARISON_CLOSURE_20261004.md). The interrupted unguided control is `0/3` completed trials with one unavailable; conditioned comparisons are unaffected. All recoveries, 66 saved native models and 64 formula witnesses independently checked. No universal backend/structure claim. |
 
 Every reported recovered master key must pass independent fresh-pair verification. Neural models order final-round subkey candidates; they neither prove a candidate nor directly recover the full 64-bit key.
 
@@ -40,6 +41,16 @@ Start with:
 - [`docs/PUBLICATION_EXPERIMENT_DESIGN.md`](docs/PUBLICATION_EXPERIMENT_DESIGN.md) for the proposed—not authorized—experiment design;
 - [`docs/EXPANSION_LITERATURE_2026.md`](docs/EXPANSION_LITERATURE_2026.md) for the primary-source claim boundary;
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) and [`docs/EXPERIMENT_LOG.md`](docs/EXPERIMENT_LOG.md) for the audit trail.
+
+## Writing and artifact handoff (2026-10-04)
+
+The author owns manuscript writing in a separate project. Use the
+[writing prompt and evidence packet](docs/writing_handoff_20261004/00_WRITING_PROMPT.md),
+the [current release review](docs/PUBLICATION_PREPARATION_RELEASE_20261004.md),
+[final PDF/PNG figures, CSVs and plotting code](docs/FINAL_FIGURES_AND_CSV_TASK_20261004.md).
+The [portable evidence guide](docs/PORTABLE_EVIDENCE_REPRODUCTION_20261004.md)
+documents checked local formula regeneration and its limits. Historical
+publication-planning paragraphs below do not supersede this current status.
 
 ## Implemented system
 

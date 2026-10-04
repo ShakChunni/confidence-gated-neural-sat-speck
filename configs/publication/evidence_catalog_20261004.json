@@ -1,0 +1,290 @@
+{
+  "cohort": "datasets/demo_cross_cipher_depth_r6_r11/dataset.json",
+  "excluded": [
+    "unopened Phase12 data",
+    "model checkpoints",
+    "training arrays",
+    "third-party solver binaries",
+    "credentials",
+    "report.tex",
+    "full per-worker execution archives"
+  ],
+  "files": [
+    {
+      "bytes": 5651938,
+      "path": "results/phase11_prospective/seven_round_prospective_results.json",
+      "role": "FROZEN_PROSPECTIVE",
+      "sha256": "b8d06d276d18a5d50df96cbe5d599c830fa6c46c2a35083dc35265a6772ff606",
+      "study": "speck"
+    },
+    {
+      "bytes": 127921,
+      "path": "results/phase11_prospective/seven_round_prospective_analysis.json",
+      "role": "FROZEN_PROSPECTIVE",
+      "sha256": "bd51138aab74aae5f2b3cc196716b2ed1c2ac79d71e57ec742897bc3fd0f2fbf",
+      "study": "speck"
+    },
+    {
+      "bytes": 2763642,
+      "path": "datasets/phase11_prospective/prospective_evaluation.json",
+      "role": "FROZEN_PROSPECTIVE",
+      "sha256": "4c21a1d463d08672b9e28ec25aa97706872e890a0cf5dd92d2155a833f6a5219",
+      "study": "speck"
+    },
+    {
+      "bytes": 20920,
+      "path": "docs/seven_round_protocol_manifest.json",
+      "role": "FROZEN_PROSPECTIVE",
+      "sha256": "e9735e0dc237f18916de6cd7dea2e9f427bc031e2ae85b12b86aefd59476513a",
+      "study": "speck"
+    },
+    {
+      "bytes": 31992142,
+      "path": "results/simon_confirmation_replacement/simon_confirmation_comparators.json",
+      "role": "FIXED_METHOD_UNSEEN_WITH_LIMITATIONS",
+      "sha256": "8cc9da7fbdf5207d94e0b108452819244a9dd4aee3dd28de14419af05e397b61",
+      "study": "simon"
+    },
+    {
+      "bytes": 134653,
+      "path": "results/simon_confirmation_replacement/simon_confirmation_analysis.json",
+      "role": "FIXED_METHOD_UNSEEN_WITH_LIMITATIONS",
+      "sha256": "2ccbae6c0bdcbfb9110bd21c29c45b758424914b45d7de3c58c787d950b315cb",
+      "study": "simon"
+    },
+    {
+      "bytes": 1213947,
+      "path": "datasets/simon_confirmation_replacement_r10_64pairs/attack_instances.json",
+      "role": "FIXED_METHOD_UNSEEN_WITH_LIMITATIONS",
+      "sha256": "095ca0dc8356f79232019670f3555b9f00c1fc6c4e1203f397f7dfc437a89cc9",
+      "study": "simon"
+    },
+    {
+      "bytes": 35017,
+      "path": "docs/SIMON_UNSEEN_CONFIRMATION_REPLACEMENT_MANIFEST_FROZEN.json",
+      "role": "FIXED_METHOD_UNSEEN_WITH_LIMITATIONS",
+      "sha256": "b1c6824a08c15194e8bd8f819d7fba062b2371443ac72483206daf76d522abfa",
+      "study": "simon"
+    },
+    {
+      "bytes": 5463,
+      "path": "docs/SIMON_CONFIRMATION_REPLACEMENT_INDEPENDENT_VALIDATION_20261003.json",
+      "role": "FIXED_METHOD_UNSEEN_WITH_LIMITATIONS",
+      "sha256": "306e2988952686add9b9eba19ee3979d4a96abdf1de21e69bdffc6d2997e9aff",
+      "study": "simon"
+    },
+    {
+      "bytes": 9843,
+      "path": "docs/SIMON_CONFIRMATION_REPLACEMENT_CLOSURE_20261003.md",
+      "role": "FIXED_METHOD_UNSEEN_WITH_LIMITATIONS",
+      "sha256": "f426fc4fe9f5b3379dbd4d27cd8b8a633de9ab0bf675f8d664f1da21ee89798d",
+      "study": "simon"
+    },
+    {
+      "bytes": 253338,
+      "path": "results/phase11_scaling_diagnostics/cross_cipher_residual_depth_map.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "bf5b05d89a7b03095298b4ad964d220178f37d584a3f3c166551a39e5b3810a2",
+      "study": "depth"
+    },
+    {
+      "bytes": 34901,
+      "path": "results/phase11_scaling_diagnostics/cross_cipher_residual_depth_analysis_reviewed_v2.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "cfceb5a96c72ea8082c73e4909c0fa1b473146bd2760d44a2a24da033c6ae3bb",
+      "study": "depth"
+    },
+    {
+      "bytes": 925904,
+      "path": "datasets/demo_cross_cipher_depth_r6_r11/dataset.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "a8bf7ccdf468f49a0ba67cb7cd7454a5912fec7f96c86d9b5f2a0e5878c49dc5",
+      "study": "depth"
+    },
+    {
+      "bytes": 8556,
+      "path": "docs/CROSS_CIPHER_RESIDUAL_DEPTH_PROTOCOL_20261003.md",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "b6b41de46c712514ee504d9ca7f9a8d67d18e9a2da3f9a583d9b8493e950e172",
+      "study": "depth"
+    },
+    {
+      "bytes": 6434,
+      "path": "docs/CROSS_CIPHER_DEPTH_CLOSURE_20261004.md",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "637377ad25691cdf613dd0d73ab79f7a58aaf7c4e35435640b5fbbf35c13b54b",
+      "study": "depth"
+    },
+    {
+      "bytes": 20060,
+      "path": "docs/CROSS_CIPHER_DEPTH_VALIDATION_20261004.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "31c8de98c2c42f38d618e87c9bb3b4a2e436b1223947a52330fb46eefdab04a7",
+      "study": "depth"
+    },
+    {
+      "bytes": 1271713,
+      "path": "results/backend_comparison/backend_comparison_20261004.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "30552bcfdc7a10e505c14ebc5a946cd9325cdd715f8e5af027e3596010d118aa",
+      "study": "backend"
+    },
+    {
+      "bytes": 274776,
+      "path": "results/backend_comparison/backend_analysis_20261004.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "a7eb470e1e4af396129ac8ac49154bbb48c1762a3c42b9781023df2a2faa0b94",
+      "study": "backend"
+    },
+    {
+      "bytes": 640521,
+      "path": "results/backend_comparison/backend_stopped_ac_20261004_075744.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "83b44e56959f4ffb676faa4bf8e75ffe75d61b315fc461fb46499eca48325f5c",
+      "study": "backend"
+    },
+    {
+      "bytes": 109865,
+      "path": "configs/protocol/backend_comparison_approved_20261004.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "6c5d067c28ecc09b8990b6f66a263c11bf52bd9de9908ebfc2754efd3252a92d",
+      "study": "backend"
+    },
+    {
+      "bytes": 111168,
+      "path": "configs/protocol/backend_comparison_resume_20261004.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "0bed84df7e548bbe2f9963f924162ea76afa0523eb85334143a1fd6bcb014a44",
+      "study": "backend"
+    },
+    {
+      "bytes": 9509,
+      "path": "docs/CONTROLLED_BACKEND_COMPARISON_PROTOCOL_V2_20261003.md",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "000d2098365ffac4ce80dad31d5235b107fd0ad566d80faab91d31f78dfeb401",
+      "study": "backend"
+    },
+    {
+      "bytes": 10192,
+      "path": "docs/BACKEND_COMPARISON_CLOSURE_20261004.md",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "c564a6154846a72b74fd05a42233a18a2f4ff745cb4debae7a68c0eefda73b43",
+      "study": "backend"
+    },
+    {
+      "bytes": 22974,
+      "path": "docs/BACKEND_FINAL_INDEPENDENT_AUDIT_V2_20261004.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "ebeb45edf9c6002e32827bf16f39f750adbd11760199e68276434c8185aa3c4f",
+      "study": "backend"
+    },
+    {
+      "bytes": 12759,
+      "path": "docs/BACKEND_COMPLETED_TRIAL_REPORTING_20261004.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "0a37ba333d2120a512edd1a1cf173f22144fcdf4263c39b01c11bdba38829e3f",
+      "study": "backend"
+    },
+    {
+      "bytes": 1331,
+      "path": "docs/BACKEND_RUNTIME_OBSERVATION_AUDIT_20261004.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "3aa7a581d932c5295447b31e804d1bea37c84e81bcd3f3525566c9e7c589ea5b",
+      "study": "backend"
+    },
+    {
+      "bytes": 2104,
+      "path": "docs/BACKEND_PROCESS_CLOSURE_20261004.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "d158c5502f37ba1e07c82ef01743f963312f9c5fa460d5fa8ccaffb17b5ea4c3",
+      "study": "backend"
+    },
+    {
+      "bytes": 225404,
+      "path": "runtime/backend_study_20261004/formulas/catalog.json",
+      "role": "OPENED_DEMO_DIAGNOSTIC",
+      "sha256": "5e3bb5559b9862a10af53554ffa551c8e2132e5d460401095fbceb4915a6428f",
+      "study": "backend"
+    },
+    {
+      "bytes": 5046,
+      "path": "docs/PUBLICATION_CLAIM_TO_EXPERIMENT_TABLE_V2_20261004.md",
+      "role": "SOURCE_PINNED_HANDOFF",
+      "sha256": "d45dbd703f6fa79f33ec080d1ba122ad7bdbe749c53c3048794a4913984536e9",
+      "study": "writing"
+    },
+    {
+      "bytes": 12791,
+      "path": "docs/FINAL_FIGURES_AND_CSV_TASK_20261004.md",
+      "role": "SOURCE_PINNED_HANDOFF",
+      "sha256": "cab2c81f2d69b61aa5573ef709e75e14dee39f7da9f7460bf23305efb0314025",
+      "study": "writing"
+    },
+    {
+      "bytes": 4943,
+      "path": "docs/writing_handoff_20261004/00_WRITING_PROMPT.md",
+      "role": "SOURCE_PINNED_HANDOFF",
+      "sha256": "4888ec5aeb41f0e949cf5eebb2501bf5177e96996d7da8a37cc9711fdeeb8a5a",
+      "study": "writing"
+    },
+    {
+      "bytes": 11593,
+      "path": "docs/writing_handoff_20261004/01_EVIDENCE_BRIEF.md",
+      "role": "SOURCE_PINNED_HANDOFF",
+      "sha256": "cad57844c848ec868dab522231ab5bfaedabbb64cc1e4ab96eabf8b74de90d95",
+      "study": "writing"
+    },
+    {
+      "bytes": 9506,
+      "path": "docs/writing_handoff_20261004/02_LIMITATIONS_AND_PENDING_WORK.md",
+      "role": "SOURCE_PINNED_HANDOFF",
+      "sha256": "9570c5204e0eb8eb24b431c2234f1adb13a593a6d27187a9d18d62cedd7b7ceb",
+      "study": "writing"
+    },
+    {
+      "bytes": 6423,
+      "path": "docs/writing_handoff_20261004/03_METHODS_AND_REPRODUCIBILITY.md",
+      "role": "SOURCE_PINNED_HANDOFF",
+      "sha256": "0a0b6b6522145ae5907d87ab68adfc9ac3fdefaa8f0efaa4419136bf0bd49876",
+      "study": "writing"
+    },
+    {
+      "bytes": 4929,
+      "path": "docs/writing_handoff_20261004/04_FIGURE_AND_SOURCE_MAP.md",
+      "role": "SOURCE_PINNED_HANDOFF",
+      "sha256": "755ba4902c59bdf433206705229e32789b6f67320bf32b61181ced4233c41412",
+      "study": "writing"
+    },
+    {
+      "bytes": 4320,
+      "path": "docs/writing_handoff_20261004/05_PRIMARY_SOURCE_READING_LIST.md",
+      "role": "SOURCE_PINNED_HANDOFF",
+      "sha256": "cb0dc720b750ff15254e61f282a10df4318046a8e7591f696399cf9d9d2614a5",
+      "study": "writing"
+    },
+    {
+      "bytes": 5927,
+      "path": "docs/PORTABLE_EVIDENCE_REPRODUCTION_20261004.md",
+      "role": "SOURCE_PINNED_HANDOFF",
+      "sha256": "4ca2f9fa5f31211dd0cb2892430a0d9e9011ca98a0514c048702632de10aad33",
+      "study": "writing"
+    },
+    {
+      "bytes": 2884,
+      "path": "docs/WRITING_HANDOFF_PREPARATION_NOTE_20261004.md",
+      "role": "SOURCE_PINNED_HANDOFF",
+      "sha256": "31ab1d5e1ac3d3870acb9e10b6ed2bde311e8a6bee4cd31fd12bf4f159ebe2b8",
+      "study": "writing"
+    }
+  ],
+  "formula_catalog": "runtime/backend_study_20261004/formulas/catalog.json",
+  "limitations": [
+    "Figure/CSV outputs are produced separately and not yet in this package.",
+    "The complete raw per-worker archives remain local and are not claimed externally audited by this bundle.",
+    "Regeneration is solver-free and does not reproduce attack timing.",
+    "No public distribution or licence assignment is authorized by packaging."
+  ],
+  "purpose": "Pinned completed evidence for figures, writing and read-only reproduction; no experiment launch authorization",
+  "schema": 1,
+  "snapshot_date": "2026-10-04"
+}
