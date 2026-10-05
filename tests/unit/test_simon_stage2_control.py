@@ -444,7 +444,8 @@ def test_payload_contract_and_rank_sum_queue_order() -> None:
         control.assemble_queue(parents, {False: orders[0]}, 1)
 
 
-def test_full_binding_accepts_d052_and_rejects_old_d051_pilot(tmp_path: Path) -> None:
+@pytest.mark.parametrize("retired_decision", ["D-051", "D-052"])
+def test_full_binding_accepts_d053_and_rejects_old_pilot(tmp_path: Path, retired_decision: str) -> None:
     control = _control()
     commit = "a" * 40
     common = {
@@ -461,7 +462,7 @@ def test_full_binding_accepts_d052_and_rejects_old_d051_pilot(tmp_path: Path) ->
         "mode": "pilot",
         "status": "APPROVED",
         "execution_authorized": True,
-        "authorization_decision": "D-052",
+        "authorization_decision": "D-053",
         "jobs": control.fixed_jobs()[:3],
     }
     manifest_path = tmp_path / "manifest.json"
@@ -500,7 +501,7 @@ def test_full_binding_accepts_d052_and_rejects_old_d051_pilot(tmp_path: Path) ->
     control._validate_pilot_binding(pilot_pin, ROOT, common, commit)
 
     # Consistent hashes cannot make a superseded authorization eligible.
-    pilot_manifest["authorization_decision"] = "D-051"
+    pilot_manifest["authorization_decision"] = retired_decision
     pilot_pin["manifest"] = checked_write(manifest_path, pilot_manifest)
     report["manifest_sha256"] = pilot_pin["manifest"]["sha256"]
     pilot_pin["report"] = checked_write(report_path, report)

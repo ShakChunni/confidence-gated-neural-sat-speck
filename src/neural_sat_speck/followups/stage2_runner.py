@@ -24,6 +24,10 @@ from neural_sat_speck.followups.stage2_control import (
     validate_manifest,
     validate_order,
 )
+from neural_sat_speck.followups.stage2_receipts import (
+    is_process_exit_policy,
+    validate_resource_receipts,
+)
 
 
 class CampaignCeilingReached(TimeoutError):
@@ -224,6 +228,7 @@ def run_job(
         },
     )
     stopped, samples = None, []
+    exit_policy_seen = False
     with (
         (directory / "guardian_stdout.txt").open("w") as stdout,
         (directory / "guardian_stderr.txt").open("w") as stderr,
@@ -271,12 +276,13 @@ def run_job(
                         stopped = "environment_alarm"
                     elif sample.get("memory", {}).get("accepted") is False:
                         stopped = "rss_stop"
-                    elif (
-                        sample.get("memory", {}).get("members_observed", 0) > 0
-                        and sample.get("process_policy", {}).get("accepted") is not True
-                    ):
-                        # Recheck exit before treating an exited process as a policy alarm.
-                        if not (directory / "guardian_receipt.json").exists():
+                    elif "process_policy" in sample:
+                        policy = sample["process_policy"]
+                        if is_process_exit_policy(policy, process["pid"]):
+                            # Keep raw ESRCH pending until the independent guardian
+                            # exits and proves identity/cleanup. No deadline changes.
+                            exit_policy_seen = True
+                        elif policy.get("accepted") is not True or exit_policy_seen:
                             stopped = "environment_alarm"
                     last_sample = now
                 if stopped:
@@ -290,6 +296,23 @@ def run_job(
                 guardian.wait(timeout=10)
             raise
     row = normalize_job(job, directory, started, stopped)
+    monitor_completed = time.perf_counter()
+    if monitor_completed >= deadline:
+        raise CampaignCeilingReached("Campaign ceiling reached before monitor closure")
+    monitor_path = directory / "monitor_complete.json"
+    if monitor_path.exists() or monitor_path.with_name(monitor_path.name + ".sha256").exists():
+        raise FileExistsError("Never overwrite an invocation monitor receipt")
+    atomic_json(
+        monitor_path,
+        {
+            "schema": "stage2_monitor_complete_v1",
+            "invocation": directory.name,
+            "job_id": job["job_id"],
+            "coordinator_pid": os.getpid(),
+            "guardian_receipt_sha256": streaming_sha256(directory / "guardian_receipt.json"),
+            "completed_monotonic": monitor_completed,
+        },
+    )
     if job["operation"] == "stage2":
         complete = {call["ordinal"]: call for call in row["calls"]}
         for width in (1, 8):
@@ -587,6 +610,12 @@ def run(
                         validate_execution_identity(
                             manifest, row, public[name], parents, deadline
                         )
+                        if row["outcome"] in {"completed", "load_timeout", "rank_timeout", "rss_stop"}:
+                            validate_resource_receipts(
+                                manifest,
+                                {**row, "sleep_assertion": ledger["sleep_assertion"]},
+                                require_worker_sample=row["outcome"] == "completed",
+                            )
                     except Exception as error:
                         stop_reason = (
                             "campaign_timeout"

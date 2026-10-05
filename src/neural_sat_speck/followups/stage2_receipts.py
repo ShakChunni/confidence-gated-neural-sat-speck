@@ -6,6 +6,7 @@ does not estimate memory between samples or claim an instantaneous peak.
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import math
 import re
@@ -105,7 +106,40 @@ def _validate_power(power: object) -> str:
     return source
 
 
-def _validate_policy(policy: object, worker_pid: int, members: int) -> bool:
+def is_process_exit_policy(policy: object, worker_pid: int) -> bool:
+    """Classify missing-process observations; this is not terminal exit proof."""
+    if (
+        not isinstance(policy, dict)
+        or type(worker_pid) is not int
+        or worker_pid <= 1
+        or type(policy.get("pid")) is not int
+        or policy.get("pid") != worker_pid
+        or policy.get("supported") is not True
+        or policy.get("scope") != "process_priority_and_background_policy"
+        or policy.get("native_thread_qos") != "unavailable"
+        or policy.get("accepted") is not False
+    ):
+        return False
+    observations = policy.get("observations")
+    if not isinstance(observations, dict) or set(observations) != {"nice", "background_policy"}:
+        return False
+    missing = False
+    for observation in observations.values():
+        if not isinstance(observation, dict):
+            return False
+        value, error = observation.get("value"), observation.get("errno")
+        if type(value) is not int or type(error) is not int:
+            return False
+        if error == errno.ESRCH and value == -1:
+            missing = True
+        elif error != 0 or value != 0:
+            return False
+    return missing
+
+
+def _validate_policy(
+    policy: object, worker_pid: int, *, terminal_exit_proven: bool
+) -> bool:
     _require(isinstance(policy, dict), "RSS sample lacks process-policy receipt")
     _require(policy.get("supported") is True, "Process-policy observation unsupported")
     _require(policy.get("scope") == "process_priority_and_background_policy", "Unexpected process-policy scope")
@@ -120,10 +154,11 @@ def _validate_policy(policy: object, worker_pid: int, members: int) -> bool:
         _require(type(value) is int and type(error) is int and error >= 0, f"Malformed {name} process-policy values")
         good = good and error == 0 and value == 0
     _require(policy.get("accepted") is good, "Process-policy acceptance contradicts observations")
-    # A process may have exited before a zero-member sample is queried.  Such a
-    # sample is not evidence of worker policy, but it is not a policy failure.
-    if members:
-        _require(good, "Observed worker process policy was not standard")
+    if not good:
+        _require(
+            terminal_exit_proven and is_process_exit_policy(policy, worker_pid),
+            "Observed worker policy failed or lacks terminal exit proof",
+        )
     return good
 
 
@@ -263,20 +298,58 @@ def validate_resource_receipts(
     started = guardian.get("job_started_monotonic")
     ended = receipt.get("cleanup_completed_monotonic")
     _require(_finite(started) and _finite(ended) and ended >= started, "Invalid coordinator sample interval")
+    monitor_ended = ended
+    monitor_proven = False
+    monitor_path = directory / "monitor_complete.json"
+    monitor_sidecar = monitor_path.with_name(monitor_path.name + ".sha256")
+    if monitor_path.exists() or monitor_sidecar.exists():
+        monitor = read_checked_json(monitor_path)
+        _require(
+            isinstance(monitor, dict)
+            and set(monitor) == {"schema", "invocation", "job_id", "coordinator_pid", "guardian_receipt_sha256", "completed_monotonic"}
+            and monitor.get("schema") == "stage2_monitor_complete_v1"
+            and monitor.get("invocation") == invocation
+            and monitor.get("job_id") == job_id
+            and monitor.get("coordinator_pid") == assertion_owner
+            and monitor.get("guardian_receipt_sha256") == hashlib.sha256((directory / "guardian_receipt.json").read_bytes()).hexdigest()
+            and _finite(monitor.get("completed_monotonic"))
+            and monitor["completed_monotonic"] >= ended,
+            "Monitor completion receipt is not bound to guardian exit",
+        )
+        monitor_ended = monitor["completed_monotonic"]
+        _require(
+            _finite(guardian.get("campaign_deadline_monotonic"))
+            and monitor_ended < guardian["campaign_deadline_monotonic"],
+            "Monitor completion exceeds original campaign deadline",
+        )
+        monitor_proven = True
+    if require_worker_sample:
+        _require(monitor_proven, "Missing checked monitor completion receipt")
+    terminal_exit_proven = (
+        monitor_proven
+        and receipt.get("schema") == "simon_stage2_guardian_receipt_v1"
+        and receipt.get("status") in {"worker_exit", "load_timeout", "rank_timeout", "campaign_timeout", "coordinator_stop"}
+        and type(receipt.get("worker_returncode")) is int
+        and receipt.get("worker_not_started") is False
+        and receipt.get("process_group_absent") is True
+        and receipt.get("worker_pid") == worker_pid
+    )
     last_clock = -math.inf
     accepted_worker_samples = 0
     observed_worker_samples = 0
     power_sources: list[str] = []
     rss_stopped = False
+    exit_policy_observations = 0
     for index, sample in enumerate(samples):
         _require(isinstance(sample, dict), f"Malformed environment sample {index}")
         clock = sample.get("monotonic")
-        _require(_finite(clock) and started <= clock <= ended and clock >= last_clock, f"Invalid environment sample clock {index}")
+        _require(_finite(clock) and started <= clock <= monitor_ended and clock >= last_clock, f"Invalid environment sample clock {index}")
         last_clock = float(clock)
         power_sources.append(_validate_power(sample.get("power")))
         has_memory, has_policy = "memory" in sample, "process_policy" in sample
         _require(has_memory == has_policy, f"Incomplete worker sample {index}")
         if not has_memory:
+            _require(clock <= ended, "Power-only sample follows guardian cleanup")
             continue
         _require(worker_pid is not None, "Resource sample exists without a dispatched worker")
         memory = sample["memory"]
@@ -286,7 +359,16 @@ def validate_resource_receipts(
         _require(type(members) is int and members >= 0, f"Malformed worker count in sample {index}")
         _require(type(accepted) is bool and accepted is (rss <= RSS_LIMIT_BYTES), f"RSS acceptance contradicts sample {index}")
         _require(members != 0 or rss == 0, f"RSS without observed members in sample {index}")
-        policy_ok = _validate_policy(sample["process_policy"], worker_pid, members)
+        policy_ok = _validate_policy(sample["process_policy"], worker_pid, terminal_exit_proven=terminal_exit_proven)
+        if policy_ok:
+            _require(exit_policy_observations == 0, "Worker appeared live after an exit-policy observation")
+            _require(clock <= ended, "Live worker policy sample follows guardian cleanup")
+        else:
+            exit_policy_observations += 1
+            if not accepted:
+                _require(row.get("outcome") == "rss_stop", "Over-limit exit sample does not match rss_stop outcome")
+                rss_stopped = True
+            continue
         if members > 0:
             observed_worker_samples += 1
             if accepted:
@@ -343,6 +425,7 @@ def validate_resource_receipts(
         "monitoring_available": samples_present,
         "worker_samples": observed_worker_samples,
         "accepted_worker_samples": accepted_worker_samples,
+        "exit_policy_observations": exit_policy_observations,
         "rss_stop_observed": rss_stopped,
         "power_sources": power_sources,
         "worker": worker_summary,

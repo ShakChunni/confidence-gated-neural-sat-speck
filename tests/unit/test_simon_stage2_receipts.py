@@ -93,9 +93,12 @@ def receipt_case(tmp_path: Path):
         "job_id": job_id,
         "coordinator_pid": 1001,
         "job_started_monotonic": 10.0,
+        "campaign_deadline_monotonic": 1000.0,
     }
     guardian_receipt = {
         "schema": "simon_stage2_guardian_receipt_v1",
+        "status": "worker_exit",
+        "worker_returncode": 0,
         "invocation": invocation,
         "job_id": job_id,
         "watchdog_pid": 2002,
@@ -118,6 +121,17 @@ def receipt_case(tmp_path: Path):
         ("process.json", process),
     ):
         atomic_json(directory / name, value)
+    atomic_json(
+        directory / "monitor_complete.json",
+        {
+            "schema": "stage2_monitor_complete_v1",
+            "invocation": invocation,
+            "job_id": job_id,
+            "coordinator_pid": 1001,
+            "guardian_receipt_sha256": hashlib.sha256((directory / "guardian_receipt.json").read_bytes()).hexdigest(),
+            "completed_monotonic": 11.6,
+        },
+    )
     policy = {
         "pid": 3003,
         "scope": "process_priority_and_background_policy",

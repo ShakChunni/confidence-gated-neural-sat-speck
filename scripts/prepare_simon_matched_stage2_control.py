@@ -91,7 +91,7 @@ def main() -> None:
         "tf_python": assets / "runtime/simon_tf_venv/bin/python3.12",
         "protocol": source / "docs/SIMON_MATCHED_STAGE2_CONTROL_DESIGN_20261005.md",
         "execution_note": source
-        / "docs/SIMON_MATCHED_STAGE2_PROFILE_REPAIR_20261005.md",
+        / "docs/SIMON_MATCHED_STAGE2_EXIT_RACE_REPAIR_20261006.md",
     }
     for path in sorted((source / "src").rglob("*.py")):
         files["source:" + str(path.relative_to(source))] = path
@@ -115,7 +115,7 @@ def main() -> None:
         "status": "APPROVED",
         "execution_authorized": True,
         "mode": "full" if args.pilot_report else "pilot",
-        "authorization_decision": "D-052",
+        "authorization_decision": "D-053",
         "source_root": str(source),
         "source_commit": subprocess.run(
             ["git", "rev-parse", "HEAD"],

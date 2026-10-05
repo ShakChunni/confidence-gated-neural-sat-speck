@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 PROFILE: dict[str, Any] = {
-    "schema": "simon_matched_stage2_control_v2",
+    "schema": "simon_matched_stage2_control_v3",
     "role": "opened_demo_rank_only",
     "seed": 999999,
     "cipher": "simon32_64",
@@ -865,7 +865,7 @@ def validate_manifest(
     if (
         manifest["status"] != "APPROVED"
         or manifest["execution_authorized"] is not True
-        or manifest["authorization_decision"] != "D-052"
+        or manifest["authorization_decision"] != "D-053"
     ):
         raise ValueError("Manifest is not author-approved for this execution")
     if mode not in {"pilot", "full"}:
@@ -986,7 +986,7 @@ def _validate_pilot_binding(
         prior_manifest.get("mode") != "pilot"
         or prior_manifest.get("status") != "APPROVED"
         or prior_manifest.get("execution_authorized") is not True
-        or prior_manifest.get("authorization_decision") != "D-052"
+        or prior_manifest.get("authorization_decision") != "D-053"
         or prior_manifest.get("source_commit") != commit
         or _canonical_json(prior_manifest.get("profile")) != _canonical_json(PROFILE)
         or _canonical_json(prior_manifest.get("jobs"))
