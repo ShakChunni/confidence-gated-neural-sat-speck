@@ -1,0 +1,4 @@
+# Preserve exact bytes of the checksummed queue-order evidence archive.
+docs/queue_order_opened_evidence_20261005/* -text
+# Python's frozen CSV writer emits valid CRLF records; retain other whitespace checks.
+docs/queue_order_opened_evidence_20261005/analysis_v1.csv whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
