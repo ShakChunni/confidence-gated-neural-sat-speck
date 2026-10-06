@@ -80,12 +80,15 @@ def committed_source(repo: Path) -> tuple[str, dict[str, bytes]]:
     if git("status", "--porcelain", "--untracked-files=all", "--", "src"):
         raise ValueError("Uncommitted or untracked project source drift")
     names = git("ls-tree", "-rz", "--name-only", commit).decode().split("\0")[:-1]
+    if "LICENSE" not in names:
+        raise ValueError("Committed root LICENSE is missing")
     selected = [
         name
         for name in names
         if (name.startswith("src/") and name.endswith(".py"))
         or name
         in {
+            "LICENSE",
             "pyproject.toml",
             "requirements.txt",
             "README.md",
@@ -100,7 +103,15 @@ def committed_source(repo: Path) -> tuple[str, dict[str, bytes]]:
     files = {}
     for name in selected:
         data = git("show", f"{commit}:{name}")
-        if data != inside(repo, name).read_bytes():
+        try:
+            working_data = inside(repo, name).read_bytes()
+        except OSError as exc:
+            if name == "LICENSE":
+                raise ValueError(
+                    "Committed root LICENSE is missing from working tree"
+                ) from exc
+            raise
+        if data != working_data:
             raise ValueError(f"Uncommitted source drift: {name}")
         files[name] = data
     return commit, files
@@ -125,12 +136,15 @@ def build(repo: Path, catalog_path: Path, output: Path) -> dict:
         for name in (catalog["formula_catalog"], catalog["cohort"], guide)
     ):
         raise ValueError("Unpinned formula catalog/cohort/reproduction guide")
+    if "LICENSE" not in source:
+        raise ValueError("Committed source omitted root LICENSE")
     original = json.loads(read_pinned(repo, pinned[catalog["formula_catalog"]]))
     if len(original) != 32:
         raise ValueError("Expected the completed 32-case diagnostic artifact")
     # Validate before creating output; originals remain read-only throughout.
     payload = {f"evidence/{e['path']}": read_pinned(repo, e) for e in entries}
     payload.update({f"source/{name}": data for name, data in source.items()})
+    payload["LICENSE"] = source["LICENSE"]
     payload["source_catalog.json"] = catalog_path.read_bytes()
     portable = {}
     formula_root = inside(repo, catalog["formula_catalog"]).parent
@@ -171,12 +185,24 @@ def build(repo: Path, catalog_path: Path, output: Path) -> dict:
         "source_catalog_sha256": digest(payload["source_catalog.json"]),
         "cohort_path": f"evidence/{catalog['cohort']}",
         "original_formula_catalog_path": f"evidence/{catalog['formula_catalog']}",
+        "license_provenance": {
+            "source_path": "source/LICENSE",
+            "package_path": "LICENSE",
+            "sha256": digest(source["LICENSE"]),
+            "bytes": len(source["LICENSE"]),
+        },
         "limitations": catalog["limitations"],
         "files": {
             name: {"sha256": digest(data), "bytes": len(data)}
             for name, data in sorted(payload.items())
         },
     }
+    try:
+        current_license = inside(repo, "LICENSE").read_bytes()
+    except OSError as exc:
+        raise ValueError("Root LICENSE disappeared during package validation") from exc
+    if current_license != source["LICENSE"]:
+        raise ValueError("Root LICENSE changed during package validation")
     output.mkdir(parents=True)
     for name, data in payload.items():
         path = inside(output, name)
@@ -225,6 +251,32 @@ def verify(bundle: Path, expected_manifest_sha256: str | None = None) -> dict:
         raise ValueError("Source catalog mismatch")
     for entry in source["files"]:
         read_pinned(bundle, {**entry, "path": f"evidence/{entry['path']}"})
+    if "license_provenance" in manifest:
+        provenance = manifest["license_provenance"]
+        if (
+            not isinstance(provenance, dict)
+            or set(provenance) != {"source_path", "package_path", "sha256", "bytes"}
+            or provenance.get("source_path") != "source/LICENSE"
+            or provenance.get("package_path") != "LICENSE"
+            or not isinstance(provenance.get("sha256"), str)
+            or len(provenance["sha256"]) != 64
+            or type(provenance.get("bytes")) is not int
+            or provenance["bytes"] < 0
+        ):
+            raise ValueError("Invalid license provenance")
+        expected = {
+            "sha256": provenance["sha256"],
+            "bytes": provenance["bytes"],
+        }
+        license_bytes = []
+        for name in (provenance["source_path"], provenance["package_path"]):
+            if manifest["files"].get(name) != expected:
+                raise ValueError(
+                    "License provenance differs from package file manifest"
+                )
+            license_bytes.append(read_pinned(bundle, {"path": name, **expected}))
+        if license_bytes[0] != license_bytes[1]:
+            raise ValueError("Packaged root/source LICENSE copies differ")
     if (
         manifest["cohort_path"] != f"evidence/{source['cohort']}"
         or manifest["original_formula_catalog_path"]
