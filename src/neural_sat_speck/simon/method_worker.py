@@ -624,7 +624,7 @@ def generate_random_tuples(count: int, seed: int) -> list[tuple[int, int]]:
 
 def generate_classical_8parent_queue(
     pairs: Sequence[tuple[Block, Block]],
-    ddt_7r_path: Path | str = "/private/tmp/simon_predicted_ddt_7r.bin",
+    ddt_7r_path: Path | str = DEFAULT_DDT_PATH,
     tool_path: Path | str = "/private/tmp/simon_queried_row_8r",
     table_7r: FullPredictedDdt | None = None,
     *,
@@ -925,7 +925,7 @@ def generate_neural_1parent_queue(
 def generate_faithful_b1_hybrid_queue(
     pairs: Sequence[tuple[Block, Block]],
     b1_model: SimonPairGroupRanker | None = None,
-    ddt_7r_path: Path | str = "/private/tmp/simon_predicted_ddt_7r.bin",
+    ddt_7r_path: Path | str = DEFAULT_DDT_PATH,
     table_7r: FullPredictedDdt | None = None,
     *,
     checkpoint_path: Path | str | None = None,

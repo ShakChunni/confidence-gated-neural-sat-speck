@@ -32,69 +32,127 @@ def cipher_functions(cipher: str):
 
 def validate_cohort(data: dict[str, Any]) -> None:
     """Replay seed draw and check all target-round known/fresh observations."""
+    seed = data.get("seed")
+    role = data.get("split_role")
     if (
-        data.get("seed") != 999999
-        or type(data.get("seed")) is not int
-        or data.get("split_role") != "demo"
+        type(seed) is not int
+        or (seed, role) not in ((999999, "demo"), (501001, "development"))
     ):
-        raise ValueError("Only the recorded opened demo family is eligible")
+        raise ValueError("Only the recorded opened demo family or authorized D-056 development family is eligible")
     if set(data.get("ciphers", {})) != {"speck32_64", "simon32_64"}:
         raise ValueError("Expected exactly two ciphers")
-    for cipher, rounds, diff in (
-        ("speck32_64", 7, (64, 0)),
-        ("simon32_64", 10, (0, 64)),
-    ):
-        encrypt, expand = cipher_functions(cipher)
-        instances = data["ciphers"][cipher]["instances"]
-        if len(instances) != 8:
-            raise ValueError("Expected eight cohort keys per cipher")
-        rng = random.Random(999999)
-        seen_keys = set()
-        for index, instance in enumerate(instances):
-            expected_key = tuple(rng.randrange(65536) for _ in range(4))
-            key = _words(instance["master_key"], 4)
-            if (
-                key != expected_key
-                or key in seen_keys
-                or instance.get("instance_index") != index
-            ):
-                raise ValueError("Key-draw or cohort order mismatch")
-            seen_keys.add(key)
-            expected_pts, used = [], set()
-            for _ in range(64):
-                while True:
-                    p0 = (rng.randrange(65536), rng.randrange(65536))
-                    p1 = (p0[0] ^ diff[0], p0[1] ^ diff[1])
-                    if p0 not in used and p1 not in used:
-                        used.update((p0, p1))
-                        expected_pts.append([list(p0), list(p1)])
-                        break
-            expected_fresh = []
-            for _ in range(2):
-                while True:
-                    pt = (rng.randrange(65536), rng.randrange(65536))
-                    if pt not in used:
-                        used.add(pt)
-                        expected_fresh.append(list(pt))
-                        break
-            if (
-                instance["attack_plaintexts"] != expected_pts
-                or instance["verification_plaintexts"] != expected_fresh
-            ):
-                raise ValueError("Maximum-pair/fresh draw mismatch")
-            rd = instance["rounds_data"][str(rounds)]
-            if rd["round_keys"] != list(expand(key, rounds)):
-                raise ValueError("Key schedule mismatch")
-            expected_ct = [
-                [list(encrypt(tuple(pt), key, rounds)) for pt in pair]
-                for pair in expected_pts
-            ]
-            fresh_ct = [list(encrypt(tuple(pt), key, rounds)) for pt in expected_fresh]
-            if (
-                rd["attack_ciphertexts"] != expected_ct
-                or rd["verification_ciphertexts"] != fresh_ct
-            ):
-                raise ValueError("Known/fresh encryption mismatch")
+    if seed == 999999:
+        for cipher, rounds, diff in (
+            ("speck32_64", 7, (64, 0)),
+            ("simon32_64", 10, (0, 64)),
+        ):
+            encrypt, expand = cipher_functions(cipher)
+            instances = data["ciphers"][cipher]["instances"]
+            if len(instances) != 8:
+                raise ValueError("Expected eight cohort keys per cipher")
+            rng = random.Random(999999)
+            seen_keys = set()
+            for index, instance in enumerate(instances):
+                expected_key = tuple(rng.randrange(65536) for _ in range(4))
+                key = _words(instance["master_key"], 4)
+                if (
+                    key != expected_key
+                    or key in seen_keys
+                    or instance.get("instance_index") != index
+                ):
+                    raise ValueError("Key-draw or cohort order mismatch")
+                seen_keys.add(key)
+                expected_pts, used = [], set()
+                for _ in range(64):
+                    while True:
+                        p0 = (rng.randrange(65536), rng.randrange(65536))
+                        p1 = (p0[0] ^ diff[0], p0[1] ^ diff[1])
+                        if p0 not in used and p1 not in used:
+                            used.update((p0, p1))
+                            expected_pts.append([list(p0), list(p1)])
+                            break
+                expected_fresh = []
+                for _ in range(2):
+                    while True:
+                        pt = (rng.randrange(65536), rng.randrange(65536))
+                        if pt not in used:
+                            used.add(pt)
+                            expected_fresh.append(list(pt))
+                            break
+                if (
+                    instance["attack_plaintexts"] != expected_pts
+                    or instance["verification_plaintexts"] != expected_fresh
+                ):
+                    raise ValueError("Maximum-pair/fresh draw mismatch")
+                rd = instance["rounds_data"][str(rounds)]
+                if rd["round_keys"] != list(expand(key, rounds)):
+                    raise ValueError("Key schedule mismatch")
+                expected_ct = [
+                    [list(encrypt(tuple(pt), key, rounds)) for pt in pair]
+                    for pair in expected_pts
+                ]
+                fresh_ct = [list(encrypt(tuple(pt), key, rounds)) for pt in expected_fresh]
+                if (
+                    rd["attack_ciphertexts"] != expected_ct
+                    or rd["verification_ciphertexts"] != fresh_ct
+                ):
+                    raise ValueError("Known/fresh encryption mismatch")
+    else:  # seed == 501001 (D-056 development family)
+        for cipher, rounds, diff, c_seed in (
+            ("speck32_64", 7, (64, 0), 501001),
+            ("simon32_64", 10, (0, 64), 501002),
+        ):
+            encrypt, expand = cipher_functions(cipher)
+            instances = data["ciphers"][cipher]["instances"]
+            if len(instances) != 32:
+                raise ValueError("Expected 32 cohort keys per cipher for D-056")
+            rng = random.Random(c_seed)
+            seen_keys = set()
+            for index, instance in enumerate(instances):
+                expected_key = tuple(rng.randrange(65536) for _ in range(4))
+                key = _words(instance["master_key"], 4)
+                if (
+                    key != expected_key
+                    or key in seen_keys
+                    or instance.get("instance_index") != index
+                ):
+                    raise ValueError("Key-draw or cohort order mismatch")
+                seen_keys.add(key)
+                expected_pts, used = [], set()
+                for _ in range(64):
+                    while True:
+                        p0 = (rng.randrange(65536), rng.randrange(65536))
+                        p1 = (p0[0] ^ diff[0], p0[1] ^ diff[1])
+                        if p0 not in used and p1 not in used:
+                            used.update((p0, p1))
+                            expected_pts.append([list(p0), list(p1)])
+                            break
+                expected_fresh = []
+                for _ in range(2):
+                    while True:
+                        pt = (rng.randrange(65536), rng.randrange(65536))
+                        if pt not in used:
+                            used.add(pt)
+                            expected_fresh.append(list(pt))
+                            break
+                if (
+                    instance["attack_plaintexts"] != expected_pts
+                    or instance["verification_plaintexts"] != expected_fresh
+                ):
+                    raise ValueError("Maximum-pair/fresh draw mismatch")
+                rd = instance["rounds_data"][str(rounds)]
+                if rd["round_keys"] != list(expand(key, rounds)):
+                    raise ValueError("Key schedule mismatch")
+                expected_ct = [
+                    [list(encrypt(tuple(pt), key, rounds)) for pt in pair]
+                    for pair in expected_pts
+                ]
+                fresh_ct = [list(encrypt(tuple(pt), key, rounds)) for pt in expected_fresh]
+                if (
+                    rd["attack_ciphertexts"] != expected_ct
+                    or rd["verification_ciphertexts"] != fresh_ct
+                ):
+                    raise ValueError("Known/fresh encryption mismatch")
 
 
 def case_inputs(data: dict[str, Any], cell: dict[str, Any]) -> tuple[dict, dict]:

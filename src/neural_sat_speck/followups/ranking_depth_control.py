@@ -15,7 +15,6 @@ from neural_sat_speck.backend.artifacts import case_inputs, validate_cohort
 from neural_sat_speck.backend.formula import build_formula
 from neural_sat_speck.backend.guard import atomic_json, read_checked_json
 from neural_sat_speck.followups.conditioning_control import (
-    COHORT_SHA256,
     digest,
     formula_identity,
     runtime_support_paths,
@@ -26,11 +25,14 @@ from neural_sat_speck.followups.conditioning_runner import controlled_environmen
 from neural_sat_speck.followups.environment import same_python_environment
 
 DESIGN = "configs/protocol/backend_ranking_depth_proposed_20261006.json"
+D056_DESIGN = "configs/protocol/backend_ranking_depth_d056_n32.json"
 SCRIPTS = (
     "scripts/run_backend_ranking_depth.py",
     "scripts/analyze_backend_ranking_depth.py",
     "docs/CONTRIBUTION_REVIEW_AND_NEXT_STUDY_20261006.md",
+    "docs/PROPOSAL_D056_EXPANDED_N32_CONTROLS.md",
     DESIGN,
+    D056_DESIGN,
 )
 SCIENTIFIC_OUTCOMES = {
     "recovered",
@@ -205,7 +207,7 @@ def runtime_files(runtime: dict, tf_python: Path) -> dict[str, Path]:
     return files
 
 
-def fixed_cells(mode: str) -> list[dict]:
+def fixed_cells(mode: str, num_keys: int = 8) -> list[dict]:
     """Rotate all four arms within each key; alternate the leading cipher."""
     if mode not in {"pilot", "full"}:
         raise ValueError("Mode must be pilot or full")
@@ -216,7 +218,7 @@ def fixed_cells(mode: str) -> list[dict]:
         (2, "cms_native_no_gauss"),
     ]
     cells = []
-    for index in range(1 if mode == "pilot" else 8):
+    for index in range(1 if mode == "pilot" else num_keys):
         ciphers = ["speck32_64", "simon32_64"]
         if index % 2:
             ciphers.reverse()
@@ -244,9 +246,12 @@ def source_names(root: Path) -> list[str]:
     ) + list(SCRIPTS)
 
 
-def policy(root: Path) -> dict:
+def policy(root: Path, design_rel: str | Path | None = None) -> dict:
     """The reviewed proposal remains a nonexecutable reference, unchanged."""
-    return json.loads((root / DESIGN).read_bytes())
+    rel = Path(design_rel) if design_rel is not None else Path(DESIGN)
+    if not rel.is_absolute():
+        rel = root / rel
+    return json.loads(rel.read_bytes())
 
 
 def prepare(
@@ -256,18 +261,24 @@ def prepare(
     tf_python: Path,
     asset_root: Path,
     pilot: Path | None = None,
+    config_path: Path | None = None,
 ) -> Path:
     if output.exists():
         raise ValueError("Refusing to overwrite preparation")
     root, asset_root = root.resolve(), asset_root.resolve()
     names = source_names(root)
     validate_source_root(root, names)
-    profile = policy(root)
-    if profile["confirmation_seed"] is not None or profile["seed"] != 999999:
-        raise ValueError("Only the opened demo family is authorized")
+    profile = policy(root, config_path)
+    if profile.get("confirmation_seed") is not None:
+        raise ValueError("Phase 12 confirmation seed is strictly prohibited")
+    seed = profile.get("seed")
+    if seed not in (999999, 501001):
+        raise ValueError("Only the opened demo family or authorized D-056 dev family is eligible")
+    author_decision = "D-056" if seed == 501001 else "D-055"
     if mode == "full" and pilot is None:
         raise ValueError("Full preparation needs an independently audited pilot")
-    cells = fixed_cells(mode)
+    num_keys = len(profile.get("selected_instances", list(range(8 if seed == 999999 else 32))))
+    cells = fixed_cells(mode, num_keys=num_keys)
     files = {}
     for name, pin in profile["files"].items():
         p = Path(pin["path"])
@@ -295,8 +306,9 @@ def prepare(
     files.update({"source:" + n: file_identity(root / n) for n in names})
     # Check every pin before consuming even this already-opened cohort.
     paths = {name: checked_path(root, pin) for name, pin in files.items()}
-    if files["cohort"]["sha256"] != COHORT_SHA256:
-        raise ValueError("Wrong demo cohort")
+    expected_cohort_sha = profile["files"]["cohort"]["sha256"]
+    if files["cohort"]["sha256"] != expected_cohort_sha:
+        raise ValueError("Wrong cohort SHA-256")
     data = read_checked_json(paths["cohort"])
     validate_cohort(data)
     output.mkdir(parents=True)
@@ -322,10 +334,11 @@ def prepare(
         formula = build_formula(cell["cipher"], public, 4, 0, include_cnf=False)
         records["base_formula_sha256"] = digest(formula_identity(formula))
         cases[ident] = records
+    ceiling = 3600.0 if mode == "pilot" else float(profile.get("campaign_ceiling_seconds", 25200.0 if author_decision == "D-055" else 90000.0))
     manifest = {
         "schema": "backend_ranking_depth_manifest_v1",
         "status": "APPROVED",
-        "author_decision": "D-055",
+        "author_decision": author_decision,
         "execution_authorized": True,
         "mode": mode,
         "profile": profile,
@@ -337,7 +350,7 @@ def prepare(
         "files": files,
         "cases": cases,
         "cells": cells,
-        "campaign_ceiling_seconds": 3600.0 if mode == "pilot" else 25200.0,
+        "campaign_ceiling_seconds": ceiling,
         "pilot_audit": file_identity(pilot) if pilot else None,
     }
     path = output / "manifest.json"
@@ -352,16 +365,21 @@ def load_manifest(path: Path, *, hashes: bool = True) -> tuple[dict, dict[str, P
         not root.is_absolute()
         or manifest.get("schema") != "backend_ranking_depth_manifest_v1"
         or manifest.get("status") != "APPROVED"
-        or manifest.get("author_decision") != "D-055"
+        or manifest.get("author_decision") not in ("D-055", "D-056")
         or manifest.get("execution_authorized") is not True
     ):
         raise ValueError("Unapproved ranking-depth execution")
-    if digest(manifest.get("profile")) != digest(policy(root)):
+    author_decision = manifest.get("author_decision")
+    profile = manifest.get("profile", {})
+    expected_profile = policy(root, D056_DESIGN if author_decision == "D-056" else DESIGN)
+    if digest(profile) != digest(expected_profile):
         raise ValueError("Ranking-depth scientific profile drift")
     mode = manifest.get("mode")
-    if manifest.get("cells") != fixed_cells(mode) or manifest.get(
+    num_keys = len(profile.get("selected_instances", list(range(8 if author_decision == "D-055" else 32))))
+    expected_ceiling = 3600.0 if mode == "pilot" else float(expected_profile.get("campaign_ceiling_seconds", 25200.0 if author_decision == "D-055" else 90000.0))
+    if manifest.get("cells") != fixed_cells(mode, num_keys=num_keys) or manifest.get(
         "campaign_ceiling_seconds"
-    ) != (3600.0 if mode == "pilot" else 25200.0):
+    ) != expected_ceiling:
         raise ValueError("Grid or campaign ceiling drift")
     names = source_names(root)
     validate_source_root(root, names)
@@ -370,7 +388,7 @@ def load_manifest(path: Path, *, hashes: bool = True) -> tuple[dict, dict[str, P
     pins = manifest.get("files", {})
     expected_sources = {"source:" + n for n in names}
     minimum = (
-        set(policy(root)["files"])
+        set(profile["files"])
         | {"python", "tf_python"}
         | set(runtime_support_paths())
     )
@@ -393,7 +411,7 @@ def load_manifest(path: Path, *, hashes: bool = True) -> tuple[dict, dict[str, P
     for name, expected_path in compiled.items():
         if paths[name] != expected_path.absolute():
             raise ValueError("Compiled runtime identity redirected")
-    for name, pin in policy(root)["files"].items():
+    for name, pin in profile["files"].items():
         if pins[name]["sha256"] != pin["sha256"]:
             raise ValueError("Pinned scientific asset drift")
     for n in names:

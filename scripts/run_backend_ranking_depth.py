@@ -15,6 +15,7 @@ def main():
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--mode", choices=("pilot", "full"), required=True)
     parser.add_argument("--pilot-audit", type=Path)
+    parser.add_argument("--config", type=Path, default=None)
     args = parser.parse_args()
     output = args.output_root.absolute()
     if output.exists():
@@ -26,6 +27,7 @@ def main():
         args.tf_python,
         args.asset_root,
         args.pilot_audit,
+        config_path=args.config,
     )
     result = execute(manifest, output / "execution")
     if result["status"] != "COMPLETE":

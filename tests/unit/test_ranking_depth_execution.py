@@ -459,3 +459,15 @@ def test_orphan_lookup_refuses_own_live_process_group(monkeypatch):
     )
     with pytest.raises(RuntimeError, match="Unsafe"):
         runner.live_invocation_groups(token)
+
+
+def test_d056_fixed_cells_and_config():
+    pilot_cells = control.fixed_cells("pilot", num_keys=32)
+    assert len(pilot_cells) == 8
+    full_cells = control.fixed_cells("full", num_keys=32)
+    assert len(full_cells) == 256
+    assert pilot_cells == full_cells[:8]
+    assert {c["cipher"] for c in full_cells} == {"speck32_64", "simon32_64"}
+    assert {c["trailing_keys"] for c in full_cells} == {1, 2}
+    assert {c["profile"] for c in full_cells} == {"cms_native_gauss", "cms_native_no_gauss"}
+
