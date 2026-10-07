@@ -25,6 +25,8 @@ reduced-round scientific study, not a claim to break deployed full-round SPECK.
 | Cross-cipher depth map, eight opened demo keys per cipher (D-043) | `151/192` verified recoveries, `41/192` parent timeouts | [Reviewed closure](docs/CROSS_CIPHER_DEPTH_CLOSURE_20261004.md) preserves raw results and corrects unavailable timeout metrics. Equal nominal depth does not summarize observed recovery; source/runtime/chronology limits prevent universal or causal claims. |
 | Controlled backend diagnostic, four opened keys per cipher (D-044/D-045) | `80` recoveries, `79` deadlines and `1` infrastructure interruption across `160` assigned cells. With one true trailing key, explicit matrix profile `4/4` on both ciphers versus matched zero-matrix `2/4` SPECK and `0/4` SIMON; all profiles `4/4` with two true keys | [Reviewed closure](docs/BACKEND_COMPARISON_CLOSURE_20261004.md). The interrupted unguided control is `0/3` completed trials with one unavailable; conditioned comparisons are unaffected. All recoveries, 66 saved native models and 64 formula witnesses independently checked. No universal backend/structure claim. |
 
+| Backend × ranking depth, eight opened keys per cipher (D-055) | Stage 2 adds SPECK `2/8` recoveries under matrix capacity 5 and `5/8` under capacity 0; SIMON `1/8` and `5/8`. All four Stage 2 contrasts improve PAR-2. | [Audited closure](docs/BACKEND_RANKING_DEPTH_CLOSURE_20261007.md): complete 64-cell grid, 33 verified recoveries and 31 deadlines. Same true-candidate containment at both depths; smaller added benefit under the matrix-enabled profile, with no crossover or universal claim. |
+
 Every reported recovered master key must pass independent fresh-pair verification. Neural models order final-round subkey candidates; they neither prove a candidate nor directly recover the full 64-bit key.
 
 ## Governance and stop boundary
@@ -42,9 +44,12 @@ Start with:
 - [`docs/EXPANSION_LITERATURE_2026.md`](docs/EXPANSION_LITERATURE_2026.md) for the primary-source claim boundary;
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) and [`docs/EXPERIMENT_LOG.md`](docs/EXPERIMENT_LOG.md) for the audit trail.
 
-## Writing and artifact handoff (2026-10-04)
+## Writing and artifact handoff
 
-The author owns manuscript writing in a separate project. Use the
+On 2026-10-07 the author authorized root to revise `main.tex` after D-055 audit
+and closure. `report.tex` remains protected. The existing external-writing
+packet is historical and must be supplemented with the D-053, D-054 and D-055
+closures. Use the
 [writing prompt and evidence packet](docs/writing_handoff_20261004/00_WRITING_PROMPT.md),
 the [current release review](docs/PUBLICATION_PREPARATION_RELEASE_20261004.md),
 [final PDF/PNG figures, CSVs and plotting code](docs/FINAL_FIGURES_AND_CSV_TASK_20261004.md).

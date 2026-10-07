@@ -1,0 +1,15 @@
+{
+  "code_path": "scripts/generate_backend_ranking_depth_figure.py",
+  "code_sha256": "11b1987494af57f12deb89b733e17576e5301669d8cdf518adddda00818662e1",
+  "ledger_sha256": "9ffc77e781bd05c9ba690b71e1abf7b1caab06cb0bf52a1785e8d238fd5f52df",
+  "manifest_sha256": "b3159ff93a0b3dda51465d3e58122a7ad652be7dc875b82add7dcc3bfd3ca078",
+  "matplotlib_version": "3.11.1",
+  "outputs": {
+    "fig7_backend_ranking_depth.csv": "0bf327652ac251751344c9f2d521961eac1b5704b1d9bc0d82254ba8a7a74517",
+    "fig7_backend_ranking_depth.pdf": "33fc7a7ecd5d8923b107e0b8f37a81e7c12982e1918733377765b766e33549f9",
+    "fig7_backend_ranking_depth.png": "c323d344dd1a2f1017d72595450ff595e7eb90cbe2e6e179b04076dead0e84f9"
+  },
+  "role": "opened_demo_descriptive_8_keys_per_cipher",
+  "source_path": "docs/backend_ranking_depth_evidence_20261007/analysis_v1.json",
+  "source_sha256": "7035db514aa670f67f2a8e0e0ab5bf6e402b08b9795171190da1632b986ee2b2"
+}

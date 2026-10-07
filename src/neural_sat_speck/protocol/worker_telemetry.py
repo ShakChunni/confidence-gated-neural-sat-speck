@@ -11,6 +11,7 @@ from __future__ import annotations
 import ctypes
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -71,7 +72,13 @@ def _check_sleep_assertions() -> dict[str, Any]:
             timeout=2.0,
         )
         stdout = res.stdout
-        prevent_sleep = "PreventSystemSleep 1" in stdout or "PreventUserIdleSystemSleep 1" in stdout
+        prevent_sleep = bool(
+            re.search(
+                r"^\s*(?:PreventSystemSleep|PreventUserIdleSystemSleep)[ \t]+1[ \t]*$",
+                stdout,
+                re.MULTILINE,
+            )
+        )
         has_caffeinate = "caffeinate" in stdout.lower()
         return {
             "supported": True,

@@ -1,0 +1,107 @@
+{
+  "completed_attempt_statuses": {
+    "sat": 33,
+    "unsat": 964
+  },
+  "fresh_block_checks": 66,
+  "interactions": [
+    {
+      "cipher": "speck32_64",
+      "effects": {
+        "cms_native_gauss": {
+          "par2_difference_seconds": -151.72278401562494,
+          "recovery_difference": 0.25
+        },
+        "cms_native_no_gauss": {
+          "par2_difference_seconds": -345.8479123699999,
+          "recovery_difference": 0.625
+        }
+      },
+      "par2_interaction_G_minus_X_seconds": 194.12512835437497,
+      "recovery_interaction_G_minus_X": -0.375
+    },
+    {
+      "cipher": "simon32_64",
+      "effects": {
+        "cms_native_gauss": {
+          "par2_difference_seconds": -116.62703239062466,
+          "recovery_difference": 0.125
+        },
+        "cms_native_no_gauss": {
+          "par2_difference_seconds": -305.46005946350033,
+          "recovery_difference": 0.625
+        }
+      },
+      "par2_interaction_G_minus_X_seconds": 188.83302707287567,
+      "recovery_interaction_G_minus_X": -0.5
+    }
+  ],
+  "known_block_checks": 4224,
+  "ledger_sha256": "9ffc77e781bd05c9ba690b71e1abf7b1caab06cb0bf52a1785e8d238fd5f52df",
+  "manifest_sha256": "b3159ff93a0b3dda51465d3e58122a7ad652be7dc875b82add7dcc3bfd3ca078",
+  "passed": true,
+  "recoveries": 33,
+  "resource_samples": 1403,
+  "sampled_max_group_rss_bytes": 2040496128,
+  "schema": "d055_raw_recompute_v1",
+  "summaries": [
+    {
+      "cipher": "simon32_64",
+      "mean_par2_seconds": 326.10592614062534,
+      "profile": "cms_native_gauss",
+      "recovered": 5,
+      "trailing_keys": 1
+    },
+    {
+      "cipher": "simon32_64",
+      "mean_par2_seconds": 600.0,
+      "profile": "cms_native_no_gauss",
+      "recovered": 0,
+      "trailing_keys": 1
+    },
+    {
+      "cipher": "simon32_64",
+      "mean_par2_seconds": 209.47889375000068,
+      "profile": "cms_native_gauss",
+      "recovered": 6,
+      "trailing_keys": 2
+    },
+    {
+      "cipher": "simon32_64",
+      "mean_par2_seconds": 294.53994053649967,
+      "profile": "cms_native_no_gauss",
+      "recovered": 5,
+      "trailing_keys": 2
+    },
+    {
+      "cipher": "speck32_64",
+      "mean_par2_seconds": 382.13409933862476,
+      "profile": "cms_native_gauss",
+      "recovered": 4,
+      "trailing_keys": 1
+    },
+    {
+      "cipher": "speck32_64",
+      "mean_par2_seconds": 561.1109958177499,
+      "profile": "cms_native_no_gauss",
+      "recovered": 1,
+      "trailing_keys": 1
+    },
+    {
+      "cipher": "speck32_64",
+      "mean_par2_seconds": 230.41131532299983,
+      "profile": "cms_native_gauss",
+      "recovered": 6,
+      "trailing_keys": 2
+    },
+    {
+      "cipher": "speck32_64",
+      "mean_par2_seconds": 215.26308344774998,
+      "profile": "cms_native_no_gauss",
+      "recovered": 6,
+      "trailing_keys": 2
+    }
+  ],
+  "uncommitted_deadline_fragments": [],
+  "valid_detached_hashes": 6059
+}

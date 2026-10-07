@@ -5,9 +5,11 @@ from __future__ import annotations
 import hashlib
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from neural_sat_speck.protocol import worker_telemetry
 from neural_sat_speck.protocol.worker_telemetry import (
     QOS_CLASS_BACKGROUND,
     QOS_CLASS_DEFAULT,
@@ -18,6 +20,43 @@ from neural_sat_speck.protocol.worker_telemetry import (
     observe_worker_telemetry,
     save_worker_receipt,
 )
+
+
+@pytest.mark.parametrize(
+    ("stdout", "expected"),
+    [
+        ("   PreventSystemSleep              1\n", True),
+        ("\tPreventUserIdleSystemSleep\t1\t\n", True),
+        ("PreventSystemSleep 0\nPreventUserIdleSystemSleep 1\n", True),
+        ("PreventSystemSleep 1", True),
+        ("PreventSystemSleep 0\nPreventUserIdleSystemSleep 0\n", False),
+        ("PreventSystemSleep 10\n", False),
+        ("OtherPreventSystemSleep 1\n", False),
+        ("pid 42: PreventSystemSleep 1\n", False),
+        ("PreventSystemSleep 1 owner detail\n", False),
+        ("\n", False),
+    ],
+)
+def test_sleep_assertion_summary_columns(monkeypatch, stdout, expected):
+    monkeypatch.setattr(worker_telemetry.sys, "platform", "darwin")
+    monkeypatch.setattr(
+        worker_telemetry.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(stdout=stdout),
+    )
+    result = worker_telemetry._check_sleep_assertions()
+    assert result["supported"] is True
+    assert result["prevent_system_sleep"] is expected
+
+
+def test_sleep_assertions_unsupported_off_darwin(monkeypatch):
+    monkeypatch.setattr(worker_telemetry.sys, "platform", "linux")
+
+    def reject_command(*args, **kwargs):
+        raise AssertionError("pmset must not be called off Darwin")
+
+    monkeypatch.setattr(worker_telemetry.subprocess, "run", reject_command)
+    assert worker_telemetry._check_sleep_assertions() == {"supported": False}
 
 
 class MockDarwinLibc:

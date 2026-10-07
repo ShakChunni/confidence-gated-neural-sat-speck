@@ -1,0 +1,56 @@
+{
+  "figures": {
+    "fig1_attack_recovery.pdf": "095d827052e47e0abc5a7f577f9f36ef6985a1e5fbee3492b07c9ff65e45f97f",
+    "fig1_attack_recovery.png": "3049f82f63a9f8ee5c7c10642de9b80d34ee2d443b769be4976c30cbfce02833",
+    "fig2_cumulative_recovery_time.pdf": "31d3b765403392db3bc1240552e0858677ac344a6ec9016fc5570f172f7b8b50",
+    "fig2_cumulative_recovery_time.png": "2b3d533bf557e683f1c49ca62fdeb7d771bdc46b5410ca15d4cc0e6cb05c3f28",
+    "fig3_operational_cost.pdf": "185c231fafa50642c26608cd3d0fedc1b325199f854957bfd6a1147282a0d8fc",
+    "fig3_operational_cost.png": "1d908fae4cbd90e01477a41482394372059539657bfead17e714f6e4002ec63f",
+    "fig4_failure_decomposition.pdf": "7ac2afdb5b2203934dd9a75741d85ecc71d87f2f9ecd7b8d2151e5ab00b43fd4",
+    "fig4_failure_decomposition.png": "f9687f400931e15f0eabbab9be13dd18a2e4a53a7843b5c7cb399493873f5536",
+    "fig5_depth_map.pdf": "e99a3320956e2a7fff6b85e9c661111e9264f4c4debe95aaf9444e84ffc97911",
+    "fig5_depth_map.png": "cfd646b54cbfb875af959772b0f8566595bd9f3d70a5e5977b36cf6a92792471",
+    "fig6_backend_treatments.pdf": "1959bb4087442b2be22a42fae580411cd4ede18655b943a5763e73e06e0b9793",
+    "fig6_backend_treatments.png": "d881ef9ae6e8433c9788152c8f41e5349aff3013c988e30589d075ca508c0636",
+    "fig6b_backend_profiles_appendix.pdf": "0633a71c8943d32e42bbae727c726a1b35743c477b64eea90305cd62ae2c231e",
+    "fig6b_backend_profiles_appendix.png": "140195ede98600daf5151f9becd4ba1237949c3ee96ea74ae999ff6b14e8e5ca"
+  },
+  "generator_path": "scripts/generate_final_publication_figures.py",
+  "generator_sha256": "47da268afd34fdfa06b1330fa8c3e680ce3fd15a3349cf053f1846b4ea68768e",
+  "note": "Byte-identical copies of the corrected final release. No old figure is redesigned or regenerated; six-page body uses recovery and depth plots. Other original assets remain available for Overleaf/supplement.",
+  "schema": "manuscript_figure_copies_v1",
+  "source_hashes": {
+    "backend_analysis": "a7eb470e1e4af396129ac8ac49154bbb48c1762a3c42b9781023df2a2faa0b94",
+    "backend_raw": "30552bcfdc7a10e505c14ebc5a946cd9325cdd715f8e5af027e3596010d118aa",
+    "depth_analysis_v2": "cfceb5a96c72ea8082c73e4909c0fa1b473146bd2760d44a2a24da033c6ae3bb",
+    "depth_raw": "bf5b05d89a7b03095298b4ad964d220178f37d584a3f3c166551a39e5b3810a2",
+    "simon_analysis": "2ccbae6c0bdcbfb9110bd21c29c45b758424914b45d7de3c58c787d950b315cb",
+    "simon_raw": "8cc9da7fbdf5207d94e0b108452819244a9dd4aee3dd28de14419af05e397b61",
+    "speck_analysis": "bd51138aab74aae5f2b3cc196716b2ed1c2ac79d71e57ec742897bc3fd0f2fbf",
+    "speck_raw": "b8d06d276d18a5d50df96cbe5d599c830fa6c46c2a35083dc35265a6772ff606"
+  },
+  "source_manifest_sha256": "10de12f28882ced6737e0f4a2d4deb9da5f269b3c58363e3f7e1585ab950297e",
+  "source_paths": {
+    "backend_analysis": "results/backend_comparison/backend_analysis_20261004.json",
+    "backend_raw": "results/backend_comparison/backend_comparison_20261004.json",
+    "depth_analysis_v2": "results/phase11_scaling_diagnostics/cross_cipher_residual_depth_analysis_reviewed_v2.json",
+    "depth_raw": "results/phase11_scaling_diagnostics/cross_cipher_residual_depth_map.json",
+    "simon_analysis": "results/simon_confirmation_replacement/simon_confirmation_analysis.json",
+    "simon_raw": "results/simon_confirmation_replacement/simon_confirmation_comparators.json",
+    "speck_analysis": "results/phase11_prospective/seven_round_prospective_analysis.json",
+    "speck_raw": "results/phase11_prospective/seven_round_prospective_results.json"
+  },
+  "source_release": "output/publication_figures_20261005_final",
+  "source_tables": {
+    "attack_cells.csv": "db2a5b934343655e57b6ef125fa3efc39c4d23a008042449c332b973ec2fdabf",
+    "attack_failures.csv": "f11e76f5093d951750bfe467a38b046259335b6c2f37ae320d6eaa769649b1a4",
+    "attack_paired_contrasts.csv": "fcc952ba8f3800f400348e4f887cf436b38f2e1559af959d10d972652e1f6dab",
+    "attack_summary.csv": "8e1e0d3b97339839a7b6dcd89ba684c1d0a01958d05b589c572b3057112b64e1",
+    "backend_cells.csv": "2bacf97896bf486e691f127f8551a50eea0716934f197cb8ceb0652abef7aa63",
+    "backend_paired_contrasts.csv": "a62a1ef5526e1596e34dfe484c25323660569608224bb300b3bc79cbbfffbdd7",
+    "backend_summary.csv": "51438d879e641ce2c5cd3bbf1785be33205d6f590c908dc25ac3c2fb0011d896",
+    "depth_cells.csv": "aa55c38e97f0f16435945ed8508927d5c0b363c783dbe9d13b47b45e8185fae2",
+    "depth_paired_contrasts.csv": "ef3f619e094f8cadd8251a32ef0aa7972b27e7fd58a30b786d33e5d41312eb83",
+    "depth_summary.csv": "1adcc7b2571ccd154178e5a84da768f57f00f96b24380cfe1f9ca2b6d17a3128"
+  }
+}
