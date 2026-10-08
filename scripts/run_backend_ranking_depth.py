@@ -1,6 +1,5 @@
-"""Prepare and run one authorized D-055 mode; full requires a passed pilot audit."""
-
 import argparse
+import sys
 from pathlib import Path
 
 from neural_sat_speck.followups.ranking_depth_control import prepare
@@ -17,6 +16,9 @@ def main():
     parser.add_argument("--pilot-audit", type=Path)
     parser.add_argument("--config", type=Path, default=None)
     args = parser.parse_args()
+    source_src = str(args.source_root.resolve() / "src")
+    if source_src not in sys.path:
+        sys.path.insert(0, source_src)
     output = args.output_root.absolute()
     if output.exists():
         raise SystemExit("Output exists: no retry, overwrite or resume")

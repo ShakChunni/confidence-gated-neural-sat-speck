@@ -129,7 +129,7 @@ def distribution_metadata_paths() -> list[str]:
     return sorted(paths)
 
 
-def runtime_identity(tf_python: Path) -> dict:
+def runtime_identity(tf_python: Path, root: Path | None = None) -> dict:
     """Identify the loaded numeric stack without models or key-dependent inputs.
 
     TensorFlow imports can expose setuptools' vendored distribution metadata.
@@ -137,7 +137,8 @@ def runtime_identity(tf_python: Path) -> dict:
     the same environment. Every discovered metadata file is still byte-pinned.
     """
     base = {n: importlib.metadata.version(n) for n in ("numpy", "torch")}
-    root = Path(__file__).resolve().parents[3]
+    if root is None:
+        root = Path(__file__).resolve().parents[3]
     tmpdir = root / "runtime/ranking_depth_tmp"
     tmpdir.mkdir(parents=True, exist_ok=True)
     probe_environment = {
@@ -290,7 +291,7 @@ def prepare(
         python=file_identity(Path(sys.executable)),
         tf_python=file_identity(tf_python.absolute()),
     )
-    runtime = runtime_identity(tf_python)
+    runtime = runtime_identity(tf_python, root)
     if runtime["tensorflow"]["packages"]["tensorflow"] != "2.16.2":
         raise ValueError("TensorFlow environment differs from the frozen comparator")
     files.update(
@@ -402,7 +403,7 @@ def load_manifest(path: Path, *, hashes: bool = True) -> tuple[dict, dict[str, P
             p = Path(pin["path"])
             paths[name] = p if p.is_absolute() else root / p
     # Never invoke the TF executable before checking its pinned bytes.
-    observed_runtime = runtime_identity(paths["tf_python"])
+    observed_runtime = runtime_identity(paths["tf_python"], root)
     if digest(observed_runtime) != digest(manifest.get("runtime")):
         raise ValueError("Imported numeric/inference runtime identity differs")
     compiled = runtime_files(observed_runtime, paths["tf_python"])
