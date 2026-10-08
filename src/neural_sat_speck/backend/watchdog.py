@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import json
 import math
 import os
@@ -14,6 +15,46 @@ import time
 from pathlib import Path
 
 from .guard import atomic_json
+
+
+def confirm_group_absence(pgid: int, *, timeout: float = 1.0) -> dict:
+    """Bound signal-zero probes; only ESRCH proves absence, never an error.
+
+    Do not send another terminating signal here: the worker may have been reaped,
+    and its numeric process-group identifier could already have been reused.
+    """
+    if type(pgid) is not int or pgid <= 1 or pgid == os.getpgrp():
+        raise ValueError("Unsafe process group for cleanup proof")
+    if type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("Invalid cleanup proof timeout")
+    started = time.perf_counter()
+    deadline = started + timeout
+    receipt = {"process_group_absent": False, "absence_probe_errors": []}
+    for attempt in range(100):
+        if attempt and time.perf_counter() >= deadline:
+            break
+        try:
+            os.killpg(pgid, 0)
+        except OSError as error:
+            if error.errno == errno.ESRCH:
+                receipt["process_group_absent"] = True
+                receipt["absence_proof"] = "killpg_signal_zero_ESRCH"
+                break
+            receipt["absence_probe_errors"].append(
+                {
+                    "attempt": attempt + 1,
+                    "errno": error.errno,
+                    "type": type(error).__name__,
+                    "message": str(error),
+                    "observed_monotonic": time.perf_counter(),
+                }
+            )
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
+            break
+        time.sleep(min(0.01, remaining))
+    receipt["absence_probe_wall_seconds"] = time.perf_counter() - started
+    return receipt
 
 
 def invocation_groups(token: str) -> set[int]:
@@ -141,23 +182,14 @@ def main() -> None:
                 # as a zombie by WNOWAIT. Retain the error; only a subsequent
                 # absence proof can make this cleanup successful.
                 receipt["group_signal_error"] = f"{type(error).__name__}: {error}"
+                receipt["group_signal_errno"] = error.errno
             try:
                 receipt["worker_returncode"] = process.wait(timeout=5)
             except subprocess.TimeoutExpired as error:
                 receipt["status"] = "guardian_error"
                 receipt["error"] = f"Child did not terminate: {error}"
-            absent = False
-            for _ in range(100):
-                try:
-                    os.killpg(process.pid, 0)
-                except ProcessLookupError:
-                    absent = True
-                    break
-                except OSError:
-                    break
-                time.sleep(0.01)
-            receipt["process_group_absent"] = absent
-            if not absent:
+            receipt.update(confirm_group_absence(process.pid))
+            if not receipt["process_group_absent"]:
                 receipt["status"] = "guardian_error"
                 receipt["error"] = "Worker process group absence was not proven"
         receipt["cleanup_completed_monotonic"] = time.perf_counter()
