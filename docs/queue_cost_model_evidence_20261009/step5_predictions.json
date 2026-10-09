@@ -1,0 +1,210 @@
+{
+ "speck32_64|cms_native_gauss|cap=None": {
+  "0.9": {
+   "expected": 18.0,
+   "pi90": [
+    13,
+    23
+   ],
+   "median": 18
+  },
+  "1.0": {
+   "expected": 18.0,
+   "pi90": [
+    13,
+    23
+   ],
+   "median": 18
+  },
+  "1.1": {
+   "expected": 18.0,
+   "pi90": [
+    13,
+    23
+   ],
+   "median": 18
+  }
+ },
+ "speck32_64|cms_native_no_gauss|cap=None": {
+  "0.9": {
+   "expected": 21.01,
+   "pi90": [
+    17,
+    25
+   ],
+   "median": 21
+  },
+  "1.0": {
+   "expected": 20.12,
+   "pi90": [
+    16,
+    25
+   ],
+   "median": 20
+  },
+  "1.1": {
+   "expected": 19.25,
+   "pi90": [
+    15,
+    24
+   ],
+   "median": 19
+  }
+ },
+ "speck32_64|cms_native_gauss|cap=1.5": {
+  "0.9": {
+   "expected": 2.09,
+   "pi90": [
+    0,
+    5
+   ],
+   "median": 2
+  },
+  "1.0": {
+   "expected": 1.04,
+   "pi90": [
+    0,
+    3
+   ],
+   "median": 1
+  },
+  "1.1": {
+   "expected": 1.01,
+   "pi90": [
+    0,
+    3
+   ],
+   "median": 1
+  }
+ },
+ "speck32_64|cms_native_no_gauss|cap=1.5": {
+  "0.9": {
+   "expected": 20.2,
+   "pi90": [
+    16,
+    25
+   ],
+   "median": 20
+  },
+  "1.0": {
+   "expected": 19.89,
+   "pi90": [
+    15,
+    24
+   ],
+   "median": 20
+  },
+  "1.1": {
+   "expected": 17.97,
+   "pi90": [
+    13,
+    23
+   ],
+   "median": 18
+  }
+ },
+ "simon32_64|cms_native_gauss|cap=None": {
+  "0.9": {
+   "expected": 26.99,
+   "pi90": [
+    23,
+    30
+   ],
+   "median": 27
+  },
+  "1.0": {
+   "expected": 26.91,
+   "pi90": [
+    23,
+    30
+   ],
+   "median": 27
+  },
+  "1.1": {
+   "expected": 26.69,
+   "pi90": [
+    23,
+    30
+   ],
+   "median": 27
+  }
+ },
+ "simon32_64|cms_native_no_gauss|cap=None": {
+  "0.9": {
+   "expected": 22.88,
+   "pi90": [
+    19,
+    27
+   ],
+   "median": 23
+  },
+  "1.0": {
+   "expected": 22.3,
+   "pi90": [
+    18,
+    26
+   ],
+   "median": 22
+  },
+  "1.1": {
+   "expected": 21.72,
+   "pi90": [
+    17,
+    26
+   ],
+   "median": 22
+  }
+ },
+ "simon32_64|cms_native_gauss|cap=10.0": {
+  "0.9": {
+   "expected": 23.01,
+   "pi90": [
+    19,
+    27
+   ],
+   "median": 23
+  },
+  "1.0": {
+   "expected": 22.03,
+   "pi90": [
+    18,
+    26
+   ],
+   "median": 22
+  },
+  "1.1": {
+   "expected": 20.02,
+   "pi90": [
+    15,
+    24
+   ],
+   "median": 20
+  }
+ },
+ "simon32_64|cms_native_no_gauss|cap=10.0": {
+  "0.9": {
+   "expected": 11.66,
+   "pi90": [
+    7,
+    16
+   ],
+   "median": 12
+  },
+  "1.0": {
+   "expected": 9.29,
+   "pi90": [
+    5,
+    14
+   ],
+   "median": 9
+  },
+  "1.1": {
+   "expected": 9.22,
+   "pi90": [
+    5,
+    13
+   ],
+   "median": 9
+  }
+ }
+}

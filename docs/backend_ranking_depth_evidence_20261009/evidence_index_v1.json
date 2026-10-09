@@ -1,0 +1,129 @@
+{
+  "analysis_code": {
+    "scripts/analyze_backend_ranking_depth.py": "1efea0502cf9122653458eec00db618a4a1029ad4c1a011825ec9c1f834b24c7",
+    "scripts/check_d056_analysis_robustness.py": "d389bd890e469a8a325a33a3edf7c622b6167848fc4237982ba6f5934a4c5f31",
+    "src/neural_sat_speck/followups/ranking_depth_audit.py": "7f8342c0f09dc557fa4e005598a316ef4218ad90ace318565ceb27bc77fa7a2b",
+    "src/neural_sat_speck/followups/ranking_depth_segment_audit.py": "714eff5113b0ee7fec87ee9363bd70156d5ee588eedd1c7f4731cf326a146e4f"
+  },
+  "assigned_cells": 256,
+  "attempt_history": {
+    "assigned_cells": 256,
+    "authorized_retries": 1,
+    "starts": 257
+  },
+  "core_analysis_revision": "b6292aec86bd7d7f762fc2eca1a24a5d1edf6f56",
+  "evidence_role": "DEVELOPMENT",
+  "execution_receipt": {
+    "charged_campaign_active_seconds": 55078.25276195999,
+    "charged_preparation_seconds": 30.468734125999617,
+    "completed_utc": "2026-10-09T01:26:28.967078+00:00",
+    "continuation_launch_seconds": 24002.668416167,
+    "exit_code": 0,
+    "original_campaign_ceiling_seconds": 90000,
+    "original_elapsed_seconds": 31045.115611666995,
+    "path": "runtime/d056_recovery_launch_receipt_20261009_r2.json",
+    "sha256": "9373e3053947dc19166e68a18845fc0e692c0b1b8511594fb842cb28a124badc",
+    "status": "EXITED"
+  },
+  "frozen_scientific_assets": {
+    "bao_vv9": {
+      "path": "runtime/bao-simon-audit/simonNDvsDD/SENet/ND_VV_Simon32_9R.h5",
+      "sha256": "2363b843592529fe9409dc25dbc0f50c20565973a4a23e54e5478a03113a7070"
+    },
+    "cms": {
+      "path": "/opt/homebrew/Cellar/cryptominisat/5.14.7/bin/cryptominisat5",
+      "sha256": "a3f85c3709b5e2a040bf82a4a604d1c7b9f10219bbf180a9e0f72319a2e892ac"
+    },
+    "cohort": {
+      "path": "datasets/dev_cross_cipher_depth_n32/dataset.json",
+      "sha256": "39aad2922a5a2ad0bd5a2fd425af01ab57a2ab4896096435285a9a61cbc05ee1"
+    },
+    "simon_ddt": {
+      "path": "runtime/resources/simon_predicted_ddt_7r.bin",
+      "sha256": "52b3f3d4df3e20d64942f95ea2837f55b6d7591f1989e92dffd6212938e25c46"
+    },
+    "speck_classical": {
+      "path": "models/classical_dist_r5_sparse_v2.json",
+      "sha256": "7a1002c3213226cc8543608f262e9984e8c7a7a57d49e3302828ae5a69a699df"
+    },
+    "speck_stage1": {
+      "path": "models/speck32_64_phase11b_prime_stage1_r6_b1_mean.pt",
+      "sha256": "0a5afc9fc6f1d78bc218a157ef2680ba257aa8230c716d410e868be7bf0ec351"
+    }
+  },
+  "generated_files": {
+    "analysis_v1.csv": {
+      "sha256": "f1d8d3d98e511980d0a1811fe0eed4ca059c522d9409a307aae3be1dcb6d03e2",
+      "size_bytes": 61582
+    },
+    "analysis_v1.json": {
+      "sha256": "7eb12c76ded7ab078109ef0d387440152d1281175054a55dafc38b5b3644ade8",
+      "size_bytes": 409535
+    },
+    "analysis_v2.csv": {
+      "sha256": "f1d8d3d98e511980d0a1811fe0eed4ca059c522d9409a307aae3be1dcb6d03e2",
+      "size_bytes": 61582
+    },
+    "analysis_v2.json": {
+      "sha256": "7eb12c76ded7ab078109ef0d387440152d1281175054a55dafc38b5b3644ade8",
+      "size_bytes": 409535
+    },
+    "audit_checks_v1.json": {
+      "sha256": "a24b24b4ca0dcda93c864c06562a325ba022ef077bb33b27a9b3c8fcc622b397",
+      "size_bytes": 41757
+    },
+    "raw_audit_v1.json": {
+      "sha256": "5c2e0b27f5143ff0c6ee9ed01f99063da172fde5690520e543a9d2c049526d62",
+      "size_bytes": 15275
+    }
+  },
+  "independent_keys_per_cipher": 32,
+  "online_deadline_seconds": 300.0,
+  "phase12_seed": "ABSENT_UNASSIGNED_UNOPENED",
+  "profile_sha256": "cda7dd480b7ab3d4eb844ac66fc614063c69dee095cdd220fd1dacbd1e657184",
+  "remaining_programme": [
+    "measured reference-encryption calibration",
+    "validated bounded fully classical SPECK Stage 1 D6 comparator",
+    "artifact distribution rights and external replay",
+    "manuscript reconciliation; deferred Metal sensitivity"
+  ],
+  "runtime_binding_scope": "entry/core/configuration bytes and installed-version metadata; transitive package code not exhaustively byte-pinned",
+  "schema": "d056_final_evidence_index_v1",
+  "segments": [
+    {
+      "ledger_path": "/Users/ashfaq/Dev/comp-sci-project/results/backend_ranking_depth_20261008_full_d056/execution/ledger.json",
+      "ledger_sha256": "ac53ea48efeb18b9c765d3e40b67254999a2071ed3aaf45ab9e10e2e4839937d",
+      "manifest_path": "/Users/ashfaq/Dev/comp-sci-project/results/backend_ranking_depth_20261008_full_d056/inputs/manifest.json",
+      "manifest_sha256": "0e7074541ea612f4277a600ce759a221924c0d934b05c9e29cb09a944f6f46af",
+      "segment": "original",
+      "source_commit": "b5a0aee02abce43aa1f5f30165df40a79fdcd1af",
+      "started_invocations": 142,
+      "terminal_cells": 141
+    },
+    {
+      "ledger_path": "/Users/ashfaq/Dev/comp-sci-project/results/backend_ranking_depth_20261009_continuation_d057/execution/ledger.json",
+      "ledger_sha256": "57a274e42c10d18a59b77f07e44d4da8e32bdff3c53022efe0a04d1e84b9fc13",
+      "manifest_path": "/Users/ashfaq/Dev/comp-sci-project/results/backend_ranking_depth_20261009_continuation_d057/inputs/continuation_manifest.json",
+      "manifest_sha256": "eae9919af8f0b8280c8beaf830b2a13ad611a8f41e24d5c54b4ed0d89e7cb192",
+      "segment": "continuation",
+      "source_commit": "9a00e05de3b3cf7e48dddfb1da4939d8c6116f5a",
+      "started_invocations": 115,
+      "terminal_cells": 115
+    }
+  ],
+  "serialization_note": "CSV exports normalized to LF before publication; numeric cells unchanged; same LF generator patch included in closure commit.",
+  "status": "AUDITED_CLOSED",
+  "unavailable_original_attempt": {
+    "cell_id": "speck32_64_17_m1_cms_native_no_gauss",
+    "inventory_sha256": "3b78e94b8c2ced06513a99f3a9db79427f2f0b2441e9522a8d26cf312df66c9b",
+    "invocation_id": "660e0a9d34944fbb9933663194f1b35f",
+    "scientific_outcome": "unavailable"
+  },
+  "validation": {
+    "all_assigned_key_recoveries_verified": 118,
+    "all_sidecars_matched": 34878,
+    "focused_tests_passed": 72,
+    "independent_reviewers": 2,
+    "rerun_required": false
+  }
+}

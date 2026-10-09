@@ -1,0 +1,433 @@
+{
+  "overall": {
+    "pred_primary": {
+      "correct": 242,
+      "n": 256,
+      "accuracy": 0.9453125,
+      "ci": [
+        0.909945202165943,
+        0.9697828246470755
+      ],
+      "balanced_accuracy": 0.9449766642102677,
+      "cluster_bootstrap_ci": [
+        0.91796875,
+        0.96875
+      ]
+    },
+    "pred_simple": {
+      "correct": 242,
+      "n": 256,
+      "accuracy": 0.9453125,
+      "ci": [
+        0.909945202165943,
+        0.9697828246470755
+      ],
+      "balanced_accuracy": 0.9468189633996561,
+      "cluster_bootstrap_ci": [
+        0.9140625,
+        0.97265625
+      ]
+    },
+    "pred_B0": {
+      "correct": 158,
+      "n": 256,
+      "accuracy": 0.6171875,
+      "ci": [
+        0.5546117944794675,
+        0.6770159417659877
+      ],
+      "balanced_accuracy": 0.644927536231884,
+      "cluster_bootstrap_ci": [
+        0.5390625,
+        0.69140625
+      ]
+    },
+    "pred_B1": {
+      "correct": 196,
+      "n": 256,
+      "accuracy": 0.765625,
+      "ci": [
+        0.7088644422566789,
+        0.8161219712941412
+      ],
+      "balanced_accuracy": 0.7770817980840088,
+      "cluster_bootstrap_ci": [
+        0.69921875,
+        0.828125
+      ]
+    },
+    "brier_primary": 0.0405566096875
+  },
+  "per_arm": {
+    "simon32_64|1|cms_native_gauss": {
+      "actual": 23,
+      "expected_primary": 23.67,
+      "within3": true,
+      "pred_simple_count": 26,
+      "acc_primary": 0.90625,
+      "acc_simple": 0.90625,
+      "acc_B0": 0.875,
+      "acc_B1": 0.71875,
+      "r_n": 55,
+      "r_censored": 7,
+      "r_median": 39.689797833008924,
+      "r_p90": 119.699031791999,
+      "s_n": 24,
+      "s_censored": 1,
+      "s_median": 23.34126833299524,
+      "s_p90": 96.08108345899382,
+      "o_median": 0.007270749993040226,
+      "P_median": 53.4435,
+      "k_median": 1.0
+    },
+    "simon32_64|1|cms_native_no_gauss": {
+      "actual": 3,
+      "expected_primary": 3.16,
+      "within3": true,
+      "pred_simple_count": 0,
+      "acc_primary": 0.90625,
+      "acc_simple": 0.90625,
+      "acc_B0": 0.25,
+      "acc_B1": 0.90625,
+      "r_n": 25,
+      "r_censored": 20,
+      "r_median": Infinity,
+      "r_p90": Infinity,
+      "s_n": 12,
+      "s_censored": 9,
+      "s_median": Infinity,
+      "s_p90": Infinity,
+      "o_median": 0.008947167007136159,
+      "P_median": 53.399,
+      "k_median": 1.0
+    },
+    "simon32_64|2|cms_native_gauss": {
+      "actual": 27,
+      "expected_primary": 26.86,
+      "within3": true,
+      "pred_simple_count": 27,
+      "acc_primary": 1.0,
+      "acc_simple": 1.0,
+      "acc_B0": 1.0,
+      "acc_B1": 0.84375,
+      "r_n": 241,
+      "r_censored": 5,
+      "r_median": 6.771286125003826,
+      "r_p90": 11.319503833001363,
+      "s_n": 27,
+      "s_censored": 0,
+      "s_median": 5.3229163749929285,
+      "s_p90": 14.111246874992503,
+      "o_median": 0.006327437498839572,
+      "P_median": 54.144499999999994,
+      "k_median": 2.0
+    },
+    "simon32_64|2|cms_native_no_gauss": {
+      "actual": 22,
+      "expected_primary": 22.32,
+      "within3": true,
+      "pred_simple_count": 26,
+      "acc_primary": 0.90625,
+      "acc_simple": 0.875,
+      "acc_B0": 0.84375,
+      "acc_B1": 0.6875,
+      "r_n": 110,
+      "r_censored": 9,
+      "r_median": 18.157970916989143,
+      "r_p90": 82.77665508299833,
+      "s_n": 23,
+      "s_censored": 1,
+      "s_median": 12.866470875000232,
+      "s_p90": 56.85350616600772,
+      "o_median": 0.006704333005473018,
+      "P_median": 54.09,
+      "k_median": 2.0
+    },
+    "speck32_64|1|cms_native_gauss": {
+      "actual": 4,
+      "expected_primary": 3.42,
+      "within3": true,
+      "pred_simple_count": 3,
+      "acc_primary": 0.96875,
+      "acc_simple": 0.96875,
+      "acc_B0": 0.28125,
+      "acc_B1": 0.875,
+      "r_n": 69,
+      "r_censored": 28,
+      "r_median": 124.99788708300184,
+      "r_p90": 242.3497127090086,
+      "s_n": 4,
+      "s_censored": 0,
+      "s_median": 66.49858237498847,
+      "s_p90": 84.87919320899528,
+      "o_median": 0.011972790991421789,
+      "P_median": 44.4335,
+      "k_median": 8.0
+    },
+    "speck32_64|1|cms_native_no_gauss": {
+      "actual": 2,
+      "expected_primary": 1.99,
+      "within3": true,
+      "pred_simple_count": 3,
+      "acc_primary": 0.90625,
+      "acc_simple": 0.96875,
+      "acc_B0": 0.21875,
+      "acc_B1": 0.9375,
+      "r_n": 34,
+      "r_censored": 29,
+      "r_median": Infinity,
+      "r_p90": Infinity,
+      "s_n": 3,
+      "s_censored": 1,
+      "s_median": 178.9600070000015,
+      "s_p90": Infinity,
+      "o_median": 0.010944791007204913,
+      "P_median": 44.418,
+      "k_median": 8.0
+    },
+    "speck32_64|2|cms_native_gauss": {
+      "actual": 18,
+      "expected_primary": 18.0,
+      "within3": true,
+      "pred_simple_count": 18,
+      "acc_primary": 1.0,
+      "acc_simple": 1.0,
+      "acc_B0": 0.71875,
+      "acc_B1": 0.5625,
+      "r_n": 2372,
+      "r_censored": 14,
+      "r_median": 1.9761965830111876,
+      "r_p90": 2.1962060420046328,
+      "s_n": 18,
+      "s_censored": 0,
+      "s_median": 2.0622077500011073,
+      "s_p90": 2.3200185419991612,
+      "o_median": 0.007653999997273786,
+      "P_median": 61.418,
+      "k_median": 55.0
+    },
+    "speck32_64|2|cms_native_no_gauss": {
+      "actual": 19,
+      "expected_primary": 20.14,
+      "within3": true,
+      "pred_simple_count": 21,
+      "acc_primary": 0.96875,
+      "acc_simple": 0.9375,
+      "acc_B0": 0.75,
+      "acc_B1": 0.59375,
+      "r_n": 3211,
+      "r_censored": 13,
+      "r_median": 1.0975341250014026,
+      "r_p90": 1.7832012500002747,
+      "s_n": 19,
+      "s_censored": 0,
+      "s_median": 0.8822414160022163,
+      "s_p90": 1.4673022909992142,
+      "o_median": 0.00754287500603823,
+      "P_median": 61.301,
+      "k_median": 55.0
+    }
+  },
+  "deviations": [
+    "Cap-curve estimability operationalised as: <10% of the arm's r and s observations censored below tau."
+  ],
+  "arms_within3": 8,
+  "diagnostics": {
+    "simon32_64|1|cms_native_gauss": {
+      "spearman_r_vs_position": -0.33977420755536253,
+      "n": 48,
+      "spearman_neighbour": 0.42002442002442003,
+      "n_pairs": 27
+    },
+    "simon32_64|1|cms_native_no_gauss": {
+      "spearman_r_vs_position": -0.7,
+      "n": 5,
+      "spearman_neighbour": null,
+      "n_pairs": 0
+    },
+    "simon32_64|2|cms_native_gauss": {
+      "spearman_r_vs_position": 0.05732492799006696,
+      "n": 236,
+      "spearman_neighbour": 0.01217851191769905,
+      "n_pairs": 215
+    },
+    "simon32_64|2|cms_native_no_gauss": {
+      "spearman_r_vs_position": 0.09154338963308095,
+      "n": 101,
+      "spearman_neighbour": -0.05077355836849508,
+      "n_pairs": 80
+    },
+    "speck32_64|1|cms_native_gauss": {
+      "spearman_r_vs_position": -0.1937282229965157,
+      "n": 41,
+      "spearman_neighbour": 0.42857142857142855,
+      "n_pairs": 15
+    },
+    "speck32_64|1|cms_native_no_gauss": {
+      "spearman_r_vs_position": -0.6,
+      "n": 5,
+      "spearman_neighbour": null,
+      "n_pairs": 0
+    },
+    "speck32_64|2|cms_native_gauss": {
+      "spearman_r_vs_position": 0.014709338209357848,
+      "n": 2358,
+      "spearman_neighbour": 0.026548092528839915,
+      "n_pairs": 2329
+    },
+    "speck32_64|2|cms_native_no_gauss": {
+      "spearman_r_vs_position": -0.0052645398574409615,
+      "n": 3198,
+      "spearman_neighbour": 0.11855453269773086,
+      "n_pairs": 3169
+    }
+  },
+  "counterfactuals": {
+    "speck32_64 d1 X with G rejection times": {
+      "base": 2.0,
+      "counterfactual": 2.01
+    },
+    "speck32_64 d1 G with X rejection times": {
+      "base": 3.41,
+      "counterfactual": 3.0
+    },
+    "speck32_64 d2 X with G rejection times": {
+      "base": 20.13,
+      "counterfactual": 18.0
+    },
+    "speck32_64 d2 G with X rejection times": {
+      "base": 18.0,
+      "counterfactual": 20.11
+    },
+    "speck32_64 cms_native_gauss d1 with d2 rejection times": {
+      "base": 3.41,
+      "counterfactual": 27.0
+    },
+    "speck32_64 cms_native_gauss d2 with d1 preparation": {
+      "base": 18.0,
+      "counterfactual": 18.0
+    },
+    "speck32_64 cms_native_no_gauss d1 with d2 rejection times": {
+      "base": 2.0,
+      "counterfactual": 17.99
+    },
+    "speck32_64 cms_native_no_gauss d2 with d1 preparation": {
+      "base": 20.13,
+      "counterfactual": 20.94
+    },
+    "simon32_64 d1 X with G rejection times": {
+      "base": 3.17,
+      "counterfactual": 6.28
+    },
+    "simon32_64 d1 G with X rejection times": {
+      "base": 23.6,
+      "counterfactual": 11.82
+    },
+    "simon32_64 d2 X with G rejection times": {
+      "base": 22.32,
+      "counterfactual": 26.75
+    },
+    "simon32_64 d2 G with X rejection times": {
+      "base": 26.91,
+      "counterfactual": 22.91
+    },
+    "simon32_64 cms_native_gauss d1 with d2 rejection times": {
+      "base": 23.6,
+      "counterfactual": 25.88
+    },
+    "simon32_64 cms_native_gauss d2 with d1 preparation": {
+      "base": 26.91,
+      "counterfactual": 26.92
+    },
+    "simon32_64 cms_native_no_gauss d1 with d2 rejection times": {
+      "base": 3.17,
+      "counterfactual": 6.62
+    },
+    "simon32_64 cms_native_no_gauss d2 with d1 preparation": {
+      "base": 22.32,
+      "counterfactual": 22.34
+    }
+  },
+  "cap_curve_expected_recoveries_of_32": {
+    "simon32_64|1|cms_native_gauss": {
+      "1": 0.0,
+      "2": 0.0,
+      "5": 0.0,
+      "10": 3.4,
+      "20": 9.03,
+      "45": 19.9,
+      "100": 23.71,
+      "300": "not estimable"
+    },
+    "simon32_64|1|cms_native_no_gauss": {
+      "1": 0.0,
+      "2": 0.0,
+      "5": 0.0,
+      "10": 0.0,
+      "20": 0.0,
+      "45": 2.18,
+      "100": 3.53,
+      "300": "not estimable"
+    },
+    "simon32_64|2|cms_native_gauss": {
+      "1": 0.0,
+      "2": 0.0,
+      "5": 11.01,
+      "10": 21.98,
+      "20": 26.96,
+      "45": 26.91,
+      "100": 26.91,
+      "300": 26.91
+    },
+    "simon32_64|2|cms_native_no_gauss": {
+      "1": 0.0,
+      "2": 0.0,
+      "5": 2.35,
+      "10": 9.27,
+      "20": 15.81,
+      "45": 21.9,
+      "100": 21.6,
+      "300": 22.32
+    },
+    "speck32_64|1|cms_native_gauss": {
+      "1": 0.0,
+      "2": 0.0,
+      "5": 0.0,
+      "10": 0.0,
+      "20": 0.0,
+      "45": "not estimable",
+      "100": "not estimable",
+      "300": "not estimable"
+    },
+    "speck32_64|1|cms_native_no_gauss": {
+      "1": 0.0,
+      "2": 0.0,
+      "5": 0.0,
+      "10": 0.0,
+      "20": 0.0,
+      "45": 0.0,
+      "100": "not estimable",
+      "300": "not estimable"
+    },
+    "speck32_64|2|cms_native_gauss": {
+      "1": 0.0,
+      "2": 5.0,
+      "5": 18.0,
+      "10": 18.0,
+      "20": 18.0,
+      "45": 18.0,
+      "100": 18.0,
+      "300": 18.0
+    },
+    "speck32_64|2|cms_native_no_gauss": {
+      "1": 13.9,
+      "2": 20.35,
+      "5": 20.12,
+      "10": 20.12,
+      "20": 20.12,
+      "45": 20.12,
+      "100": 20.12,
+      "300": 20.12
+    }
+  }
+}

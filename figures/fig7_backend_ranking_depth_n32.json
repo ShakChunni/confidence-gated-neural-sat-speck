@@ -1,0 +1,36 @@
+{
+  "canonical_study": "D-056/D-057",
+  "code_path": "scripts/generate_backend_ranking_depth_n32_figure.py",
+  "code_sha256": "1049f5826f51840a2ac72ff6b17c751b6fb1229ed451e55794f98ee9cdec8439",
+  "matplotlib_version": "3.11.1",
+  "outputs": {
+    "fig7_backend_ranking_depth_n32.csv": "2318f8433e85a26f1cce46581bc8f667bd0d4c42f3749713ad68b3428a976970",
+    "fig7_backend_ranking_depth_n32.pdf": "29cb52b7fbca87621bfa96f6d99fd14e268e20c2980cf0a9bd17b819dcc01c79",
+    "fig7_backend_ranking_depth_n32.png": "07f492ad2d792f802c0ddc22008d72650c7960d872f13617a887c24e6efcdf9d"
+  },
+  "role": "audited_development_descriptive_32_keys_per_cipher",
+  "segments": [
+    {
+      "ledger_path": "/Users/ashfaq/Dev/comp-sci-project/results/backend_ranking_depth_20261008_full_d056/execution/ledger.json",
+      "ledger_sha256": "ac53ea48efeb18b9c765d3e40b67254999a2071ed3aaf45ab9e10e2e4839937d",
+      "manifest_path": "/Users/ashfaq/Dev/comp-sci-project/results/backend_ranking_depth_20261008_full_d056/inputs/manifest.json",
+      "manifest_sha256": "0e7074541ea612f4277a600ce759a221924c0d934b05c9e29cb09a944f6f46af",
+      "segment": "original",
+      "source_commit": "b5a0aee02abce43aa1f5f30165df40a79fdcd1af",
+      "started_invocations": 142,
+      "terminal_cells": 141
+    },
+    {
+      "ledger_path": "/Users/ashfaq/Dev/comp-sci-project/results/backend_ranking_depth_20261009_continuation_d057/execution/ledger.json",
+      "ledger_sha256": "57a274e42c10d18a59b77f07e44d4da8e32bdff3c53022efe0a04d1e84b9fc13",
+      "manifest_path": "/Users/ashfaq/Dev/comp-sci-project/results/backend_ranking_depth_20261009_continuation_d057/inputs/continuation_manifest.json",
+      "manifest_sha256": "eae9919af8f0b8280c8beaf830b2a13ad611a8f41e24d5c54b4ed0d89e7cb192",
+      "segment": "continuation",
+      "source_commit": "9a00e05de3b3cf7e48dddfb1da4939d8c6116f5a",
+      "started_invocations": 115,
+      "terminal_cells": 115
+    }
+  ],
+  "source_path": "docs/backend_ranking_depth_evidence_20261009/analysis_v2.json",
+  "source_sha256": "7eb12c76ded7ab078109ef0d387440152d1281175054a55dafc38b5b3644ade8"
+}

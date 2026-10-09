@@ -202,6 +202,18 @@ if __name__ == "__main__":
         type=Path,
         default=Path("docs/backend_ranking_depth_evidence_20261007/analysis_v1.json"),
     )
-    parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument(
+        "--study",
+        choices=("n8", "n32"),
+        default="n8",
+        help="Select between legacy D-055 (n8) and audited D-056/D-057 (n32)",
+    )
     args = parser.parse_args()
-    generate(args.analysis, args.output_dir)
+    if args.study == "n32" or "20261009" in str(args.analysis):
+        from scripts.generate_backend_ranking_depth_n32_figure import (
+            generate as generate_n32,
+        )
+
+        generate_n32(args.analysis, args.output_dir)
+    else:
+        generate(args.analysis, args.output_dir)

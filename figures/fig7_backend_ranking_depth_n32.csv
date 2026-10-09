@@ -1,0 +1,9 @@
+cipher,profile,trailing_keys,n,verified_recoveries,mean_par2_seconds
+speck32_64,cms_native_gauss,1,32,4,543.1347931979378
+speck32_64,cms_native_gauss,2,32,18,329.3279917604691
+speck32_64,cms_native_no_gauss,1,32,2,575.2461305455934
+speck32_64,cms_native_no_gauss,2,32,19,307.07477749600025
+simon32_64,cms_native_gauss,1,32,23,255.09946512512556
+simon32_64,cms_native_gauss,2,32,27,163.59790535928096
+simon32_64,cms_native_no_gauss,1,32,3,554.4998725129999
+simon32_64,cms_native_no_gauss,2,32,22,273.62298777478077

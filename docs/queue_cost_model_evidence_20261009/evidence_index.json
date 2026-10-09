@@ -1,0 +1,55 @@
+{
+  "schema": "queue_cost_model_evidence_index_v1",
+  "git_head": "adf5c1dd8e9fbac825814bae8c97964c2eb645bb",
+  "git_note": "scripts, tests and this directory are new, uncommitted files on top of git_head",
+  "protocol": {
+    "path": "docs/QUEUE_COST_MODEL_PROTOCOL_20261009.md",
+    "sha256": "4cffa9b461edba379b004ec887e5af4c3c6559de4e975fbd2fc5b4a3f492dd19"
+  },
+  "generator_scripts": {
+    "scripts/extract_queue_cost_attempts.py": "f8f0815267774f8fccee2d123eacc74524704a6ffdc1e24413487fece80ba6df",
+    "scripts/fit_queue_cost_model.py": "2aef8a30dbc917ea03b05ec32c4c93c6d89a012f2309890031c8e46990b9591e",
+    "scripts/queue_cost_posthoc.py": "dc6132c1c3e05407ec730b7b241c6266f48f5002807018c4626a02915bc3643e"
+  },
+  "inputs": {
+    "docs/backend_ranking_depth_evidence_20261009/analysis_v2.csv": "f1d8d3d98e511980d0a1811fe0eed4ca059c522d9409a307aae3be1dcb6d03e2",
+    "docs/backend_ranking_depth_evidence_20261009/analysis_v2.json": "7eb12c76ded7ab078109ef0d387440152d1281175054a55dafc38b5b3644ade8"
+  },
+  "generated_files": {
+    "attempts.csv": {
+      "sha256": "04c95882820d5cd0398d16e9b7d2d0c7c077e90cf020f6fd0d41ae85cb8bd690",
+      "size_bytes": 1103193,
+      "generating_command": "python3 -I -B scripts/extract_queue_cost_attempts.py --output-dir docs/queue_cost_model_evidence_20261009"
+    },
+    "cells.csv": {
+      "sha256": "d4bbfe2d54889dc3f79684aec4cba118c61487ae6328ca73cb3b42cfa3ab3646",
+      "size_bytes": 57066,
+      "generating_command": "python3 -I -B scripts/extract_queue_cost_attempts.py --output-dir docs/queue_cost_model_evidence_20261009"
+    },
+    "extraction_report.md": {
+      "sha256": "602edd6efe79b52ccef69e3783dd57440f25ab7b1ec9bcf261a4c932c0b7cb69",
+      "size_bytes": 8157,
+      "generating_command": "python3 -I -B scripts/extract_queue_cost_attempts.py --output-dir docs/queue_cost_model_evidence_20261009"
+    },
+    "predictions.csv": {
+      "sha256": "c6ef99716d2a835338904f63b64b202e9602aae0d925152e084861750a10ad01",
+      "size_bytes": 26474,
+      "generating_command": "python3 -I -B scripts/fit_queue_cost_model.py --input-dir docs/queue_cost_model_evidence_20261009 --output-dir docs/queue_cost_model_evidence_20261009"
+    },
+    "summary.json": {
+      "sha256": "1a8aace2f597e4439548ad11fd2f3bc6164606ec513b95219b9f527afd736296",
+      "size_bytes": 10834,
+      "generating_command": "python3 -I -B scripts/fit_queue_cost_model.py --input-dir docs/queue_cost_model_evidence_20261009 --output-dir docs/queue_cost_model_evidence_20261009"
+    },
+    "fit_out.txt": {
+      "sha256": "807c146134ba5a12fc0cf99cf827ab343dbba9b5643e2e9a48c899b5d4b7fde3",
+      "size_bytes": 9642,
+      "generating_command": "python3 -I -B scripts/fit_queue_cost_model.py --input-dir docs/queue_cost_model_evidence_20261009 --output-dir docs/queue_cost_model_evidence_20261009 > docs/queue_cost_model_evidence_20261009/fit_out.txt"
+    },
+    "posthoc.txt": {
+      "sha256": "bda9c7b2aa541fc112b0f92b5d8b2e2c82fad8f96dd7558485d7dc4b192967a9",
+      "size_bytes": 1093,
+      "generating_command": "python3 -I -B scripts/queue_cost_posthoc.py --input-dir docs/queue_cost_model_evidence_20261009 > docs/queue_cost_model_evidence_20261009/posthoc.txt"
+    }
+  }
+}

@@ -1,0 +1,122 @@
+{
+ "summary": {
+  "fully_classical_8parent": {
+   "actual": 53,
+   "expected": 53.01,
+   "acc": 0.859375,
+   "acc_B0": 0.859375,
+   "contained": 62,
+   "P_med": 19.6,
+   "r_med": 0.07079758308827877,
+   "r_p90": 0.769486750010401,
+   "r_n": 4895,
+   "r_cens": 8,
+   "s_med": 14.810803125030361,
+   "s_n": 62,
+   "k_med": 0.0,
+   "k_q": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "neural_classical_hybrid_8parent": {
+   "actual": 49,
+   "expected": 48.99,
+   "acc": 0.890625,
+   "acc_B0": 0.890625,
+   "contained": 56,
+   "P_med": 56.3,
+   "r_med": 0.021972291986458004,
+   "r_p90": 0.4396044999593869,
+   "r_n": 10720,
+   "r_cens": 6,
+   "s_med": 6.609129082993604,
+   "s_n": 56,
+   "k_med": 0.0,
+   "k_q": [
+    0.0,
+    5.0,
+    17.0
+   ]
+  },
+  "fully_neural_1parent": {
+   "actual": 26,
+   "expected": 26.94,
+   "acc": 0.953125,
+   "acc_B0": 0.953125,
+   "contained": 29,
+   "P_med": 106.7,
+   "r_med": 0.1916176670929417,
+   "r_p90": 1.9619729579426348,
+   "r_n": 3257,
+   "r_cens": 8,
+   "s_med": 6.463213459006511,
+   "s_n": 28,
+   "k_med": 1.0,
+   "k_q": [
+    0.0,
+    1.0,
+    2.1999999999999993
+   ]
+  },
+  "random_control_1024": {
+   "actual": 0,
+   "expected": 0.0,
+   "acc": 1.0,
+   "acc_B0": 1.0,
+   "contained": 0,
+   "P_med": 0.5,
+   "r_med": 0.002511958940885961,
+   "r_p90": 0.2835558339720592,
+   "r_n": 53140,
+   "r_cens": 15,
+   "s_med": Infinity,
+   "s_n": 0,
+   "k_med": null,
+   "k_q": null
+  },
+  "random_control_128": {
+   "actual": 0,
+   "expected": 0.0,
+   "acc": 1.0,
+   "acc_B0": 1.0,
+   "contained": 0,
+   "P_med": 0.6,
+   "r_med": 0.07956762495450675,
+   "r_p90": 1.6257605000864714,
+   "r_n": 7736,
+   "r_cens": 5,
+   "s_med": Infinity,
+   "s_n": 0,
+   "k_med": null,
+   "k_q": null
+  },
+  "faithful_b1_hybrid": {
+   "actual": 0,
+   "expected": 0.0,
+   "acc": 1.0,
+   "acc_B0": 0.984375,
+   "contained": 1,
+   "P_med": 155.2,
+   "r_med": Infinity,
+   "r_p90": Infinity,
+   "r_n": 0,
+   "r_cens": 0,
+   "s_med": Infinity,
+   "s_n": 0,
+   "k_med": 0.0,
+   "k_q": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "overall": {
+  "correct": 365,
+  "n": 384,
+  "B0": 364,
+  "B1": 332
+ }
+}
