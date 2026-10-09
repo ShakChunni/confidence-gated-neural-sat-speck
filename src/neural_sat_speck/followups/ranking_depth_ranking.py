@@ -36,6 +36,9 @@ _CIPHERS = {
     "simon32_64": {"rounds": 10, "parents": 8, "children": 128},
 }
 _DOMAIN_SIZE = 1 << 16
+_STAGE1_OPTIONS = ("neural", "classical_sparse_r6")
+_CLASSICAL_R6_ROUNDS = 6
+_CLASSICAL_INPUT_DIFFERENCE = (0x0040, 0x0000)
 _SIMON_RESCORING_SIZE = 512
 _BATCH_SIZE = 1024
 _TF_INTRA_OP_THREADS = 8
@@ -71,6 +74,49 @@ def rank_queue(
     directory: Path | str,
     phase_callback: PhaseCallback | None = None,
 ) -> dict[str, Any]:
+    """D-055/D-056 ranking with the neural Stage 1 (signature and behaviour unchanged)."""
+    return _rank_queue(
+        cipher,
+        ciphertext_pairs,
+        trailing_keys,
+        paths,
+        directory,
+        phase_callback,
+        "neural",
+    )
+
+
+def rank_prospective_queue(
+    cipher: str,
+    ciphertext_pairs: Sequence[Sequence[Sequence[int]]],
+    trailing_keys: int,
+    paths: Mapping[str, Path | str],
+    directory: Path | str,
+    phase_callback: PhaseCallback | None = None,
+    *,
+    stage1: str,
+) -> dict[str, Any]:
+    """D-060/D-061 ranking: Stage 1 is ``neural`` or ``classical_sparse_r6`` (SPECK only)."""
+    return _rank_queue(
+        cipher,
+        ciphertext_pairs,
+        trailing_keys,
+        paths,
+        directory,
+        phase_callback,
+        stage1,
+    )
+
+
+def _rank_queue(
+    cipher: str,
+    ciphertext_pairs: Sequence[Sequence[Sequence[int]]],
+    trailing_keys: int,
+    paths: Mapping[str, Path | str],
+    directory: Path | str,
+    phase_callback: PhaseCallback | None,
+    stage1: str,
+) -> dict[str, Any]:
     """Rank the fixed D-055 one-key or two-key candidate queue.
 
     ``ciphertext_pairs`` has 64 entries, each ``(ciphertext0, ciphertext1)``;
@@ -84,6 +130,10 @@ def rank_queue(
     (for two-key cells) ``stage2_start``.  A caller can persist the completed
     Stage 1 receipt synchronously before the callback for Stage 2 is emitted.
     This function never launches a solver and never assigns its own deadline.
+
+    ``stage1="classical_sparse_r6"`` (SPECK only, D-061) replaces the neural
+    Stage 1 with the pinned sparse six-round table and the same 32-parent width.
+    The default ``"neural"`` path is unchanged.
     """
 
     profile = _CIPHERS.get(cipher)
@@ -91,10 +141,14 @@ def rank_queue(
         raise ValueError(f"Unsupported ranking-depth cipher: {cipher!r}")
     if type(trailing_keys) is not int or trailing_keys not in (1, 2):
         raise ValueError("trailing_keys must be exactly 1 or 2")
+    if stage1 not in _STAGE1_OPTIONS:
+        raise ValueError(f"Unknown Stage 1 option: {stage1!r}")
+    if stage1 != "neural" and cipher != "speck32_64":
+        raise ValueError("Classical Stage 1 is a SPECK-only comparator")
     if phase_callback is not None and not callable(phase_callback):
         raise TypeError("phase_callback must be callable or None")
     checked_pairs = _validate_ciphertext_pairs(ciphertext_pairs)
-    checked_paths = _check_paths(paths, cipher, trailing_keys)
+    checked_paths = _check_paths(paths, cipher, trailing_keys, stage1)
     output_dir = Path(directory)
     output_dir.mkdir(parents=True, exist_ok=True)
     stage1_path = output_dir / "stage1.json"
@@ -104,7 +158,11 @@ def rank_queue(
 
     stage1_started = time.perf_counter()
     _notify(phase_callback, "stage1_start", {})
-    if cipher == "speck32_64":
+    if cipher == "speck32_64" and stage1 == "classical_sparse_r6":
+        stage1_order, stage1_detail, stage1_imports = _rank_speck_classical_stage1(
+            checked_pairs, checked_paths
+        )
+    elif cipher == "speck32_64":
         stage1_order, stage1_detail, stage1_imports = _rank_speck_stage1(
             checked_pairs, checked_paths
         )
@@ -133,7 +191,7 @@ def rank_queue(
         "stage1_wall_seconds": stage1_wall,
         "ranker": stage1_detail,
         "code_dependencies": stage1_imports,
-        "assets": _assets_for_stage(checked_paths, "stage1"),
+        "assets": _assets_for_stage(checked_paths, "stage1", stage1),
         "adapter_sha256": _sha256_file(Path(__file__)),
     }
     atomic_json(stage1_path, stage1_receipt)
@@ -252,6 +310,56 @@ def _rank_speck_stage1(
         "device": str(device),
         "torch_intra_op_threads": 1,
         "torch_inter_op_threads": 1,
+    }
+    return order, detail, _source_imports(imports_before)
+
+
+def _rank_speck_classical_stage1(
+    ciphertext_pairs: tuple[tuple[tuple[int, int], tuple[int, int]], ...],
+    paths: Mapping[str, Path],
+) -> tuple[tuple[int, ...], dict[str, Any], dict[str, str]]:
+    """Rank all 65536 final subkeys with the pinned sparse six-round table (D-061).
+
+    Ciphertext-only, CPU-only and deterministic: ``rank_classical_subkeys`` sorts
+    by descending clipped positive LLR, then by ascending word.
+    """
+    imports_before = set(sys.modules)
+    from neural_sat_speck.attacks.classical_ranking import (
+        ClassicalDistributionTable,
+        rank_classical_subkeys,
+    )
+    from neural_sat_speck.data.attack import AttackInstance, AttackPair
+
+    table_load_started = time.perf_counter()
+    table = ClassicalDistributionTable.load(paths["speck_classical_r6"])
+    table_load_seconds = _elapsed(table_load_started)
+    if (
+        table.rounds != _CLASSICAL_R6_ROUNDS
+        or tuple(table.input_difference) != _CLASSICAL_INPUT_DIFFERENCE
+    ):
+        raise ValueError("SPECK classical Stage 1 requires the pinned 6-round table")
+    instance = _rank_only_speck_instance(ciphertext_pairs, AttackInstance, AttackPair)
+    ranking = rank_classical_subkeys(instance, table)
+    order = _validate_word_order(
+        ranking.candidate_order, _DOMAIN_SIZE, "SPECK sparse-R6 Stage 1"
+    )
+    detail = {
+        "ranker": "production_rank_classical_subkeys",
+        "table": "sparseR6",
+        "table_rounds": table.rounds,
+        "table_weights_digest": table.weights_digest,
+        "table_load_seconds": table_load_seconds,
+        "candidate_domain_size": len(order),
+        "pair_count": ranking.pair_count,
+        "candidate_batch_size": None,
+        "ranker_total_seconds": _finite_seconds(ranking.total_seconds),
+        "partial_decryption_seconds": _finite_seconds(
+            ranking.partial_decryption_seconds
+        ),
+        "scoring_seconds": _finite_seconds(ranking.inference_seconds),
+        "sorting_seconds": _finite_seconds(ranking.sorting_seconds),
+        "device": "cpu",
+        "ordering": "descending_clipped_llr_then_ascending_word",
     }
     return order, detail, _source_imports(imports_before)
 
@@ -887,11 +995,19 @@ def _loaded_forbidden_modules() -> list[str]:
 
 
 def _check_paths(
-    paths: Mapping[str, Path | str], cipher: str, trailing_keys: int
+    paths: Mapping[str, Path | str],
+    cipher: str,
+    trailing_keys: int,
+    stage1: str = "neural",
 ) -> dict[str, Path]:
     if not isinstance(paths, Mapping):
         raise TypeError("paths must be a path mapping")
-    required = {"speck_stage1"} if cipher == "speck32_64" else {"bao_vv9", "tf_python"}
+    if cipher == "speck32_64" and stage1 == "classical_sparse_r6":
+        required = {"speck_classical_r6"}
+    elif cipher == "speck32_64":
+        required = {"speck_stage1"}
+    else:
+        required = {"bao_vv9", "tf_python"}
     if trailing_keys == 2:
         required.add("speck_classical" if cipher == "speck32_64" else "simon_ddt")
     checked: dict[str, Path] = {}
@@ -1018,13 +1134,14 @@ def _validate_ranked_queue_parents(
 
 
 def _assets_for_stage(
-    paths: Mapping[str, Path], stage: str
+    paths: Mapping[str, Path], stage: str, stage1: str = "neural"
 ) -> dict[str, dict[str, Any]]:
-    names = (
-        ("speck_stage1", "bao_vv9", "tf_python")
-        if stage == "stage1"
-        else ("speck_classical", "simon_ddt")
-    )
+    if stage == "stage1" and stage1 == "classical_sparse_r6":
+        names: tuple[str, ...] = ("speck_classical_r6",)
+    elif stage == "stage1":
+        names = ("speck_stage1", "bao_vv9", "tf_python")
+    else:
+        names = ("speck_classical", "simon_ddt")
     result = {}
     for name in names:
         path = paths.get(name)

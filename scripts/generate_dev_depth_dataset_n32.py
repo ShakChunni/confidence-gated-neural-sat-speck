@@ -14,6 +14,7 @@ import hashlib
 import json
 import random
 import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +45,10 @@ DATASET_DIR = ROOT / "datasets" / "dev_cross_cipher_depth_n32"
 DATASET_PATH = DATASET_DIR / "dataset.json"
 
 DEV_SEED_501001 = 501001
+# D-060 fresh prospective cohort (protocol section 3). Requires an explicit --output,
+# refuses to overwrite, and is never run by default.
+PROSPECTIVE_SEED_601001 = 601001
+SEED_FAMILIES = (DEV_SEED_501001, PROSPECTIVE_SEED_601001)
 KEYS_PER_CIPHER = 32
 
 SPECK_ROUNDS = (6, 7, 8)
@@ -203,13 +208,27 @@ def validate_dataset(data: dict[str, Any]) -> None:
                     assert (vc_calc[0], vc_calc[1]) == (vc[0], vc[1]), "Verification encryption mismatch"
 
 
-def generate_and_save_dataset(output_path: Path) -> dict[str, Any]:
+def generate_and_save_dataset(
+    output_path: Path, seed_family: int = DEV_SEED_501001
+) -> dict[str, Any]:
+    if seed_family not in SEED_FAMILIES:
+        raise ValueError("Unknown seed family")
+    prospective = seed_family == PROSPECTIVE_SEED_601001
+    if prospective:
+        # Checked before any key is drawn: the fresh cohort is never overwritten.
+        if (
+            output_path.exists()
+            or output_path.with_name(output_path.name + ".sha256").exists()
+        ):
+            raise FileExistsError(
+                f"Refusing to overwrite existing output: {output_path}"
+            )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     git_commit = _get_git_commit()
 
     speck_instances = generate_cipher_instances(
         "speck32_64",
-        DEV_SEED_501001,
+        seed_family,
         SPECK_ROUNDS,
         SPECK_INPUT_DIFF,
         speck_encrypt,
@@ -218,7 +237,7 @@ def generate_and_save_dataset(output_path: Path) -> dict[str, Any]:
 
     simon_instances = generate_cipher_instances(
         "simon32_64",
-        DEV_SEED_501001 + 1,
+        seed_family + 1,
         SIMON_ROUNDS,
         SIMON_INPUT_DIFF,
         simon_encrypt,
@@ -226,14 +245,24 @@ def generate_and_save_dataset(output_path: Path) -> dict[str, Any]:
     )
 
     dataset: dict[str, Any] = {
-        "dataset_id": "dev_cross_cipher_depth_n32",
+        "dataset_id": (
+            "prospective_cross_cipher_depth_n32"
+            if prospective
+            else "dev_cross_cipher_depth_n32"
+        ),
         "format_version": "1.0.0",
-        "created_at": "2026-10-08T02:30:00+08:00",
+        "created_at": (
+            datetime.now(UTC).isoformat(timespec="seconds")
+            if prospective
+            else "2026-10-08T02:30:00+08:00"
+        ),
         "generator_script": "scripts/generate_dev_depth_dataset_n32.py",
         "generator_commit": git_commit,
-        "seed": DEV_SEED_501001,
+        "seed": seed_family,
         "split_role": "development",
-        "governing_decisions": ["D-055", "D-056"],
+        "governing_decisions": (
+            ["D-060", "D-061"] if prospective else ["D-055", "D-056"]
+        ),
         "metadata": {
             "key_count_per_cipher": KEYS_PER_CIPHER,
             "max_differential_pairs": MAX_PAIRS,
@@ -260,6 +289,9 @@ def generate_and_save_dataset(output_path: Path) -> dict[str, Any]:
     temp_path = output_path.with_suffix(".tmp")
     data_bytes = json.dumps(dataset, indent=2).encode("utf-8")
     temp_path.write_bytes(data_bytes)
+    if prospective and output_path.exists():
+        temp_path.unlink()
+        raise FileExistsError(f"Refusing to overwrite existing output: {output_path}")
     temp_path.replace(output_path)
 
     # Write sidecar SHA-256
@@ -274,6 +306,28 @@ def generate_and_save_dataset(output_path: Path) -> dict[str, Any]:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate dev cross-cipher depth dataset (N=32).")
-    parser.add_argument("--output", type=Path, default=DATASET_PATH, help="Output dataset path")
+    parser.add_argument(
+        "--seed-family",
+        type=int,
+        choices=SEED_FAMILIES,
+        default=DEV_SEED_501001,
+        help="501001 (D-056 default) or 601001 (D-060 fresh cohort; SIMON uses seed+1)",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Output dataset path (default for 501001 only; required for 601001)",
+    )
     args = parser.parse_args()
-    generate_and_save_dataset(args.output)
+    if args.seed_family == PROSPECTIVE_SEED_601001:
+        if args.output is None:
+            parser.error(
+                "--seed-family 601001 requires an explicit --output (no default path)"
+            )
+        if (
+            args.output.exists()
+            or args.output.with_name(args.output.name + ".sha256").exists()
+        ):
+            parser.error(f"Refusing to overwrite existing output: {args.output}")
+    generate_and_save_dataset(args.output or DATASET_PATH, args.seed_family)

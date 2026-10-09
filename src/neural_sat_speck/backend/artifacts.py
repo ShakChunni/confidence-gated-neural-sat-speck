@@ -34,11 +34,14 @@ def validate_cohort(data: dict[str, Any]) -> None:
     """Replay seed draw and check all target-round known/fresh observations."""
     seed = data.get("seed")
     role = data.get("split_role")
-    if (
-        type(seed) is not int
-        or (seed, role) not in ((999999, "demo"), (501001, "development"))
+    if type(seed) is not int or (seed, role) not in (
+        (999999, "demo"),
+        (501001, "development"),
+        (601001, "development"),
     ):
-        raise ValueError("Only the recorded opened demo family or authorized D-056 development family is eligible")
+        raise ValueError(
+            "Only the recorded opened demo family or authorized D-056/D-060 development family is eligible"
+        )
     if set(data.get("ciphers", {})) != {"speck32_64", "simon32_64"}:
         raise ValueError("Expected exactly two ciphers")
     if seed == 999999:
@@ -97,10 +100,10 @@ def validate_cohort(data: dict[str, Any]) -> None:
                     or rd["verification_ciphertexts"] != fresh_ct
                 ):
                     raise ValueError("Known/fresh encryption mismatch")
-    else:  # seed == 501001 (D-056 development family)
+    else:  # seed 501001 (D-056) or 601001 (D-060): SIMON uses seed + 1
         for cipher, rounds, diff, c_seed in (
-            ("speck32_64", 7, (64, 0), 501001),
-            ("simon32_64", 10, (0, 64), 501002),
+            ("speck32_64", 7, (64, 0), seed),
+            ("simon32_64", 10, (0, 64), seed + 1),
         ):
             encrypt, expand = cipher_functions(cipher)
             instances = data["ciphers"][cipher]["instances"]

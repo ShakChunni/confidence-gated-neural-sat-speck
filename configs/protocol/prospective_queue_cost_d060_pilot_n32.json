@@ -1,0 +1,116 @@
+{
+  "schema": "backend_ranking_depth_design_v1",
+  "campaign": "prospective_queue_cost_d060",
+  "author_decision": "D-060",
+  "status": "PENDING_AUTHOR_APPROVAL",
+  "execution_authorized": false,
+  "protocol": "docs/PROSPECTIVE_QUEUE_COST_TEST_PROTOCOL_20261009.md",
+  "role": "prospective_model_test",
+  "analysis": "scripts/analyze_prospective_queue_cost.py; protocol sections 7-8",
+  "arms_per_key": 10,
+  "candidate_caps_seconds": {
+    "speck32_64": 1.5,
+    "simon32_64": 10.0
+  },
+  "classical_stage1_table": "models/classical_dist_r6_sparse_twopass_mc20_v1.json",
+  "power_policy": "AC preferred; battery permitted and recorded per cell (protocol section 4)",
+  "stop_rule": "stop on first non-scientific outcome or audit rejection; no retry (protocol section 9)",
+  "confirmation_seed": null,
+  "global_deadline_seconds": 300.0,
+  "global_deadline_note": "per-cell parent clock, identical to D-056",
+  "assumed_trailing_key_counts": [
+    2
+  ],
+  "assumption_interface": "permanent_unit_clauses",
+  "candidate_batch_size": 1024,
+  "candidate_limit_policy": "remaining_global_allowance_no_advisory_cap",
+  "candidate_observations": 4,
+  "candidate_solver_lifetime": "fresh_native_process_each_candidate",
+  "cipher_rounds": {
+    "simon32_64": 10,
+    "speck32_64": 7
+  },
+  "clock_starts_before_ranking": true,
+  "direct_pairs": 64,
+  "fresh_blocks": 2,
+  "independent_ranking_each_cell": true,
+  "matrix_capacities": [
+    5,
+    0
+  ],
+  "native_common_flags": [
+    "--verb",
+    "1",
+    "--threads",
+    "1",
+    "--maxmatrixrows",
+    "2000",
+    "--maxmatrixcols",
+    "2500",
+    "--autodisablegauss",
+    "0",
+    "--minmatrixrows",
+    "3",
+    "--gaussusefulcutoff",
+    "0.2",
+    "--xor",
+    "0"
+  ],
+  "numeric_threads": 1,
+  "process_group_rss_limit_bytes": 2684354560,
+  "queue_fingerprint_parity_required": true,
+  "repetitions": 1,
+  "retry_started_cells": false,
+  "reuse_pilot_or_stopped_cells": false,
+  "solver_threads": 1,
+  "speck_device": "mps",
+  "stage1_parent_counts": {
+    "simon32_64": 8,
+    "speck32_64": 32
+  },
+  "stage1_prefix_parity_required": true,
+  "stage2_child_counts": {
+    "simon32_64": 128,
+    "speck32_64": 32
+  },
+  "tensorflow_inter_op_threads": 1,
+  "tensorflow_intra_op_threads": 8,
+  "workers": 1,
+  "source_commit": null,
+  "campaign_role": "pilot",
+  "seed": 501001,
+  "selected_instances": [
+    0
+  ],
+  "campaign_ceiling_seconds": 3600,
+  "files": {
+    "bao_vv9": {
+      "path": "runtime/bao-simon-audit/simonNDvsDD/SENet/ND_VV_Simon32_9R.h5",
+      "sha256": "2363b843592529fe9409dc25dbc0f50c20565973a4a23e54e5478a03113a7070"
+    },
+    "cms": {
+      "path": "/opt/homebrew/Cellar/cryptominisat/5.14.7/bin/cryptominisat5",
+      "sha256": "a3f85c3709b5e2a040bf82a4a604d1c7b9f10219bbf180a9e0f72319a2e892ac"
+    },
+    "simon_ddt": {
+      "path": "runtime/resources/simon_predicted_ddt_7r.bin",
+      "sha256": "52b3f3d4df3e20d64942f95ea2837f55b6d7591f1989e92dffd6212938e25c46"
+    },
+    "speck_classical": {
+      "path": "models/classical_dist_r5_sparse_v2.json",
+      "sha256": "7a1002c3213226cc8543608f262e9984e8c7a7a57d49e3302828ae5a69a699df"
+    },
+    "speck_stage1": {
+      "path": "models/speck32_64_phase11b_prime_stage1_r6_b1_mean.pt",
+      "sha256": "0a5afc9fc6f1d78bc218a157ef2680ba257aa8230c716d410e868be7bf0ec351"
+    },
+    "speck_classical_r6": {
+      "path": "models/classical_dist_r6_sparse_twopass_mc20_v1.json",
+      "sha256": "e437cd3d7e41afcd5b400257b9d2a009a952313c5410bf6da654e5ee32e9e941"
+    },
+    "cohort": {
+      "path": "datasets/dev_cross_cipher_depth_n32/dataset.json",
+      "sha256": "39aad2922a5a2ad0bd5a2fd425af01ab57a2ab4896096435285a9a61cbc05ee1"
+    }
+  }
+}

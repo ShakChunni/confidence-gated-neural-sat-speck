@@ -1,11 +1,15 @@
-# Step 4 (EXPLORATORY): apply the frozen queue-cost model form to the primary SIMON
-# replacement campaign (incremental wrapper, 45 s advisory candidate cap).
+"""Step 4 (EXPLORATORY): queue-cost model form applied to the primary SIMON
+replacement campaign (incremental wrapper, 45 s advisory candidate cap).
+
+Run as:
+    python3 -I scripts/queue_cost_simon_primary.py OUTPUT_DIR LEDGER_JSON
+Writes OUTPUT_DIR/step4/simon_primary_summary.json and simon_primary_predictions.csv.
+"""
 import sys, json, csv, numpy as np
+from pathlib import Path
 from collections import defaultdict
-sys.path.insert(0, sys.argv[1])
-src=open(sys.argv[1]+'/step3/fit_model.py').read()
-KMsrc=src[src.index('class KM'):src.index('def pooled')]
-g={'np':np,'math':__import__('math')}; exec(KMsrc,g); KM=g['KM']
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fit_queue_cost_model import KM  # noqa: E402
 BUDGET=300.0; NDRAW=20000
 d=json.load(open(sys.argv[2])); recs=d['records']
 truth={r['instance_id']:tuple(r['full_queue'][0]) for r in recs if r['method']=='oracle_2key_n4'}

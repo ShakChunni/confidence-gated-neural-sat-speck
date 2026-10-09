@@ -15,6 +15,11 @@ def main():
     parser.add_argument("--mode", choices=("pilot", "full"), required=True)
     parser.add_argument("--pilot-audit", type=Path)
     parser.add_argument("--config", type=Path, default=None)
+    parser.add_argument(
+        "--author-approval",
+        default=None,
+        help="Explicit author approval label (only D-060 for the prospective campaign)",
+    )
     args = parser.parse_args()
     source_src = str(args.source_root.resolve() / "src")
     if source_src not in sys.path:
@@ -30,6 +35,7 @@ def main():
         args.asset_root,
         args.pilot_audit,
         config_path=args.config,
+        author_approval=args.author_approval,
     )
     result = execute(manifest, output / "execution")
     if result["status"] != "COMPLETE":

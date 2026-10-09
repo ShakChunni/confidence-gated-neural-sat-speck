@@ -43,6 +43,52 @@ SCIENTIFIC_OUTCOMES = {
     "distinct_verified_key",
 }
 
+# Prospective queue-cost campaign (D-060 model test, D-061 classical comparator).
+# The protocol is docs/PROSPECTIVE_QUEUE_COST_TEST_PROTOCOL_20261009.md, sections 4-9.
+ASSET_KEYS = (
+    "cms",
+    "tf_python",
+    "bao_vv9",
+    "simon_ddt",
+    "speck_stage1",
+    "speck_classical",
+)
+PROSPECTIVE_ASSET_KEYS = ASSET_KEYS + ("speck_classical_r6",)
+PROSPECTIVE_CAMPAIGN = "prospective_queue_cost_d060"
+PROSPECTIVE_AUTHOR_DECISION = "D-060"
+PROSPECTIVE_FULL_DESIGN = "configs/protocol/prospective_queue_cost_d060_n32.json"
+PROSPECTIVE_PILOT_DESIGN = "configs/protocol/prospective_queue_cost_d060_pilot_n32.json"
+PROSPECTIVE_DESIGNS = (PROSPECTIVE_FULL_DESIGN, PROSPECTIVE_PILOT_DESIGN)
+PROSPECTIVE_SEEDS = {"full": 601001, "pilot": 501001}
+PROSPECTIVE_STAGE1_OPTIONS = ("neural", "classical_sparse_r6")
+PROSPECTIVE_DISPATCH_MARGIN_SECONDS = 308
+PROSPECTIVE_NON_IDENTITY_FIELDS = frozenset(
+    {
+        "seed",
+        "selected_instances",
+        "files",
+        "campaign_role",
+        "status",
+        "execution_authorized",
+        "campaign_ceiling_seconds",
+    }
+)
+_PROSPECTIVE_SPECK_ARMS = (
+    ("neural", "cms_native_gauss", None),
+    ("neural", "cms_native_no_gauss", None),
+    ("neural", "cms_native_gauss", 1.5),
+    ("neural", "cms_native_no_gauss", 1.5),
+    ("classical_sparse_r6", "cms_native_gauss", None),
+    ("classical_sparse_r6", "cms_native_no_gauss", None),
+)
+_PROSPECTIVE_SIMON_ARMS = (
+    ("neural", "cms_native_gauss", None),
+    ("neural", "cms_native_no_gauss", None),
+    ("neural", "cms_native_gauss", 10.0),
+    ("neural", "cms_native_no_gauss", 10.0),
+)
+_CAP_TAGS = {None: "none", 1.5: "1p5", 10.0: "10"}
+
 
 def streaming_hash(path: Path) -> str:
     """The frozen SIMON table is 32 GiB; hashing must have bounded memory."""
@@ -241,6 +287,147 @@ def fixed_cells(mode: str, num_keys: int = 8) -> list[dict]:
     return cells
 
 
+def _prospective_cell_id(
+    case: str, stage1: str, profile: str, cap: float | None
+) -> str:
+    if stage1 == "classical_sparse_r6":
+        return f"{case}_m2_classical_{profile}_capnone"
+    return f"{case}_m2_{profile}_cap{_CAP_TAGS[cap]}"
+
+
+def prospective_cells(mode: str, num_keys: int = 32) -> list[dict]:
+    """Ten arms per key (SPECK six, SIMON four); 320 cells for 32 keys.
+
+    Pilot mode runs one opened D-056 key per cipher (key index 0) across all
+    applicable arms: 10 cells. Rotation mirrors ``fixed_cells``: the arm list
+    rotates by key and cipher, and the leading cipher alternates by key.
+    """
+    if mode not in {"pilot", "full"}:
+        raise ValueError("Mode must be pilot or full")
+    cells = []
+    for index in range(1 if mode == "pilot" else num_keys):
+        ciphers = ["speck32_64", "simon32_64"]
+        if index % 2:
+            ciphers.reverse()
+        for cipher in ciphers:
+            arms = (
+                _PROSPECTIVE_SPECK_ARMS
+                if cipher == "speck32_64"
+                else _PROSPECTIVE_SIMON_ARMS
+            )
+            offset = (index + (cipher == "simon32_64")) % len(arms)
+            case = f"{cipher}_{index:02d}"
+            for stage1, profile, cap in arms[offset:] + arms[:offset]:
+                cells.append(
+                    {
+                        "case_id": case,
+                        "cipher": cipher,
+                        "key_index": index,
+                        "rounds": 7 if cipher == "speck32_64" else 10,
+                        "trailing_keys": 2,
+                        "profile": profile,
+                        "cell_id": _prospective_cell_id(case, stage1, profile, cap),
+                        "candidate_cap_seconds": cap,
+                        "stage1": stage1,
+                    }
+                )
+    return cells
+
+
+def validate_prospective_cell(cell: dict) -> None:
+    """Exact field, arm and identifier checks for one prospective cell."""
+    expected_fields = {
+        "case_id",
+        "cipher",
+        "key_index",
+        "rounds",
+        "trailing_keys",
+        "profile",
+        "cell_id",
+        "candidate_cap_seconds",
+        "stage1",
+    }
+    if not isinstance(cell, dict) or set(cell) != expected_fields:
+        raise ValueError("Prospective cell has unexpected fields")
+    cipher = cell["cipher"]
+    if cipher not in ("speck32_64", "simon32_64"):
+        raise ValueError("Prospective cell cipher is outside the campaign")
+    index = cell["key_index"]
+    if type(index) is not int or not 0 <= index < 32:
+        raise ValueError("Prospective cell key index is outside the cohort")
+    if cell["case_id"] != f"{cipher}_{index:02d}":
+        raise ValueError("Prospective cell case identifier differs")
+    if cell["rounds"] != (7 if cipher == "speck32_64" else 10):
+        raise ValueError("Prospective cell rounds differ from the campaign")
+    if type(cell["trailing_keys"]) is not int or cell["trailing_keys"] != 2:
+        raise ValueError("Prospective cells are two-key cells only")
+    stage1, profile, cap = (
+        cell["stage1"],
+        cell["profile"],
+        cell["candidate_cap_seconds"],
+    )
+    if stage1 not in PROSPECTIVE_STAGE1_OPTIONS:
+        raise ValueError("Unknown Stage 1 option")
+    if stage1 == "classical_sparse_r6" and cipher != "speck32_64":
+        raise ValueError("Classical Stage 1 is a SPECK comparator only")
+    if cap is not None and (type(cap) is not float or not 0 < cap < 300):
+        raise ValueError("Candidate cap must be None or a float in (0, 300)")
+    arms = (
+        _PROSPECTIVE_SPECK_ARMS if cipher == "speck32_64" else _PROSPECTIVE_SIMON_ARMS
+    )
+    if (stage1, profile, cap) not in arms:
+        raise ValueError("Prospective cell arm is not in the campaign")
+    if cell["cell_id"] != _prospective_cell_id(cell["case_id"], stage1, profile, cap):
+        raise ValueError("Prospective cell identifier differs from its arm")
+
+
+def asset_keys_for(manifest: dict) -> tuple[str, ...]:
+    """Prospective manifests add the pinned six-round Stage 1 table."""
+    if manifest.get("campaign") == PROSPECTIVE_CAMPAIGN:
+        return PROSPECTIVE_ASSET_KEYS
+    return ASSET_KEYS
+
+
+def prospective_source_names(root: Path) -> list[str]:
+    """Source pins plus both prospective designs (D-056 source names unchanged)."""
+    return source_names(root) + list(PROSPECTIVE_DESIGNS)
+
+
+def names_for_manifest(manifest: dict, root: Path) -> list[str]:
+    if manifest.get("campaign") == PROSPECTIVE_CAMPAIGN:
+        return prospective_source_names(root)
+    return source_names(root)
+
+
+def prospective_identity(manifest: dict) -> dict:
+    """Code, configuration and profile identity shared by pilot and full runs.
+
+    The cohort pin, seed, selected keys, role and ceiling are excluded: the
+    pilot runs on opened D-056 keys and the full run on the fresh cohort.
+    """
+    profile = manifest["profile"]
+    return {
+        "campaign": manifest.get("campaign"),
+        "author_decision": manifest.get("author_decision"),
+        "profile": digest(
+            {
+                k: v
+                for k, v in profile.items()
+                if k not in PROSPECTIVE_NON_IDENTITY_FIELDS
+            }
+        ),
+        "profile_files": digest(
+            {k: v for k, v in profile["files"].items() if k != "cohort"}
+        ),
+        "manifest_files": digest(
+            {k: v for k, v in manifest["files"].items() if k != "cohort"}
+        ),
+        "runtime": digest(manifest["runtime"]),
+        "source_commit": manifest["source_commit"],
+        "python_version": manifest["python_version"],
+    }
+
+
 def source_names(root: Path) -> list[str]:
     return sorted(
         str(p.relative_to(root)) for p in (root / "src").rglob("*.py")
@@ -263,6 +450,7 @@ def prepare(
     asset_root: Path,
     pilot: Path | None = None,
     config_path: Path | None = None,
+    author_approval: str | None = None,
 ) -> Path:
     if output.exists():
         raise ValueError("Refusing to overwrite preparation")
@@ -270,6 +458,22 @@ def prepare(
     names = source_names(root)
     validate_source_root(root, names)
     profile = policy(root, config_path)
+    if profile.get("campaign") == PROSPECTIVE_CAMPAIGN:
+        return _prepare_prospective(
+            root,
+            output,
+            mode,
+            tf_python,
+            asset_root,
+            pilot,
+            config_path,
+            profile,
+            author_approval,
+        )
+    if author_approval is not None:
+        raise ValueError(
+            "Author approval flag applies only to the prospective campaign"
+        )
     if profile.get("confirmation_seed") is not None:
         raise ValueError("Phase 12 confirmation seed is strictly prohibited")
     seed = profile.get("seed")
@@ -359,30 +563,199 @@ def prepare(
     return path
 
 
+def _prepare_prospective(
+    root: Path,
+    output: Path,
+    mode: str,
+    tf_python: Path,
+    asset_root: Path,
+    pilot: Path | None,
+    config_path: Path | None,
+    profile: dict,
+    author_approval: str | None,
+) -> Path:
+    """Prepare the D-060/D-061 campaign. Approval is an explicit flag, never a default."""
+    names = prospective_source_names(root)
+    validate_source_root(root, names)
+    if config_path is None:
+        raise ValueError("Prospective preparation needs an explicit design file")
+    design = Path(config_path)
+    if not design.is_absolute():
+        design = root / design
+    design_rel = design.resolve().relative_to(root).as_posix()
+    if design_rel not in PROSPECTIVE_DESIGNS:
+        raise ValueError("Unregistered prospective design file")
+    if mode not in PROSPECTIVE_SEEDS:
+        raise ValueError("Mode must be pilot or full")
+    if profile.get("campaign_role") != mode:
+        raise ValueError("Design role differs from the requested mode")
+    if (mode == "full") != (pilot is not None):
+        raise ValueError(
+            "Full preparation needs the pinned pilot audit; pilot preparation takes none"
+        )
+    if profile.get("confirmation_seed") is not None:
+        raise ValueError("Phase 12 confirmation seed is strictly prohibited")
+    if profile.get("seed") != PROSPECTIVE_SEEDS[mode]:
+        raise ValueError("Seed family differs from the declared campaign role")
+    if profile.get("author_decision") != PROSPECTIVE_AUTHOR_DECISION:
+        raise ValueError("Prospective design carries the wrong decision label")
+    if (
+        profile.get("status") == "APPROVED"
+        or profile.get("execution_authorized") is not False
+    ):
+        raise ValueError(
+            "Designs ship unapproved; approval comes only from --author-approval"
+        )
+    if author_approval not in (None, PROSPECTIVE_AUTHOR_DECISION):
+        raise ValueError("Author approval label must be exactly D-060")
+    approved = author_approval == PROSPECTIVE_AUTHOR_DECISION
+    selected = profile.get("selected_instances")
+    if mode == "pilot" and selected != [0]:
+        raise ValueError("Pilot covers exactly one opened key per cipher (index 0)")
+    cells = prospective_cells(mode, num_keys=len(selected or []))
+    for cell in cells:
+        validate_prospective_cell(cell)
+    ceiling = float(profile["campaign_ceiling_seconds"])
+    if ceiling < len(cells) * PROSPECTIVE_DISPATCH_MARGIN_SECONDS:
+        raise ValueError("Campaign ceiling cannot cover the cell count")
+    if profile["files"]["cohort"]["sha256"] is None:
+        raise ValueError(
+            "Cohort SHA-256 is not pinned: generate and pin the fresh cohort after author authorization"
+        )
+    root, asset_root = root.resolve(), asset_root.resolve()
+    files = {}
+    for name, pin in profile["files"].items():
+        p = Path(pin["path"])
+        if not p.is_absolute():
+            p = asset_root / p
+        files[name] = {"path": str(p.absolute()), "sha256": pin["sha256"]}
+        files[name]["identity"] = stat_identity(p)
+    files.update(
+        python=file_identity(Path(sys.executable)),
+        tf_python=file_identity(tf_python.absolute()),
+    )
+    runtime = runtime_identity(tf_python, root)
+    if runtime["tensorflow"]["packages"]["tensorflow"] != "2.16.2":
+        raise ValueError("TensorFlow environment differs from the frozen comparator")
+    files.update(
+        {n: file_identity(p) for n, p in runtime_files(runtime, tf_python).items()}
+    )
+    files.update(
+        {
+            name: file_identity(p)
+            for name, p in runtime_support_paths().items()
+            if name != "pycryptosat"
+        }
+    )
+    files.update({"source:" + n: file_identity(root / n) for n in names})
+    paths = {name: checked_path(root, pin) for name, pin in files.items()}
+    if files["cohort"]["sha256"] != profile["files"]["cohort"]["sha256"]:
+        raise ValueError("Wrong cohort SHA-256")
+    data = read_checked_json(paths["cohort"])
+    validate_cohort(data)
+    output.mkdir(parents=True)
+    cases = {}
+    for cell in cells:
+        ident = cell["case_id"]
+        if ident in cases:
+            continue
+        public, truth = case_inputs(
+            data, {**cell, "observations": 128, "trailing_keys": 0}
+        )
+        verification = {"verification_pairs": truth["verification_pairs"]}
+        records = {}
+        for role, value in (
+            ("public", public),
+            ("verification", verification),
+            ("truth", truth),
+        ):
+            p = output / f"{ident}_{role}.json"
+            atomic_json(p, value)
+            records[role] = file_identity(p)
+        formula = build_formula(cell["cipher"], public, 4, 0, include_cnf=False)
+        records["base_formula_sha256"] = digest(formula_identity(formula))
+        cases[ident] = records
+    manifest = {
+        "schema": "backend_ranking_depth_manifest_v1",
+        "status": "APPROVED" if approved else "NOT_APPROVED",
+        "author_decision": PROSPECTIVE_AUTHOR_DECISION,
+        "execution_authorized": approved,
+        "campaign": PROSPECTIVE_CAMPAIGN,
+        "campaign_role": mode,
+        "design_path": design_rel,
+        "mode": mode,
+        "profile": profile,
+        "source_root": str(root),
+        "source_commit": source_commit(root),
+        "python_version": sys.version,
+        "runtime": runtime,
+        "runtime_binding_scope": "complete installed-version lock and distribution metadata; selected inference/core binary and entry-module hashes; transitive package code is not exhaustively byte-pinned",
+        "files": files,
+        "cases": cases,
+        "cells": cells,
+        "campaign_ceiling_seconds": ceiling,
+        "pilot_audit": file_identity(pilot) if pilot else None,
+    }
+    path = output / "manifest.json"
+    atomic_json(path, manifest)
+    return path
+
+
 def load_manifest(path: Path, *, hashes: bool = True) -> tuple[dict, dict[str, Path]]:
     manifest = read_checked_json(path)
     root = Path(manifest.get("source_root", ""))
+    prospective = manifest.get("campaign") == PROSPECTIVE_CAMPAIGN
+    labels = (PROSPECTIVE_AUTHOR_DECISION,) if prospective else ("D-055", "D-056")
     if (
         not root.is_absolute()
         or manifest.get("schema") != "backend_ranking_depth_manifest_v1"
         or manifest.get("status") != "APPROVED"
-        or manifest.get("author_decision") not in ("D-055", "D-056")
+        or manifest.get("author_decision") not in labels
         or manifest.get("execution_authorized") is not True
     ):
         raise ValueError("Unapproved ranking-depth execution")
     author_decision = manifest.get("author_decision")
     profile = manifest.get("profile", {})
-    expected_profile = policy(root, D056_DESIGN if author_decision == "D-056" else DESIGN)
+    mode = manifest.get("mode")
+    if prospective:
+        if manifest.get("design_path") not in PROSPECTIVE_DESIGNS:
+            raise ValueError("Unregistered prospective design")
+        expected_profile = policy(root, manifest["design_path"])
+        if (
+            expected_profile.get("campaign_role") != mode
+            or manifest.get("campaign_role") != mode
+        ):
+            raise ValueError("Campaign role differs from the manifest mode")
+    else:
+        expected_profile = policy(
+            root, D056_DESIGN if author_decision == "D-056" else DESIGN
+        )
     if digest(profile) != digest(expected_profile):
         raise ValueError("Ranking-depth scientific profile drift")
-    mode = manifest.get("mode")
     num_keys = len(profile.get("selected_instances", list(range(8 if author_decision == "D-055" else 32))))
-    expected_ceiling = 3600.0 if mode == "pilot" else float(expected_profile.get("campaign_ceiling_seconds", 25200.0 if author_decision == "D-055" else 90000.0))
-    if manifest.get("cells") != fixed_cells(mode, num_keys=num_keys) or manifest.get(
-        "campaign_ceiling_seconds"
-    ) != expected_ceiling:
+    if prospective:
+        expected_cells = prospective_cells(mode, num_keys=num_keys)
+        for cell in manifest.get("cells", []):
+            validate_prospective_cell(cell)
+        expected_ceiling = float(expected_profile["campaign_ceiling_seconds"])
+    else:
+        expected_cells = fixed_cells(mode, num_keys=num_keys)
+        expected_ceiling = (
+            3600.0
+            if mode == "pilot"
+            else float(
+                expected_profile.get(
+                    "campaign_ceiling_seconds",
+                    25200.0 if author_decision == "D-055" else 90000.0,
+                )
+            )
+        )
+    if (
+        manifest.get("cells") != expected_cells
+        or manifest.get("campaign_ceiling_seconds") != expected_ceiling
+    ):
         raise ValueError("Grid or campaign ceiling drift")
-    names = source_names(root)
+    names = prospective_source_names(root) if prospective else source_names(root)
     validate_source_root(root, names)
     if source_commit(root) != manifest.get("source_commit"):
         raise ValueError("Source revision drift")

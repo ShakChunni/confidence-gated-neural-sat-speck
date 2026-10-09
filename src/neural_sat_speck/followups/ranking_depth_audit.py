@@ -16,7 +16,9 @@ from neural_sat_speck.followups.conditioning_control import digest, seconds
 from neural_sat_speck.followups.conditioning_runner import phase_accounting
 from neural_sat_speck.followups.environment import same_python_environment
 from neural_sat_speck.followups.ranking_depth_control import (
+    PROSPECTIVE_CAMPAIGN,
     SCIENTIFIC_OUTCOMES,
+    asset_keys_for,
     load_manifest,
     optional_terminal_json,
     verify_cases,
@@ -116,7 +118,18 @@ def check_ranking_receipts(
                 "Ranker imported unpinned repository code",
             )
     first = receipts["stage1"]["ranker"]
-    if cell["cipher"] == "speck32_64":
+    if (
+        cell["cipher"] == "speck32_64"
+        and cell.get("stage1", "neural") == "classical_sparse_r6"
+    ):
+        require(
+            first.get("ranker") == "production_rank_classical_subkeys"
+            and first.get("table") == "sparseR6"
+            and first.get("table_rounds") == 6
+            and first.get("device") == "cpu",
+            "Classical Stage1 ranker identity drift",
+        )
+    elif cell["cipher"] == "speck32_64":
         require(
             first.get("device") == "mps"
             and first.get("torch_intra_op_threads") == 1
@@ -219,18 +232,7 @@ def validate_cell(row: dict, manifest: dict, paths: dict[str, Path]) -> dict:
         "Input provenance drift",
     )
     require(
-        payload["paths"]
-        == {
-            k: str(paths[k])
-            for k in (
-                "cms",
-                "tf_python",
-                "bao_vv9",
-                "simon_ddt",
-                "speck_stage1",
-                "speck_classical",
-            )
-        },
+        payload["paths"] == {k: str(paths[k]) for k in asset_keys_for(manifest)},
         "Asset/runtime dispatch drift",
     )
     require(
@@ -492,8 +494,10 @@ def validate_cell(row: dict, manifest: dict, paths: dict[str, Path]) -> dict:
                     "Native pre-exec invocation differs",
                 )
             else:
+                # A capped kill may land before the launcher writes its receipt.
                 require(
-                    row["outcome"] == "global_deadline",
+                    row["outcome"] == "global_deadline"
+                    or (att is not None and att.get("status") == "capped"),
                     "Missing native pre-exec receipt",
                 )
         if att is None:
@@ -516,6 +520,40 @@ def validate_cell(row: dict, manifest: dict, paths: dict[str, Path]) -> dict:
             and att["solver_arguments"] == native_process["argv"],
             "Completed native process missing",
         )
+        if att["status"] == "capped":
+            # Accepted only in a capped cell, only as a SIGKILL at or after the cap.
+            # A capped attempt is a loss for its queue position: it is never parsed.
+            cap = cell.get("candidate_cap_seconds")
+            require(
+                cap is not None and att.get("candidate_cap_seconds") == cap,
+                "Capped attempt in uncapped cell or cap differs",
+            )
+            require(
+                att["returncode"] == -9, "Capped attempt was not SIGKILL-terminated"
+            )
+            require(
+                seconds(att["solve_wall_seconds"]) >= cap,
+                "Capped attempt finished before its cap",
+            )
+            require(
+                seconds(att["started_monotonic"]) >= start
+                and seconds(att["ended_monotonic"]) <= observed
+                and math.isclose(
+                    seconds(att["solve_wall_seconds"]),
+                    att["ended_monotonic"] - att["started_monotonic"],
+                ),
+                "Capped attempt timing outside parent or incorrectly accounted",
+            )
+            expected_receipt = (
+                read_checked_json(attempt_dir / "native_launch_receipt.json")
+                if (attempt_dir / "native_launch_receipt.json").exists()
+                else None
+            )
+            require(
+                att["native_launch_receipt"] == expected_receipt,
+                "Capped attempt receipt changed",
+            )
+            continue
         require(
             att["native_launch_receipt"]
             == read_checked_json(attempt_dir / "native_launch_receipt.json"),
@@ -674,18 +712,20 @@ def audit_ledger(path: Path, manifest_path: Path, *, hashes: bool = True) -> dic
             )
             assigned += checked["assigned_key_match"] is True
     parity = []
-    for case in manifest["cases"]:
-        rows = [
-            inspected[c["cell_id"]]["queue"]
+    groups = list(
+        dict.fromkeys(
+            (c["case_id"], c.get("stage1", "neural")) for c in manifest["cells"]
+        )
+    )
+    for case, stage in groups:
+        members = [
+            c
             for c in manifest["cells"]
-            if c["case_id"] == case
+            if c["case_id"] == case and c.get("stage1", "neural") == stage
         ]
+        rows = [inspected[c["cell_id"]]["queue"] for c in members]
         available = [r for r in rows if r is not None]
-        prefixes = [
-            inspected[c["cell_id"]]["stage1_sha256"]
-            for c in manifest["cells"]
-            if c["case_id"] == case
-        ]
+        prefixes = [inspected[c["cell_id"]]["stage1_sha256"] for c in members]
         require(
             len({p for p in prefixes if p is not None}) <= 1,
             "Stage1 prefixes differ, including interrupted Stage2 cells",
@@ -697,16 +737,21 @@ def audit_ledger(path: Path, manifest_path: Path, *, hashes: bool = True) -> dic
         for depth in (1, 2):
             qs = [
                 inspected[c["cell_id"]]["queue"]
-                for c in manifest["cells"]
-                if c["case_id"] == case and c["trailing_keys"] == depth
+                for c in members
+                if c["trailing_keys"] == depth
             ]
             require(
                 len({q["queue_sha256"] for q in qs if q is not None}) <= 1,
                 "G/X candidate queues differ",
             )
-        parity.append(
-            {"case_id": case, "complete_queues": len(available), "parity_checked": True}
-        )
+        entry = {
+            "case_id": case,
+            "complete_queues": len(available),
+            "parity_checked": True,
+        }
+        if manifest.get("campaign") == PROSPECTIVE_CAMPAIGN:
+            entry["stage1"] = stage
+        parity.append(entry)
     return {
         "schema": "backend_ranking_depth_audit_v1",
         "passed": True,

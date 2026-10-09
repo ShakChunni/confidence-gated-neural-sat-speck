@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import os
 import signal
 import subprocess
@@ -77,6 +78,32 @@ def verify_without_truth(
     }
 
 
+def checked_candidate_cap(cell: dict) -> float | None:
+    """None (uncapped, all D-056 cells) or a float in (0, 300) seconds."""
+    cap = cell.get("candidate_cap_seconds")
+    if cap is None:
+        return None
+    if type(cap) is not float or not math.isfinite(cap) or not 0 < cap < 300:
+        raise ValueError("Invalid per-candidate cap")
+    return cap
+
+
+def wait_with_cap(proc, cap: float | None) -> tuple[int, bool]:
+    """Wait for the candidate process; kill only that PID when the cap expires.
+
+    The launcher execs the solver in place, so ``proc`` is the solver itself
+    after exec. The worker shares its process group with the solver, so
+    ``killpg`` is never used here.
+    """
+    if cap is None:
+        return proc.wait(), False
+    try:
+        return proc.wait(timeout=cap), False
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        return proc.wait(), True
+
+
 def solve_candidate(
     formula: dict, payload: dict, directory: Path, journal: Journal
 ) -> dict:
@@ -133,17 +160,38 @@ def solve_candidate(
                 "started_monotonic": started,
             },
         )
-        code = proc.wait()
+        cap = checked_candidate_cap(payload["cell"])
+        code, capped = wait_with_cap(proc, cap)
     ended = time.perf_counter()
     journal.transition("model_parsing_and_decode")
-    receipt = read_checked_json(directory / "native_launch_receipt.json")
-    if (
-        receipt.get("pid") != proc.pid
-        or receipt.get("is_certified") is not True
-        or receipt.get("solver_arguments") != arguments
-        or receipt.get("git_commit") != payload["source_commit"]
-    ):
-        raise ValueError("Native launch receipt does not match actual child/source")
+    receipt_path = directory / "native_launch_receipt.json"
+    if capped and not receipt_path.exists():
+        # A kill that lands before the launcher writes its pre-exec receipt.
+        receipt = None
+    else:
+        receipt = read_checked_json(receipt_path)
+        if (
+            receipt.get("pid") != proc.pid
+            or receipt.get("is_certified") is not True
+            or receipt.get("solver_arguments") != arguments
+            or receipt.get("git_commit") != payload["source_commit"]
+        ):
+            raise ValueError("Native launch receipt does not match actual child/source")
+    if capped:
+        # Capped attempts are never parsed: a killed solver is a loss, not a result.
+        return {
+            "parsed": {"status": "capped"},
+            "returncode": code,
+            "solver_arguments": arguments,
+            "solve_wall_seconds": ended - started,
+            "started_monotonic": started,
+            "ended_monotonic": ended,
+            "native_launch_receipt": receipt,
+            "native_sha256": sha256_file(path),
+            "stdout_sha256": sha256_file(directory / "solver_stdout.txt"),
+            "stderr_sha256": sha256_file(directory / "solver_stderr.txt"),
+            "candidate_cap_seconds": cap,
+        }
     parsed = parse_solver_output(
         "cms",
         code,
@@ -183,6 +231,12 @@ def execute(payload: dict) -> dict:
         "verification_rejections": 0,
     }
     try:
+        checked_candidate_cap(cell)
+        stage1 = cell.get("stage1", "neural")
+        if stage1 not in ("neural", "classical_sparse_r6") or (
+            stage1 != "neural" and cell["cipher"] != "speck32_64"
+        ):
+            raise ValueError("Invalid Stage 1 option")
         journal.transition("input_loading_and_environment")
         public = read_checked_json(Path(payload["public_path"]))
         if sha256_file(Path(payload["public_path"])) != payload["public_sha256"]:
@@ -207,14 +261,30 @@ def execute(payload: dict) -> dict:
         ciphertexts = [
             (tuple(p["ciphertext0"]), tuple(p["ciphertext1"])) for p in public["pairs"]
         ]
-        ranked = rank_queue(
-            cell["cipher"],
-            ciphertexts,
-            cell["trailing_keys"],
-            {k: Path(v) for k, v in payload["paths"].items()},
-            directory,
-            phase,
-        )
+        ranking_paths = {k: Path(v) for k, v in payload["paths"].items()}
+        if stage1 == "neural":
+            ranked = rank_queue(
+                cell["cipher"],
+                ciphertexts,
+                cell["trailing_keys"],
+                ranking_paths,
+                directory,
+                phase,
+            )
+        else:
+            from neural_sat_speck.followups.ranking_depth_ranking import (
+                rank_prospective_queue,
+            )
+
+            ranked = rank_prospective_queue(
+                cell["cipher"],
+                ciphertexts,
+                cell["trailing_keys"],
+                ranking_paths,
+                directory,
+                phase,
+                stage1=stage1,
+            )
         queue = [list(q) for q in ranked["queue"]]
         parents = list(ranked["stage1_parents"])
         limit = 32 if cell["cipher"] == "speck32_64" else 8

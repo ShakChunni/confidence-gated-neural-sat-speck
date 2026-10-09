@@ -20,12 +20,15 @@ from neural_sat_speck.followups.conditioning_runner import (
 )
 from neural_sat_speck.followups.environment import power_sample
 from neural_sat_speck.followups.ranking_depth_control import (
+    PROSPECTIVE_CAMPAIGN,
     SCIENTIFIC_OUTCOMES,
+    asset_keys_for,
     digest,
     load_manifest,
+    names_for_manifest,
     optional_terminal_json,
+    prospective_identity,
     source_commit,
-    source_names,
     stat_identity,
     validate_source_root,
     verify_cases,
@@ -39,7 +42,7 @@ from neural_sat_speck.followups.stage2_receipts import (
 
 def check_dispatch_identity(manifest: dict) -> None:
     root = Path(manifest["source_root"])
-    validate_source_root(root, source_names(root))
+    validate_source_root(root, names_for_manifest(manifest, root))
     if source_commit(root) != manifest["source_commit"]:
         raise ValueError("Source commit changed during campaign")
     pins = list(manifest["files"].values()) + [
@@ -239,15 +242,28 @@ def require_pilot(manifest: dict) -> None:
         Path(audit["ledger_path"]), Path(audit["manifest_path"]), hashes=False
     )
     prior_manifest, _ = load_manifest(Path(audit["manifest_path"]), hashes=False)
-    if (
-        prior_manifest["files"] != manifest["files"]
-        or prior_manifest["runtime"] != manifest["runtime"]
-    ):
-        raise ValueError("Pilot/full asset or runtime identities differ")
+    if manifest.get("campaign") == PROSPECTIVE_CAMPAIGN:
+        # The pilot runs on opened D-056 keys and the full run on fresh keys, so
+        # dataset files differ by design. Code, configuration and profile must not.
+        if (
+            prior_manifest.get("campaign") != PROSPECTIVE_CAMPAIGN
+            or prior_manifest.get("campaign_role") != "pilot"
+            or manifest.get("campaign_role") != "full"
+            or prospective_identity(prior_manifest) != prospective_identity(manifest)
+        ):
+            raise ValueError("Pilot/full code, config or profile identities differ")
+        if audit["profile_sha256"] != digest(prior_manifest["profile"]):
+            raise ValueError("Pilot scientific profile differs")
+    else:
+        if (
+            prior_manifest["files"] != manifest["files"]
+            or prior_manifest["runtime"] != manifest["runtime"]
+        ):
+            raise ValueError("Pilot/full asset or runtime identities differ")
+        if audit["profile_sha256"] != digest(manifest["profile"]):
+            raise ValueError("Pilot scientific profile differs")
     if replay != audit or audit["source_commit"] != manifest["source_commit"]:
         raise ValueError("Pilot audit does not reproduce under the same source")
-    if audit["profile_sha256"] != digest(manifest["profile"]):
-        raise ValueError("Pilot scientific profile differs")
 
 
 def execute(manifest_path: Path, output: Path) -> dict:
@@ -292,17 +308,7 @@ def execute(manifest_path: Path, output: Path) -> dict:
         "TF_NUM_INTEROP_THREADS": "1",
     }
     begun, stop_reason = time.perf_counter(), None
-    assets = {
-        k: str(paths[k])
-        for k in (
-            "cms",
-            "tf_python",
-            "bao_vv9",
-            "simon_ddt",
-            "speck_stage1",
-            "speck_classical",
-        )
-    }
+    assets = {k: str(paths[k]) for k in asset_keys_for(manifest)}
     with (
         (output / "coordinator.lock").open("w") as lock,
         sleep_assertion() as assertion,
