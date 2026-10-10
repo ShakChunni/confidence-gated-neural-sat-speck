@@ -28,7 +28,7 @@ net = load_gohr(npz).to(device)
 inst = generate_attack_instances(AttackInstanceConfig(
     instance_count=n_keys, pair_count=n_pairs, rounds=rounds, seed=999999, split_role="test")).instances
 cands = np.arange(65536, dtype=np.uint32)
-CH = 4096
+CH = 512  # MPS gives wrong outputs for rows >= 65,536 in one batch (torch 2.13); 4096 x 64 corrupted results before 2026-10-10 18:00
 ranks, secs = [], []
 for x in inst:
     p0 = np.array([p.plaintext0 for p in x.pairs], dtype=np.uint32)

@@ -1,0 +1,21 @@
+540:def _load_pair_group_ranker(
+541-    torch: Any, model_type: Any, path: Path, device: Any
+542-) -> Any:
+543-    payload = torch.load(path, map_location="cpu", weights_only=False)
+544-    if not isinstance(payload, dict):
+545-        raise TypeError(f"Frozen SPECK checkpoint must contain a mapping: {path}")
+546-    variant = payload.get("variant", "b1_mean")
+547-    if variant != "b1_mean":
+548-        raise ValueError(f"Frozen SPECK queue policy requires b1_mean, got {variant!r}")
+549-    model = model_type(variant=variant)
+550-    state = payload["state_dict"] if "state_dict" in payload else payload
+551-    model.load_state_dict(state)
+552-    model.to(device)
+553-    model.eval()
+554-    return model
+555-
+key 1: maxabsdiff=4.77e-06  true rank cpu=9 mps=9  top32 overlap=32/32
+key 2: maxabsdiff=5.25e-06  true rank cpu=8 mps=8  top32 overlap=32/32
+key 3: maxabsdiff=4.77e-06  true rank cpu=9 mps=9  top32 overlap=32/32
+
+[exited with code 0]
