@@ -4,6 +4,7 @@
 One cell = one key x one arm under a 300 s clock that starts before any model
 or table is loaded. Arms:
 
+  R7-B1 project B1 Stage 1 (production)    -> 5-round table Stage 2             -> SAT, 2 words
   R7-G  Gohr's published net6 Stage 1      -> 5-round table Stage 2             -> SAT, 2 words
   R7-C  sparse 6-round table Stage 1 (D-061) -> 5-round table Stage 2           -> SAT, 2 words
   R8-G  Gohr's published net7 Stage 1      -> 6-round table -> 5-round table    -> SAT, 3 words
@@ -17,6 +18,8 @@ model is accepted only if the decoded master key reproduces all 64 known pairs
 and 2 independent fresh blocks. Cells run serially; arm order rotates by key.
 Neural inference runs on MPS in batches of 512 candidates x 64 pairs = 32,768
 rows (MPS returns wrong outputs for rows >= 65,536 in one batch, torch 2.13).
+R7-B1 calls the production ranker (_rank_speck_stage1: 1,024 candidates x 64
+pairs per MPS call). Torch runs single-threaded for every arm, as in production.
 
 Refuses to overwrite an existing ledger.
 """
@@ -44,11 +47,13 @@ from neural_sat_speck.attacks.recovery import independent_verification_pairs  # 
 from neural_sat_speck.backend.formula import build_formula, render_native_dimacs  # noqa: E402
 from neural_sat_speck.backend.solver_io import parse_solver_output, solver_arguments  # noqa: E402
 from neural_sat_speck.data.attack import AttackInstance, AttackInstanceConfig, AttackPair, generate_attack_instances  # noqa: E402
+from neural_sat_speck.followups.ranking_depth_ranking import _configure_torch, _rank_speck_stage1  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 CMS = "/opt/homebrew/Cellar/cryptominisat/5.14.7/bin/cryptominisat5"
 BUDGET, NP, OBS, CH = 300.0, 64, 4, 512
 ASSETS = {
+    "b1": REPO / "models/speck32_64_phase11b_prime_stage1_r6_b1_mean.pt",
     "net6": REPO / "runtime/gohr_deep_speck/net6_small.npz",
     "net7": REPO / "runtime/gohr_deep_speck/net7_small.npz",
     "t7": REPO / "docs/paper/evidence/higher_round_probe_20261010/classical_dist_r7_sparse_twopass_mc20_probe.json",
@@ -57,6 +62,7 @@ ASSETS = {
     "cms": Path(CMS),
 }
 ARMS = {
+    "R7-B1": {"rounds": 7, "stage1": "b1", "later": ["t5"], "widths": [32, 32]},
     "R7-G": {"rounds": 7, "stage1": "net6", "later": ["t5"], "widths": [32, 32]},
     "R7-C": {"rounds": 7, "stage1": "t6", "later": ["t5"], "widths": [32, 32]},
     "R8-G": {"rounds": 8, "stage1": "net7", "later": ["t6", "t5"], "widths": [32, 8, 2]},
@@ -104,7 +110,10 @@ def run_cell(arm_name: str, x: AttackInstance, fresh, rounds: int) -> dict:
     c1 = np.array([p.ciphertext1 for p in x.pairs], dtype=np.uint32)
     rec = {"arm": arm_name, "key_id": x.instance_id, "rounds": rounds, "words": m}
     t0 = time.perf_counter()
-    if arm["stage1"].startswith("net"):
+    if arm["stage1"] == "b1":
+        order, _, _ = _rank_speck_stage1(tuple((p.ciphertext0, p.ciphertext1) for p in x.pairs), {"speck_stage1": ASSETS["b1"]})
+        parents = [int(v) for v in order[:arm["widths"][0]]]
+    elif arm["stage1"].startswith("net"):
         net = load_gohr(str(ASSETS[arm["stage1"]])).to("mps")
         parents = net_top(net, c0, c1, arm["widths"][0])
     else:
@@ -180,9 +189,10 @@ def main() -> None:
     ap.add_argument("--role", choices=["demo", "fresh"], required=True)
     ap.add_argument("--keys", type=int, required=True)
     ap.add_argument("--first-key", type=int, default=0)
-    ap.add_argument("--arms", default="R7-G,R7-C,R8-G,R8-C")
+    ap.add_argument("--arms", default="R7-B1,R7-G,R7-C,R8-G,R8-C")
     ap.add_argument("--ledger", type=Path, required=True)
     args = ap.parse_args()
+    _configure_torch(torch)
     if args.role == "demo" and args.seed != 999999:
         raise SystemExit("demo role requires seed 999999")
     if args.ledger.exists():
