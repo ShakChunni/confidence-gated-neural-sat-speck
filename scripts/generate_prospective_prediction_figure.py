@@ -122,7 +122,7 @@ def draw(data: list[dict]):
         ax.spines[side].set_visible(False)
     handles = [
         plt.Line2D(
-            [], [], color=GREY, linewidth=4, alpha=0.45, label="Frozen 90% interval"
+            [], [], color=GREY, linewidth=4, alpha=0.45, label="90% prediction interval (fixed in advance)"
         ),
         plt.Line2D(
             [],

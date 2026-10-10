@@ -91,7 +91,7 @@ def process_identity_ready(path: Path) -> bool:
     """The guardian writes process.json before its sidecar; read only when both exist.
 
     Reading in the gap failed the checksum check and stopped the D-060 full run
-    at cell 300 (docs/D060_INCIDENT_20261010.md). process.json is written once.
+    at cell 300 (docs/paper/09_D060_INCIDENT.md). process.json is written once.
     """
     return path.exists() and path.with_name(path.name + ".sha256").exists()
 

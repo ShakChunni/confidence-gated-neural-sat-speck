@@ -1,0 +1,9 @@
+arm,display,expected,interval_lo,interval_hi,observed,inside
+S-G,SPECK, matrices on,18.0,13,23,21,True
+S-X,SPECK, matrices off,20.12,15,25,21,True
+S-G-c,SPECK, on, 1.5 s cap,1.04,0,5,5,True
+S-X-c,SPECK, off, 1.5 s cap,19.89,13,25,17,True
+M-G,SIMON, matrices on,26.91,23,30,26,True
+M-X,SIMON, matrices off,22.3,17,27,19,True
+M-G-c,SIMON, on, 10 s cap,22.03,15,27,23,True
+M-X-c,SIMON, off, 10 s cap,9.29,5,16,11,True

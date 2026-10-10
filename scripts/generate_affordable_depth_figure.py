@@ -1,7 +1,7 @@
 """Generate the affordable-depth figure (fig8) and its companion evidence.
 
 Derives the rows of the affordable-depth table in
-docs/BREAK_EVEN_ANALYSIS_20261009.md from the
+docs/paper/05_BREAK_EVEN_ANALYSIS.md from the
 evidence files instead of typing values in:
 
 - N=32 arms: docs/queue_cost_model_evidence_20261009/cells.csv and attempts.csv.
@@ -61,7 +61,7 @@ SIMON_JSON = (
 SPECK_JSON = (
     REPO / "results" / "phase11_prospective" / "seven_round_prospective_results.json"
 )
-DOC_MD = REPO / "docs" / "BREAK_EVEN_ANALYSIS_20261009.md"
+DOC_MD = REPO / "docs" / "paper" / "05_BREAK_EVEN_ANALYSIS.md"
 
 BLUE = "#2f5597"
 ORANGE = "#c55a11"

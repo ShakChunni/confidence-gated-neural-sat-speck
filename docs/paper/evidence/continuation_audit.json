@@ -1,0 +1,656 @@
+{
+  "assigned_verified_recoveries": 204,
+  "author_decision": "D-062",
+  "cells": 320,
+  "completed_attempts": 17730,
+  "continuation_audit": {
+    "assigned_verified_recoveries": 12,
+    "cells": 21,
+    "completed_attempts": 1512,
+    "ledger_path": "/Users/ashfaq/Dev/comp-sci-project/results/prospective_queue_cost_d060_continuation/execution/ledger.json",
+    "ledger_sha256": "d1dca86f70b6c124a2c338e9b27af9e8668e8b805194a5d8b8703eeac5bbd19b",
+    "manifest_path": "/Users/ashfaq/Dev/comp-sci-project/results/prospective_queue_cost_d060_continuation/inputs/manifest.json",
+    "manifest_sha256": "2c1c24e730183cd75a9039529b9a6a168b25f801a4d3b8dee6682e4385ebcc77",
+    "mode": "full",
+    "passed": true,
+    "profile_sha256": "dfee527c3406962257d386b18dec20b5b8bb1f55a9717f1c8fce70642486c969",
+    "queue_parity": [
+      {
+        "case_id": "speck32_64_29",
+        "complete_queues": 1,
+        "parity_checked": true,
+        "stage1": "classical_sparse_r6"
+      },
+      {
+        "case_id": "speck32_64_30",
+        "complete_queues": 4,
+        "parity_checked": true,
+        "stage1": "neural"
+      },
+      {
+        "case_id": "speck32_64_30",
+        "complete_queues": 2,
+        "parity_checked": true,
+        "stage1": "classical_sparse_r6"
+      },
+      {
+        "case_id": "simon32_64_30",
+        "complete_queues": 4,
+        "parity_checked": true,
+        "stage1": "neural"
+      },
+      {
+        "case_id": "simon32_64_31",
+        "complete_queues": 4,
+        "parity_checked": true,
+        "stage1": "neural"
+      },
+      {
+        "case_id": "speck32_64_31",
+        "complete_queues": 4,
+        "parity_checked": true,
+        "stage1": "neural"
+      },
+      {
+        "case_id": "speck32_64_31",
+        "complete_queues": 2,
+        "parity_checked": true,
+        "stage1": "classical_sparse_r6"
+      }
+    ],
+    "schema": "backend_ranking_depth_audit_v1",
+    "source_commit": "bb78aa8a9c4939b77b779a65927836878e167259"
+  },
+  "continuation_cells": 21,
+  "continuation_ledger_path": "/Users/ashfaq/Dev/comp-sci-project/results/prospective_queue_cost_d060_continuation/execution/ledger.json",
+  "continuation_ledger_sha256": "d1dca86f70b6c124a2c338e9b27af9e8668e8b805194a5d8b8703eeac5bbd19b",
+  "continuation_manifest_sha256": "2c1c24e730183cd75a9039529b9a6a168b25f801a4d3b8dee6682e4385ebcc77",
+  "continuation_source_commit": "bb78aa8a9c4939b77b779a65927836878e167259",
+  "interrupted_cell": "speck32_64_29_m2_classical_cms_native_gauss_capnone",
+  "interrupted_invocation": "f1d02e5f352a44b4926f8c9a6c7a4385",
+  "original_cells": 299,
+  "original_ledger_path": "/Users/ashfaq/Dev/comp-sci-project/results/prospective_queue_cost_d060_full/execution/ledger.json",
+  "original_ledger_sha256": "0d74ac4ecac4d8516276029f1430672f1e13ec5e0290eaebb9809e90608298c5",
+  "original_manifest_sha256": "55ea3c30a174c50d648001d402f51a85075806ecd8e58a8a7a00c68d7c0b0290",
+  "original_source_commit": "79541e6a04c77e18cdaa4e6b3ee9515890a810d5",
+  "passed": true,
+  "queue_parity": [
+    {
+      "case_id": "speck32_64_00",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_00",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "simon32_64_00",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_01",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_01",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_01",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_02",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_02",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "simon32_64_02",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_03",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_03",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_03",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_04",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_04",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_04",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_05",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_05",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_05",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_06",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_06",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "simon32_64_06",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_07",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_07",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_07",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_08",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_08",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "simon32_64_08",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_09",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_09",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_09",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_10",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_10",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_10",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_11",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_11",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_11",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_12",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_12",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "simon32_64_12",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_13",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_13",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_13",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_14",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_14",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "simon32_64_14",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_15",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_15",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_15",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_16",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_16",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_16",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_17",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_17",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_17",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_18",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_18",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "simon32_64_18",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_19",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_19",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_19",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_20",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_20",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "simon32_64_20",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_21",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_21",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_21",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_22",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_22",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_22",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_23",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_23",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_23",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_24",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_24",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "simon32_64_24",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_25",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_25",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_25",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_26",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_26",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "simon32_64_26",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_27",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_27",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_27",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_28",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_28",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_28",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_29",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_29",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "speck32_64_29",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_30",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_30",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    },
+    {
+      "case_id": "simon32_64_30",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "simon32_64_31",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_31",
+      "complete_queues": 4,
+      "parity_checked": true,
+      "stage1": "neural"
+    },
+    {
+      "case_id": "speck32_64_31",
+      "complete_queues": 2,
+      "parity_checked": true,
+      "stage1": "classical_sparse_r6"
+    }
+  ],
+  "schema": "backend_ranking_depth_continuation_audit_v1"
+}

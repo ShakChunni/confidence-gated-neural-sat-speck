@@ -96,7 +96,7 @@ state and implementation optimization can differ. Keep original seconds.
 Export raw samples, correctness receipt, compiler/host observations, frozen run
 identity, summary JSON/CSV and SHA-256 index under
 `docs/encryption_cost_evidence_20261009/`; report in
-`docs/ENCRYPTION_COST_CALIBRATION_REPORT_20261009.md`. Binary/objects are local
+`docs/paper/06_ENCRYPTION_COST_CALIBRATION_REPORT.md`. Binary/objects are local
 runtime artifacts with recorded hashes and reproducible compile commands.
 
 Extract cumulative recoveries at 100/200/300 s from the already recorded D-031,

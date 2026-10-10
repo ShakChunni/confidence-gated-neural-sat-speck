@@ -15,7 +15,7 @@ silently retried):
 5. Full run: 320 cells on the fresh 601001/601002 cohort, supervised with the
    100,000 s campaign ceiling. Receipts go to runtime/d060_*_receipt.json.
 
-``--stage continuation`` (D-062, docs/D060_INCIDENT_20261010.md) runs after an
+``--stage continuation`` (D-062, docs/paper/09_D060_INCIDENT.md) runs after an
 infrastructure stop of the full run: a new pilot on the fixed source, the same
 pilot gates, then only the frozen schedule suffix from the interrupted cell,
 under the original run's remaining ceiling. The original output is read, never

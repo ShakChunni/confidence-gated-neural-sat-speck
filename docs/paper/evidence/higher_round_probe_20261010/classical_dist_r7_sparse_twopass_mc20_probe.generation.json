@@ -1,0 +1,18 @@
+{
+  "method": "two_pass_sparse_empirical_llr",
+  "rounds": 7,
+  "chunk_samples": 67108864,
+  "select_chunks": 4,
+  "select_samples": 268435456,
+  "select_min_count_within_chunk": 2,
+  "count_samples": 1073741824,
+  "min_count": 20,
+  "candidates_selected": 2793345,
+  "weights_kept": 1014,
+  "select_seconds": 20.264036832988495,
+  "count_seconds": 59.29746295901714,
+  "seed": 999999,
+  "seed_role": "demo",
+  "weights_digest": "1fe6c144ed4e4e1cc2bdac1d21b03655099abda43c564366141b871d1250041d",
+  "table_sha256": "e9cafb4f8791232d5997e345e46c5253c63c4e05ebaaa9bac0867f938240e52d"
+}

@@ -1,0 +1,7 @@
+{
+  "script_sha256": "27cb63ae480aef90c3be039b17ea015099e0d1bfe6a288e825293110ba967565",
+  "analysis": "docs/paper/evidence/analysis.json",
+  "analysis_sha256": "00c7d99d9a022e26813f89c1db7dfced6367bd8a8b779e6107586ef3d4423316",
+  "predictions_sha256": "05f9f365b5fca0e7d9d2dcd44420f423c09ee2336a389370795a5dcf6ae4d654",
+  "command": "python3 -I scripts/generate_prospective_prediction_figure.py --analysis docs/paper/evidence/analysis.json --out-stem figures/fig9_prospective_predictions"
+}

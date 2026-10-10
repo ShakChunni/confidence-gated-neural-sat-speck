@@ -1,0 +1,22 @@
+{
+  "script_sha256": "e576726b0195c90507e14e38a57960eb3828d7382346ee5b5beb64530ce65146",
+  "attack_cells": "output/publication_figures_20261005_final/tables/attack_cells.csv",
+  "attack_cells_sha256": "db2a5b934343655e57b6ef125fa3efc39c4d23a008042449c332b973ec2fdabf",
+  "recoveries": {
+    "speck_seven_round_prospective|hierarchical_neural_classical": 111,
+    "speck_seven_round_prospective|hierarchical_neural_screened": 110,
+    "speck_seven_round_prospective|hierarchical_neural_full": 0,
+    "speck_seven_round_prospective|random_sat": 0,
+    "speck_seven_round_prospective|sat_only_4obs": 0,
+    "speck_seven_round_prospective|sat_only_all_observations": 0,
+    "simon_confirmation_replacement|fully_classical_8parent": 53,
+    "simon_confirmation_replacement|neural_classical_hybrid_8parent": 49,
+    "simon_confirmation_replacement|fully_neural_1parent": 26,
+    "simon_confirmation_replacement|faithful_b1_hybrid": 0,
+    "simon_confirmation_replacement|random_control_128": 0,
+    "simon_confirmation_replacement|random_control_1024": 0,
+    "simon_confirmation_replacement|sat_only_n4": 0,
+    "simon_confirmation_replacement|sat_only_n128": 0
+  },
+  "command": "python3 -I scripts/generate_recovery_time_column_figure.py"
+}
