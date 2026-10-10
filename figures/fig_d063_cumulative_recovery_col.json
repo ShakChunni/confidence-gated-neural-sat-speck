@@ -1,0 +1,13 @@
+{
+  "script_sha256": "dbcca579293e0911b745c09dafadf303d4564bf4d0edbd540e4c57d6d751e644",
+  "ledger": "docs/paper/evidence/d063_campaign_20261011/ledger_k00-31.jsonl",
+  "ledger_sha256": "44c1d7a45726afc596393f585c74bd2313b8d8b91d8fdba29daed0760ab5be8c",
+  "recoveries": {
+    "R7-G": 32,
+    "R7-C": 30,
+    "R7-B1": 19,
+    "R8-G": 26,
+    "R8-C": 0
+  },
+  "command": "python3 -I scripts/generate_d063_recovery_figure.py"
+}

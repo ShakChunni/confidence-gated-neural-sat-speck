@@ -1,0 +1,1092 @@
+{
+ "n_keys": 32,
+ "arms": {
+  "R7-B1": {
+   "recovered": 19,
+   "wilson95": [
+    0.423,
+    0.745
+   ],
+   "predicted": {
+    "point": 21,
+    "range": [
+     15,
+     27
+    ],
+    "verdict": "inside"
+   },
+   "par2_mean_s": 323.6,
+   "median_total_s_recovered": 129.2,
+   "outcomes": {
+    "deadline": 13,
+    "recovered": 19
+   },
+   "stage1_in_top32": 26,
+   "stage1_top1": 2,
+   "stage1_top8": 8,
+   "stage1_median_rank_when_in_top32": 11.0,
+   "true_chain_in_queue": 26,
+   "in_queue_not_recovered": 7,
+   "median_stage1_s": 43.7,
+   "median_prep_s": 60.1,
+   "median_wrong_candidate_s": 1.548,
+   "verification_rejections": 0
+  },
+  "R7-G": {
+   "recovered": 32,
+   "wilson95": [
+    0.893,
+    1.0
+   ],
+   "predicted": {
+    "point": 31,
+    "range": [
+     29,
+     32
+    ],
+    "verdict": "inside"
+   },
+   "par2_mean_s": 22.8,
+   "median_total_s_recovered": 21.4,
+   "outcomes": {
+    "recovered": 32
+   },
+   "stage1_in_top32": 32,
+   "stage1_top1": 26,
+   "stage1_top8": 32,
+   "stage1_median_rank_when_in_top32": 1.0,
+   "true_chain_in_queue": 32,
+   "in_queue_not_recovered": 0,
+   "median_stage1_s": 2.43,
+   "median_prep_s": 18.8,
+   "median_wrong_candidate_s": 1.588,
+   "verification_rejections": 0
+  },
+  "R7-C": {
+   "recovered": 30,
+   "wilson95": [
+    0.799,
+    0.983
+   ],
+   "predicted": {
+    "point": 30,
+    "range": [
+     27,
+     32
+    ],
+    "verdict": "inside"
+   },
+   "par2_mean_s": 74.3,
+   "median_total_s_recovered": 24.2,
+   "outcomes": {
+    "deadline": 2,
+    "recovered": 30
+   },
+   "stage1_in_top32": 31,
+   "stage1_top1": 8,
+   "stage1_top8": 29,
+   "stage1_median_rank_when_in_top32": 2,
+   "true_chain_in_queue": 31,
+   "in_queue_not_recovered": 1,
+   "median_stage1_s": 2.44,
+   "median_prep_s": 18.8,
+   "median_wrong_candidate_s": 1.532,
+   "verification_rejections": 0
+  },
+  "R8-G": {
+   "recovered": 26,
+   "wilson95": [
+    0.647,
+    0.911
+   ],
+   "predicted": {
+    "point": 23,
+    "range": [
+     16,
+     28
+    ],
+    "verdict": "inside"
+   },
+   "par2_mean_s": 247.7,
+   "median_total_s_recovered": 156.8,
+   "outcomes": {
+    "queue_exhausted": 6,
+    "recovered": 26
+   },
+   "stage1_in_top32": 30,
+   "stage1_top1": 11,
+   "stage1_top8": 25,
+   "stage1_median_rank_when_in_top32": 2.0,
+   "true_chain_in_queue": 26,
+   "in_queue_not_recovered": 0,
+   "median_stage1_s": 2.42,
+   "median_prep_s": 150.3,
+   "median_wrong_candidate_s": 0.255,
+   "verification_rejections": 0
+  },
+  "R8-C": {
+   "recovered": 0,
+   "wilson95": [
+    0.0,
+    0.107
+   ],
+   "predicted": {
+    "point": 0,
+    "range": [
+     0,
+     2
+    ],
+    "verdict": "inside"
+   },
+   "par2_mean_s": 600.0,
+   "median_total_s_recovered": null,
+   "outcomes": {
+    "queue_exhausted": 32
+   },
+   "stage1_in_top32": 0,
+   "stage1_top1": 0,
+   "stage1_top8": 0,
+   "stage1_median_rank_when_in_top32": null,
+   "true_chain_in_queue": 0,
+   "in_queue_not_recovered": 0,
+   "median_stage1_s": 0.5,
+   "median_prep_s": 147.9,
+   "median_wrong_candidate_s": 0.238,
+   "verification_rejections": 0
+  }
+ },
+ "Q1_primary": {
+  "x": "R8-G",
+  "y": "R8-C",
+  "x_only": 26,
+  "y_only": 0,
+  "p_exact_two_sided": 2.9802322387695312e-08,
+  "verdict": "pass"
+ },
+ "Q2_secondary": {
+  "x": "R7-G",
+  "y": "R7-C",
+  "x_only": 2,
+  "y_only": 0,
+  "p_exact_two_sided": 0.5,
+  "noninferior_R7G_ge_R7C_minus_2": true
+ },
+ "Q3_holm": [
+  {
+   "x": "R7-G",
+   "y": "R7-B1",
+   "x_only": 13,
+   "y_only": 0,
+   "p_exact_two_sided": 0.000244140625,
+   "p_holm": 0.00048828125
+  },
+  {
+   "x": "R7-C",
+   "y": "R7-B1",
+   "x_only": 12,
+   "y_only": 1,
+   "p_exact_two_sided": 0.00341796875,
+   "p_holm": 0.00341796875
+  }
+ ],
+ "par2_sign_tests": [
+  {
+   "x": "R8-G",
+   "y": "R8-C",
+   "x_cheaper": 26,
+   "y_cheaper": 0,
+   "ties": 6,
+   "p_exact_two_sided": 2.9802322387695312e-08
+  },
+  {
+   "x": "R7-G",
+   "y": "R7-C",
+   "x_cheaper": 26,
+   "y_cheaper": 6,
+   "ties": 0,
+   "p_exact_two_sided": 0.0005350527353584766
+  },
+  {
+   "x": "R7-G",
+   "y": "R7-B1",
+   "x_cheaper": 32,
+   "y_cheaper": 0,
+   "ties": 0,
+   "p_exact_two_sided": 4.656612873077393e-10
+  },
+  {
+   "x": "R7-C",
+   "y": "R7-B1",
+   "x_cheaper": 29,
+   "y_cheaper": 2,
+   "ties": 1,
+   "p_exact_two_sided": 4.628673195838928e-07
+  }
+ ],
+ "per_key": {
+  "0": {
+   "R7-B1": [
+    "recovered",
+    15,
+    233.4
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    20.8
+   ],
+   "R7-C": [
+    "recovered",
+    2,
+    22.6
+   ],
+   "R8-G": [
+    "recovered",
+    1,
+    153.9
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    278.4
+   ]
+  },
+  "1": {
+   "R7-B1": [
+    "recovered",
+    10,
+    168.7
+   ],
+   "R7-G": [
+    "recovered",
+    2,
+    31.1
+   ],
+   "R7-C": [
+    "recovered",
+    4,
+    47.6
+   ],
+   "R8-G": [
+    "queue_exhausted",
+    2,
+    280.9
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    280.2
+   ]
+  },
+  "2": {
+   "R7-B1": [
+    "deadline",
+    null,
+    300.0
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    20.3
+   ],
+   "R7-C": [
+    "recovered",
+    1,
+    19.9
+   ],
+   "R8-G": [
+    "recovered",
+    4,
+    154.6
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    278.7
+   ]
+  },
+  "3": {
+   "R7-B1": [
+    "recovered",
+    1,
+    62.2
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    21.8
+   ],
+   "R7-C": [
+    "recovered",
+    4,
+    28.8
+   ],
+   "R8-G": [
+    "recovered",
+    3,
+    158.8
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    280.3
+   ]
+  },
+  "4": {
+   "R7-B1": [
+    "recovered",
+    11,
+    168.4
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    23.6
+   ],
+   "R7-C": [
+    "recovered",
+    1,
+    23.6
+   ],
+   "R8-G": [
+    "recovered",
+    1,
+    151.0
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    277.1
+   ]
+  },
+  "5": {
+   "R7-B1": [
+    "recovered",
+    16,
+    255.9
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    20.5
+   ],
+   "R7-C": [
+    "recovered",
+    5,
+    36.2
+   ],
+   "R8-G": [
+    "recovered",
+    2,
+    157.8
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    270.8
+   ]
+  },
+  "6": {
+   "R7-B1": [
+    "deadline",
+    32,
+    300.0
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    21.1
+   ],
+   "R7-C": [
+    "recovered",
+    1,
+    20.8
+   ],
+   "R8-G": [
+    "recovered",
+    1,
+    152.8
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    286.1
+   ]
+  },
+  "7": {
+   "R7-B1": [
+    "deadline",
+    25,
+    300.0
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    21.6
+   ],
+   "R7-C": [
+    "recovered",
+    4,
+    28.8
+   ],
+   "R8-G": [
+    "recovered",
+    12,
+    196.8
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    280.5
+   ]
+  },
+  "8": {
+   "R7-B1": [
+    "deadline",
+    null,
+    300.0
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    23.9
+   ],
+   "R7-C": [
+    "deadline",
+    21,
+    300.0
+   ],
+   "R8-G": [
+    "queue_exhausted",
+    2,
+    292.3
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    281.0
+   ]
+  },
+  "9": {
+   "R7-B1": [
+    "recovered",
+    10,
+    154.4
+   ],
+   "R7-G": [
+    "recovered",
+    2,
+    27.5
+   ],
+   "R7-C": [
+    "recovered",
+    2,
+    28.0
+   ],
+   "R8-G": [
+    "recovered",
+    1,
+    153.1
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    280.7
+   ]
+  },
+  "10": {
+   "R7-B1": [
+    "recovered",
+    10,
+    127.1
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    20.5
+   ],
+   "R7-C": [
+    "deadline",
+    null,
+    300.0
+   ],
+   "R8-G": [
+    "queue_exhausted",
+    null,
+    274.6
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    274.9
+   ]
+  },
+  "11": {
+   "R7-B1": [
+    "recovered",
+    6,
+    113.2
+   ],
+   "R7-G": [
+    "recovered",
+    2,
+    29.6
+   ],
+   "R7-C": [
+    "recovered",
+    4,
+    47.9
+   ],
+   "R8-G": [
+    "queue_exhausted",
+    3,
+    276.7
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    274.2
+   ]
+  },
+  "12": {
+   "R7-B1": [
+    "recovered",
+    13,
+    174.8
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    20.6
+   ],
+   "R7-C": [
+    "recovered",
+    1,
+    20.6
+   ],
+   "R8-G": [
+    "recovered",
+    8,
+    165.9
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    282.9
+   ]
+  },
+  "13": {
+   "R7-B1": [
+    "deadline",
+    24,
+    300.0
+   ],
+   "R7-G": [
+    "recovered",
+    2,
+    26.6
+   ],
+   "R7-C": [
+    "recovered",
+    1,
+    24.1
+   ],
+   "R8-G": [
+    "recovered",
+    9,
+    179.4
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    286.1
+   ]
+  },
+  "14": {
+   "R7-B1": [
+    "deadline",
+    null,
+    300.0
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    24.0
+   ],
+   "R7-C": [
+    "recovered",
+    2,
+    26.7
+   ],
+   "R8-G": [
+    "recovered",
+    2,
+    153.9
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    278.4
+   ]
+  },
+  "15": {
+   "R7-B1": [
+    "recovered",
+    2,
+    69.0
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    23.6
+   ],
+   "R7-C": [
+    "recovered",
+    2,
+    26.7
+   ],
+   "R8-G": [
+    "recovered",
+    1,
+    152.5
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    277.0
+   ]
+  },
+  "16": {
+   "R7-B1": [
+    "recovered",
+    12,
+    178.9
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    24.5
+   ],
+   "R7-C": [
+    "recovered",
+    1,
+    24.4
+   ],
+   "R8-G": [
+    "recovered",
+    1,
+    152.1
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    286.3
+   ]
+  },
+  "17": {
+   "R7-B1": [
+    "deadline",
+    null,
+    300.0
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    19.8
+   ],
+   "R7-C": [
+    "recovered",
+    1,
+    19.7
+   ],
+   "R8-G": [
+    "recovered",
+    9,
+    168.6
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    275.5
+   ]
+  },
+  "18": {
+   "R7-B1": [
+    "recovered",
+    1,
+    64.8
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    22.3
+   ],
+   "R7-C": [
+    "recovered",
+    3,
+    30.8
+   ],
+   "R8-G": [
+    "recovered",
+    1,
+    154.0
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    285.9
+   ]
+  },
+  "19": {
+   "R7-B1": [
+    "deadline",
+    20,
+    300.0
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    19.2
+   ],
+   "R7-C": [
+    "recovered",
+    2,
+    20.7
+   ],
+   "R8-G": [
+    "recovered",
+    3,
+    155.9
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    276.7
+   ]
+  },
+  "20": {
+   "R7-B1": [
+    "recovered",
+    3,
+    68.7
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    20.7
+   ],
+   "R7-C": [
+    "recovered",
+    2,
+    22.3
+   ],
+   "R8-G": [
+    "recovered",
+    7,
+    169.3
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    284.9
+   ]
+  },
+  "21": {
+   "R7-B1": [
+    "recovered",
+    8,
+    98.8
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    20.8
+   ],
+   "R7-C": [
+    "recovered",
+    3,
+    26.3
+   ],
+   "R8-G": [
+    "queue_exhausted",
+    null,
+    279.0
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    276.3
+   ]
+  },
+  "22": {
+   "R7-B1": [
+    "deadline",
+    null,
+    300.0
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    24.4
+   ],
+   "R7-C": [
+    "recovered",
+    8,
+    85.0
+   ],
+   "R8-G": [
+    "recovered",
+    1,
+    175.3
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    278.9
+   ]
+  },
+  "23": {
+   "R7-B1": [
+    "deadline",
+    22,
+    300.0
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    20.4
+   ],
+   "R7-C": [
+    "recovered",
+    2,
+    21.6
+   ],
+   "R8-G": [
+    "recovered",
+    5,
+    161.6
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    282.0
+   ]
+  },
+  "24": {
+   "R7-B1": [
+    "recovered",
+    11,
+    141.4
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    20.2
+   ],
+   "R7-C": [
+    "recovered",
+    2,
+    21.9
+   ],
+   "R8-G": [
+    "recovered",
+    1,
+    150.7
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    281.0
+   ]
+  },
+  "25": {
+   "R7-B1": [
+    "recovered",
+    10,
+    129.2
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    20.9
+   ],
+   "R7-C": [
+    "recovered",
+    6,
+    42.6
+   ],
+   "R8-G": [
+    "recovered",
+    20,
+    232.7
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    280.0
+   ]
+  },
+  "26": {
+   "R7-B1": [
+    "deadline",
+    null,
+    300.0
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    22.6
+   ],
+   "R7-C": [
+    "recovered",
+    8,
+    77.6
+   ],
+   "R8-G": [
+    "recovered",
+    2,
+    176.4
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    280.1
+   ]
+  },
+  "27": {
+   "R7-B1": [
+    "recovered",
+    7,
+    87.6
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    20.4
+   ],
+   "R7-C": [
+    "recovered",
+    2,
+    22.2
+   ],
+   "R8-G": [
+    "recovered",
+    2,
+    151.6
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    280.1
+   ]
+  },
+  "28": {
+   "R7-B1": [
+    "recovered",
+    6,
+    88.9
+   ],
+   "R7-G": [
+    "recovered",
+    2,
+    28.3
+   ],
+   "R7-C": [
+    "recovered",
+    1,
+    24.1
+   ],
+   "R8-G": [
+    "recovered",
+    25,
+    233.7
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    280.2
+   ]
+  },
+  "29": {
+   "R7-B1": [
+    "recovered",
+    11,
+    168.3
+   ],
+   "R7-G": [
+    "recovered",
+    2,
+    26.9
+   ],
+   "R7-C": [
+    "recovered",
+    19,
+    292.6
+   ],
+   "R8-G": [
+    "queue_exhausted",
+    1,
+    282.1
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    284.2
+   ]
+  },
+  "30": {
+   "R7-B1": [
+    "deadline",
+    30,
+    300.0
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    20.5
+   ],
+   "R7-C": [
+    "recovered",
+    2,
+    21.4
+   ],
+   "R8-G": [
+    "recovered",
+    6,
+    162.0
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    280.3
+   ]
+  },
+  "31": {
+   "R7-B1": [
+    "deadline",
+    23,
+    300.0
+   ],
+   "R7-G": [
+    "recovered",
+    1,
+    20.2
+   ],
+   "R7-C": [
+    "recovered",
+    3,
+    22.7
+   ],
+   "R8-G": [
+    "recovered",
+    1,
+    152.2
+   ],
+   "R8-C": [
+    "queue_exhausted",
+    null,
+    280.5
+   ]
+  }
+ }
+}
