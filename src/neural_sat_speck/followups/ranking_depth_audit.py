@@ -646,29 +646,12 @@ def validate_cell(row: dict, manifest: dict, paths: dict[str, Path]) -> dict:
     }
 
 
-def audit_ledger(path: Path, manifest_path: Path, *, hashes: bool = True) -> dict:
-    manifest, paths = load_manifest(manifest_path, hashes=hashes)
-    verify_cases(manifest, paths)
-    ledger = read_checked_json(path)
-    require(
-        ledger.get("schema") == "backend_ranking_depth_results_v1"
-        and ledger.get("status") == "COMPLETE"
-        and ledger.get("mode") == manifest["mode"]
-        and ledger.get("source_commit") == manifest["source_commit"]
-        and ledger.get("manifest_path") == str(manifest_path.absolute())
-        and ledger.get("manifest_sha256") == sha256_file(manifest_path),
-        "Ledger/manifest identity differs",
-    )
-    _validate_sleep_assertion(ledger["sleep_assertion"])
-    ids = [c["cell_id"] for c in manifest["cells"]]
-    require(
-        set(ledger["records"]) == set(ids)
-        and set(ledger["starts"]) == set(ids)
-        and ledger.get("execution_order") == ids,
-        "Incomplete or reordered cell grid",
-    )
+def _inspect_cells(
+    cells: list[dict], ledger: dict, manifest: dict, paths: dict
+) -> tuple[dict, int]:
+    """Validate each recorded cell in schedule order; return evidence and assigned keys."""
     inspected, assigned, prior_end = {}, 0, None
-    for cell in manifest["cells"]:
+    for cell in cells:
         ident = cell["cell_id"]
         row = ledger["records"][ident]
         require(
@@ -711,16 +694,18 @@ def audit_ledger(path: Path, manifest_path: Path, *, hashes: bool = True) -> dic
                 truth,
             )
             assigned += checked["assigned_key_match"] is True
+    return inspected, assigned
+
+
+def _queue_parity(cells: list[dict], inspected: dict, prospective: bool) -> list[dict]:
     parity = []
     groups = list(
-        dict.fromkeys(
-            (c["case_id"], c.get("stage1", "neural")) for c in manifest["cells"]
-        )
+        dict.fromkeys((c["case_id"], c.get("stage1", "neural")) for c in cells)
     )
     for case, stage in groups:
         members = [
             c
-            for c in manifest["cells"]
+            for c in cells
             if c["case_id"] == case and c.get("stage1", "neural") == stage
         ]
         rows = [inspected[c["cell_id"]]["queue"] for c in members]
@@ -749,9 +734,43 @@ def audit_ledger(path: Path, manifest_path: Path, *, hashes: bool = True) -> dic
             "complete_queues": len(available),
             "parity_checked": True,
         }
-        if manifest.get("campaign") == PROSPECTIVE_CAMPAIGN:
+        if prospective:
             entry["stage1"] = stage
         parity.append(entry)
+    return parity
+
+
+def _check_ledger_identity(
+    ledger: dict, manifest: dict, manifest_path: Path, status: str
+) -> None:
+    require(
+        ledger.get("schema") == "backend_ranking_depth_results_v1"
+        and ledger.get("status") == status
+        and ledger.get("mode") == manifest["mode"]
+        and ledger.get("source_commit") == manifest["source_commit"]
+        and ledger.get("manifest_path") == str(manifest_path.absolute())
+        and ledger.get("manifest_sha256") == sha256_file(manifest_path),
+        "Ledger/manifest identity differs",
+    )
+    _validate_sleep_assertion(ledger["sleep_assertion"])
+
+
+def audit_ledger(path: Path, manifest_path: Path, *, hashes: bool = True) -> dict:
+    manifest, paths = load_manifest(manifest_path, hashes=hashes)
+    verify_cases(manifest, paths)
+    ledger = read_checked_json(path)
+    _check_ledger_identity(ledger, manifest, manifest_path, "COMPLETE")
+    ids = [c["cell_id"] for c in manifest["cells"]]
+    require(
+        set(ledger["records"]) == set(ids)
+        and set(ledger["starts"]) == set(ids)
+        and ledger.get("execution_order") == ids,
+        "Incomplete or reordered cell grid",
+    )
+    inspected, assigned = _inspect_cells(manifest["cells"], ledger, manifest, paths)
+    parity = _queue_parity(
+        manifest["cells"], inspected, manifest.get("campaign") == PROSPECTIVE_CAMPAIGN
+    )
     return {
         "schema": "backend_ranking_depth_audit_v1",
         "passed": True,
@@ -765,5 +784,70 @@ def audit_ledger(path: Path, manifest_path: Path, *, hashes: bool = True) -> dic
         "cells": len(ids),
         "assigned_verified_recoveries": assigned,
         "completed_attempts": sum(r["completed_attempts"] for r in inspected.values()),
+        "queue_parity": parity,
+    }
+
+
+def audit_continuation(continuation_root: Path) -> dict:
+    """D-062: audit an interrupted full run and its continuation as one grid.
+
+    The original run's recorded prefix and the continuation's suffix are each
+    validated against their own manifest; Stage-1 and queue parity is then
+    checked across the combined frozen schedule. The interrupted cell's original
+    attempt has no record and is excluded; its continuation rerun replaces it.
+    """
+    manifest_path = (continuation_root / "inputs" / "manifest.json").absolute()
+    ledger_path = (continuation_root / "execution" / "ledger.json").absolute()
+    suffix_audit = audit_ledger(ledger_path, manifest_path)
+    manifest, paths = load_manifest(manifest_path)
+    pin = manifest.get("continuation")
+    require(isinstance(pin, dict), "Not a continuation campaign")
+    original_manifest_path = Path(pin["original_manifest"]["path"])
+    original_ledger_path = Path(pin["original_ledger"]["path"])
+    original, original_paths = load_manifest(original_manifest_path)
+    verify_cases(original, original_paths)
+    ledger = read_checked_json(original_ledger_path)
+    _check_ledger_identity(ledger, original, original_manifest_path, "INTERRUPTED")
+    start = pin["start_index"]
+    prefix = original["cells"][:start]
+    ids = [c["cell_id"] for c in original["cells"]]
+    require(
+        manifest["cells"] == original["cells"][start:]
+        and set(ledger["records"]) == set(ids[:start])
+        and ledger.get("execution_order") == ids[: start + 1]
+        and set(ledger["starts"]) == set(ids[: start + 1]),
+        "Segments do not tile the frozen schedule",
+    )
+    suffix_ledger = read_checked_json(ledger_path)
+    require(
+        ledger["completed_utc"] < suffix_ledger["started_utc"],
+        "Continuation began before the original run stopped",
+    )
+    inspected, assigned = _inspect_cells(prefix, ledger, original, original_paths)
+    suffix, suffix_assigned = _inspect_cells(
+        manifest["cells"], suffix_ledger, manifest, paths
+    )
+    parity = _queue_parity(original["cells"], {**inspected, **suffix}, True)
+    combined = {**inspected, **suffix}
+    return {
+        "schema": "backend_ranking_depth_continuation_audit_v1",
+        "passed": True,
+        "author_decision": pin["author_decision"],
+        "cells": len(combined),
+        "original_cells": len(inspected),
+        "continuation_cells": len(suffix),
+        "interrupted_cell": pin["interrupted_cell"],
+        "interrupted_invocation": pin["interrupted_invocation"],
+        "original_ledger_path": str(original_ledger_path),
+        "original_ledger_sha256": sha256_file(original_ledger_path),
+        "original_manifest_sha256": sha256_file(original_manifest_path),
+        "original_source_commit": original["source_commit"],
+        "continuation_ledger_path": str(ledger_path),
+        "continuation_ledger_sha256": sha256_file(ledger_path),
+        "continuation_manifest_sha256": sha256_file(manifest_path),
+        "continuation_source_commit": manifest["source_commit"],
+        "continuation_audit": suffix_audit,
+        "assigned_verified_recoveries": assigned + suffix_assigned,
+        "completed_attempts": sum(r["completed_attempts"] for r in combined.values()),
         "queue_parity": parity,
     }

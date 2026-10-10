@@ -87,6 +87,15 @@ def live_invocation_groups(token: str) -> set[int]:
     return groups
 
 
+def process_identity_ready(path: Path) -> bool:
+    """The guardian writes process.json before its sidecar; read only when both exist.
+
+    Reading in the gap failed the checksum check and stopped the D-060 full run
+    at cell 300 (docs/D060_INCIDENT_20261010.md). process.json is written once.
+    """
+    return path.exists() and path.with_name(path.name + ".sha256").exists()
+
+
 def run_cell(payload: dict, environment: dict) -> dict:
     directory = Path(payload["directory"])
     directory.mkdir(parents=True, exist_ok=False)
@@ -131,14 +140,15 @@ def run_cell(payload: dict, environment: dict) -> dict:
         while guardian.poll() is None:
             current = time.perf_counter()
             process_path = directory / "process.json"
-            if current >= next_sample or (not sampled_worker and process_path.exists()):
+            process_ready = process_identity_ready(process_path)
+            if current >= next_sample or (not sampled_worker and process_ready):
                 next_sample = current + 10.0
                 sample = {
                     "utc": now(),
                     "observed_monotonic": current,
                     "power": power_sample(),
                 }
-                if process_path.exists():
+                if process_ready:
                     identity = read_checked_json(process_path)
                     sample["worker_policy"] = native_policy_sample(identity["pid"])
                     sample["memory"] = memory_sample(identity["process_group"])

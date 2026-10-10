@@ -14,6 +14,12 @@ silently retried):
 4. Pilot gates: audit passed; at least one capped attempt; no solver left alive.
 5. Full run: 320 cells on the fresh 601001/601002 cohort, supervised with the
    100,000 s campaign ceiling. Receipts go to runtime/d060_*_receipt.json.
+
+``--stage continuation`` (D-062, docs/D060_INCIDENT_20261010.md) runs after an
+infrastructure stop of the full run: a new pilot on the fixed source, the same
+pilot gates, then only the frozen schedule suffix from the interrupted cell,
+under the original run's remaining ceiling. The original output is read, never
+written. The two segments are then audited together.
 """
 
 from __future__ import annotations
@@ -34,6 +40,8 @@ TF_PYTHON = PROJECT / "runtime/simon_tf_venv/bin/python"
 PYTHON = PROJECT / ".venv/bin/python"
 PILOT_OUT = PROJECT / "results/prospective_queue_cost_d060_pilot"
 FULL_OUT = PROJECT / "results/prospective_queue_cost_d060_full"
+PILOT_R2_OUT = PROJECT / "results/prospective_queue_cost_d060_pilot_r2"
+CONTINUATION_OUT = PROJECT / "results/prospective_queue_cost_d060_continuation"
 CONFIG_PILOT = "configs/protocol/prospective_queue_cost_d060_pilot_n32.json"
 CONFIG_FULL = "configs/protocol/prospective_queue_cost_d060_n32.json"
 CEILING = 100_000
@@ -113,7 +121,12 @@ def environment(snap: Path) -> dict[str, str]:
 
 
 def argv(
-    snap: Path, mode: str, out: Path, config: str, pilot_audit: Path | None
+    snap: Path,
+    mode: str,
+    out: Path,
+    config: str,
+    pilot_audit: Path | None,
+    extra: tuple[str, ...] = (),
 ) -> list[str]:
     a = [
         str(PYTHON),
@@ -136,11 +149,17 @@ def argv(
     ]
     if pilot_audit is not None:
         a += ["--pilot-audit", str(pilot_audit)]
-    return a
+    return a + list(extra)
 
 
 def supervise(
-    name: str, args: list[str], env: dict, out: Path, head: str, ceiling: float
+    name: str,
+    args: list[str],
+    env: dict,
+    out: Path,
+    head: str,
+    ceiling: float,
+    instruction: str = "start the run (2026-10-09)",
 ) -> int:
     receipt_path = PROJECT / f"runtime/d060_{name}_receipt.json"
     started = time.monotonic()
@@ -158,7 +177,7 @@ def supervise(
         "source_commit": head,
         "output_root": str(out),
         "ceiling_seconds": ceiling,
-        "author_instruction": "start the run (2026-10-09)",
+        "author_instruction": instruction,
     }
     write_json(receipt_path, receipt)
     log(f"{name} started, coordinator pid {child.pid}")
@@ -195,8 +214,8 @@ def supervise(
     return child.returncode
 
 
-def pilot_gates() -> None:
-    audit_path = PILOT_OUT / "execution/audit.json"
+def pilot_gates(pilot_out: Path = PILOT_OUT, name: str = "pilot") -> None:
+    audit_path = pilot_out / "execution/audit.json"
     if not audit_path.exists():
         raise SystemExit("Pilot produced no audit.json (stopped or failed)")
     audit = json.loads(audit_path.read_text())
@@ -204,7 +223,7 @@ def pilot_gates() -> None:
         raise SystemExit("Pilot audit did not pass")
     capped = sum(
         json.loads(p.read_text()).get("status") == "capped"
-        for p in (PILOT_OUT / "execution/cells").rglob("attempt.json")
+        for p in (pilot_out / "execution/cells").rglob("attempt.json")
     )
     if capped == 0:
         raise SystemExit("Pilot showed no capped attempt; cap mechanics unverified")
@@ -214,7 +233,7 @@ def pilot_gates() -> None:
     if alive.stdout.strip():
         raise SystemExit("Solver processes still alive after pilot: " + alive.stdout)
     write_json(
-        PROJECT / "runtime/d060_pilot_gates.json",
+        PROJECT / f"runtime/d060_{name}_gates.json",
         {
             "checked_utc": now(),
             "audit_passed": True,
@@ -228,11 +247,15 @@ def pilot_gates() -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--stage", choices=("all", "pilot", "full"), default="all")
+    p.add_argument(
+        "--stage", choices=("all", "pilot", "full", "continuation"), default="all"
+    )
     args = p.parse_args()
     head = check_commit()
     snap = make_snapshot(head)
     env = environment(snap)
+    if args.stage == "continuation":
+        sys.exit(continuation(snap, env, head))
     if args.stage in ("all", "pilot"):
         if PILOT_OUT.exists():
             raise SystemExit(
@@ -263,6 +286,57 @@ def main() -> None:
             CEILING,
         )
         sys.exit(code)
+
+
+def continuation(snap: Path, env: dict, head: str) -> int:
+    instruction = "go fix (2026-10-10, D-062)"
+    ledger = json.loads((FULL_OUT / "execution/ledger.json").read_text())
+    receipt = json.loads((PROJECT / "runtime/d060_full_receipt.json").read_text())
+    if ledger["status"] != "INTERRUPTED" or receipt["status"] != "STOPPED":
+        raise SystemExit("Full run is not an interrupted, stopped run")
+    remaining = CEILING - receipt["wall_seconds"]
+    for out in (PILOT_R2_OUT, CONTINUATION_OUT):
+        if out.exists():
+            raise SystemExit(f"{out} exists: no retry without a new instruction")
+    supervise(
+        "pilot_r2",
+        argv(snap, "pilot", PILOT_R2_OUT, CONFIG_PILOT, None),
+        env,
+        PILOT_R2_OUT,
+        head,
+        3600,
+        instruction,
+    )
+    pilot_gates(PILOT_R2_OUT, "pilot_r2")
+    log(f"Continuation ceiling {remaining:.0f} s (original remaining budget)")
+    code = supervise(
+        "continuation",
+        argv(
+            snap,
+            "full",
+            CONTINUATION_OUT,
+            CONFIG_FULL,
+            PILOT_R2_OUT / "execution/audit.json",
+            ("--continuation-of", str(FULL_OUT), "--continuation-approval", "D-062"),
+        ),
+        env,
+        CONTINUATION_OUT,
+        head,
+        remaining,
+        instruction,
+    )
+    if code != 0:
+        return code
+    from neural_sat_speck.backend.guard import atomic_json
+    from neural_sat_speck.followups.ranking_depth_audit import audit_continuation
+
+    result = audit_continuation(CONTINUATION_OUT)
+    atomic_json(CONTINUATION_OUT / "continuation_audit.json", result)
+    log(
+        f"Combined audit passed: {result['cells']} cells "
+        f"({result['original_cells']} original + {result['continuation_cells']} continuation)"
+    )
+    return 0
 
 
 if __name__ == "__main__":

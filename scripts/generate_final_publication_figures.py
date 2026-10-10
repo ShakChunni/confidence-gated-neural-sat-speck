@@ -2478,6 +2478,15 @@ _BACKEND_PROFILES = [
     ("cms_cnf_no_gauss", "CMS pure CNF (C)"),
     ("cadical_cnf", "CaDiCaL pure CNF (K)"),
 ]
+# Paper-facing labels for the appendix figure (no internal profile letters).
+_BACKEND_PROFILE_PAPER_LABELS = {
+    "cms_native_gauss": "CMS native XOR,\nmatrices allowed (5)",
+    "cms_native_no_gauss": "CMS native XOR,\nmatrices disabled (0)",
+    "cms_native_default": "CMS native XOR,\nsolver defaults",
+    "cms_wrapper": "CMS incremental\nPython wrapper",
+    "cms_cnf_no_gauss": "CMS, XOR as CNF",
+    "cadical_cnf": "CaDiCaL, XOR as CNF",
+}
 _BACKEND_CONDS = [
     ("o4_m0", 0, 4),
     ("o128_m0", 0, 128),
@@ -2579,7 +2588,7 @@ def plot_fig6b_backend_profiles(
                 ax.text(
                     ci,
                     ri + 0.25,
-                    f"{par2:.0f} s",
+                    f"PAR-2 {par2:.0f} s",
                     ha="center",
                     va="center",
                     fontsize=7.0,
@@ -2587,11 +2596,19 @@ def plot_fig6b_backend_profiles(
                     zorder=4,
                 )
         ax.set_yticks(range(len(_BACKEND_PROFILES)))
-        ax.set_yticklabels([lbl for _, lbl in _BACKEND_PROFILES], fontsize=8.0)
+        ax.set_yticklabels(
+            [_BACKEND_PROFILE_PAPER_LABELS[p] for p, _ in _BACKEND_PROFILES],
+            fontsize=7.6,
+        )
         ax.xaxis.tick_top()
         ax.set_xticks(range(len(_BACKEND_CONDS)))
         ax.set_xticklabels(
-            [f"m = {m}\nO = {o}" for _, m, o in _BACKEND_CONDS], fontsize=7.8
+            [
+                ("no key word" if m == 0 else f"{m} true key word{'s' if m > 1 else ''}")
+                + f"\n{o} blocks"
+                for _, m, o in _BACKEND_CONDS
+            ],
+            fontsize=7.4,
         )
         ax.tick_params(length=0)
         for sp in ax.spines.values():

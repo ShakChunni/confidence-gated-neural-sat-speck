@@ -7,6 +7,11 @@ with the design's exact grid. Every cell is in every denominator.
 
 Run as:
     python3 -I scripts/analyze_prospective_queue_cost.py --campaign-dir DIR --output FILE
+
+After the D-062 continuation, pass the interrupted run's execution directory as
+--campaign-dir and the continuation output root as --continuation-root. Rows are
+merged only if the combined audit (continuation_audit.json) passed and binds both
+ledgers byte for byte.
 """
 
 from __future__ import annotations
@@ -33,7 +38,7 @@ from fit_queue_cost_model import (  # noqa: E402
 )
 
 from neural_sat_speck.backend.artifacts import cipher_functions  # noqa: E402
-from neural_sat_speck.backend.guard import read_checked_json  # noqa: E402
+from neural_sat_speck.backend.guard import read_checked_json, sha256_file  # noqa: E402
 from neural_sat_speck.followups.ranking_depth_control import (  # noqa: E402
     SCIENTIFIC_OUTCOMES,
     prospective_cells,
@@ -135,6 +140,23 @@ def load_campaign_rows(campaign_dir: Path) -> list[dict]:
             row.update(_cell_evidence(cell, record, manifest, directory))
         rows.append(row)
     return rows
+
+
+def load_continued_rows(campaign_dir: Path, continuation_root: Path) -> list[dict]:
+    """D-062: original recorded prefix plus continuation suffix, audit-gated."""
+    audit = read_checked_json(continuation_root / "continuation_audit.json")
+    original = (campaign_dir / "ledger.json").absolute()
+    suffix = (continuation_root / "execution" / "ledger.json").absolute()
+    if (
+        audit.get("schema") != "backend_ranking_depth_continuation_audit_v1"
+        or audit.get("passed") is not True
+        or audit.get("original_ledger_path") != str(original)
+        or audit.get("original_ledger_sha256") != sha256_file(original)
+        or audit.get("continuation_ledger_path") != str(suffix)
+        or audit.get("continuation_ledger_sha256") != sha256_file(suffix)
+    ):
+        raise ValueError("Continuation audit does not bind these two ledgers")
+    return load_campaign_rows(campaign_dir) + load_campaign_rows(suffix.parent)
 
 
 def _cell_evidence(cell: dict, record: dict, manifest: dict, directory: Path) -> dict:
@@ -421,15 +443,19 @@ def analyze(rows: list[dict], evidence) -> dict:
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--campaign-dir", type=Path, required=True)
+    parser.add_argument("--continuation-root", type=Path, default=None)
     parser.add_argument("--evidence-dir", type=Path, default=EVIDENCE_DIR)
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args(argv)
     if args.output is not None and args.output.exists():
         raise SystemExit("Refusing to overwrite existing analysis output")
     try:
-        result = analyze(
-            load_campaign_rows(args.campaign_dir), load_dataset(args.evidence_dir)
+        rows = (
+            load_campaign_rows(args.campaign_dir)
+            if args.continuation_root is None
+            else load_continued_rows(args.campaign_dir, args.continuation_root)
         )
+        result = analyze(rows, load_dataset(args.evidence_dir))
     except ValueError as error:
         raise SystemExit(str(error)) from error
     text = json.dumps(result, indent=2, sort_keys=True)

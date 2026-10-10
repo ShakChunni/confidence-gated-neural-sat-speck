@@ -20,6 +20,17 @@ def main():
         default=None,
         help="Explicit author approval label (only D-060 for the prospective campaign)",
     )
+    parser.add_argument(
+        "--continuation-of",
+        type=Path,
+        default=None,
+        help="Interrupted full-run output root to continue (D-062 only)",
+    )
+    parser.add_argument(
+        "--continuation-approval",
+        default=None,
+        help="Explicit author approval label for a continuation (only D-062)",
+    )
     args = parser.parse_args()
     source_src = str(args.source_root.resolve() / "src")
     if source_src not in sys.path:
@@ -36,6 +47,8 @@ def main():
         args.pilot_audit,
         config_path=args.config,
         author_approval=args.author_approval,
+        continuation_of=args.continuation_of,
+        continuation_approval=args.continuation_approval,
     )
     result = execute(manifest, output / "execution")
     if result["status"] != "COMPLETE":

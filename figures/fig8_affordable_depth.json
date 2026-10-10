@@ -1,0 +1,661 @@
+{
+  "code_path": "scripts/generate_affordable_depth_figure.py",
+  "code_sha256": "666153f7cc94524d488a5d1409d9b2b70611f7ebe3bff7a3a5bc1b3a9af05b1c",
+  "command": "python3 -I scripts/generate_affordable_depth_figure.py",
+  "doc_comparison": {
+    "agree": 80,
+    "checks": [
+      {
+        "computed": 19.59435641701566,
+        "doc": "19.6",
+        "field": "prep_s",
+        "row_id": "SIMON_primary_classical",
+        "status": "agree"
+      },
+      {
+        "computed": 0.4808501573444106,
+        "doc": "0.48",
+        "field": "reject_s",
+        "row_id": "SIMON_primary_classical",
+        "status": "agree"
+      },
+      {
+        "computed": 14.810803125030361,
+        "doc": "14.8",
+        "field": "solve_true_km_median_s",
+        "row_id": "SIMON_primary_classical",
+        "status": "agree"
+      },
+      {
+        "computed": 552.3442935419916,
+        "doc": "\u2248 550",
+        "field": "k_star",
+        "row_id": "SIMON_primary_classical",
+        "status": "agree"
+      },
+      {
+        "computed": 0.0,
+        "doc": "0",
+        "field": "median_true_position",
+        "row_id": "SIMON_primary_classical",
+        "status": "agree"
+      },
+      {
+        "computed": 1024,
+        "doc": "1,024",
+        "field": "queue_length",
+        "row_id": "SIMON_primary_classical",
+        "status": "agree"
+      },
+      {
+        "computed": "53/64",
+        "doc": "53/64",
+        "field": "recovered_label",
+        "row_id": "SIMON_primary_classical",
+        "status": "agree"
+      },
+      {
+        "computed": 56.33512762503233,
+        "doc": "56.3",
+        "field": "prep_s",
+        "row_id": "SIMON_primary_hybrid",
+        "status": "agree"
+      },
+      {
+        "computed": 0.34647484591152256,
+        "doc": "0.35",
+        "field": "reject_s",
+        "row_id": "SIMON_primary_hybrid",
+        "status": "agree"
+      },
+      {
+        "computed": 6.609129082993604,
+        "doc": "6.6",
+        "field": "solve_true_km_median_s",
+        "row_id": "SIMON_primary_hybrid",
+        "status": "agree"
+      },
+      {
+        "computed": 684.1932281355563,
+        "doc": "\u2248 685",
+        "field": "k_star",
+        "row_id": "SIMON_primary_hybrid",
+        "status": "DISAGREE"
+      },
+      {
+        "computed": 0.0,
+        "doc": "0",
+        "field": "median_true_position",
+        "row_id": "SIMON_primary_hybrid",
+        "status": "agree"
+      },
+      {
+        "computed": 1024,
+        "doc": "1,024",
+        "field": "queue_length",
+        "row_id": "SIMON_primary_hybrid",
+        "status": "agree"
+      },
+      {
+        "computed": "49/64",
+        "doc": "49/64",
+        "field": "recovered_label",
+        "row_id": "SIMON_primary_hybrid",
+        "status": "agree"
+      },
+      {
+        "computed": 106.68133512494387,
+        "doc": "106.7",
+        "field": "prep_s",
+        "row_id": "SIMON_primary_neural",
+        "status": "agree"
+      },
+      {
+        "computed": 1.159674736696554,
+        "doc": "1.16",
+        "field": "reject_s",
+        "row_id": "SIMON_primary_neural",
+        "status": "agree"
+      },
+      {
+        "computed": 6.463213459006511,
+        "doc": "6.5",
+        "field": "solve_true_km_median_s",
+        "row_id": "SIMON_primary_neural",
+        "status": "agree"
+      },
+      {
+        "computed": 161.12746574813337,
+        "doc": "\u2248 160",
+        "field": "k_star",
+        "row_id": "SIMON_primary_neural",
+        "status": "agree"
+      },
+      {
+        "computed": 1,
+        "doc": "1",
+        "field": "median_true_position",
+        "row_id": "SIMON_primary_neural",
+        "status": "agree"
+      },
+      {
+        "computed": 128,
+        "doc": "128",
+        "field": "queue_length",
+        "row_id": "SIMON_primary_neural",
+        "status": "agree"
+      },
+      {
+        "computed": "26/64",
+        "doc": "26/64",
+        "field": "recovered_label",
+        "row_id": "SIMON_primary_neural",
+        "status": "agree"
+      },
+      {
+        "computed": 60.25091579242144,
+        "doc": "60.3",
+        "field": "prep_s",
+        "row_id": "SPECK_primary_hybrid",
+        "status": "agree"
+      },
+      {
+        "computed": 0.28081487629334867,
+        "doc": "\u2248 0.28 \u2021",
+        "field": "reject_s",
+        "row_id": "SPECK_primary_hybrid",
+        "status": "agree"
+      },
+      {
+        "computed": 0.0,
+        "doc": "\u2014",
+        "field": "solve_true_km_median_s",
+        "row_id": "SPECK_primary_hybrid",
+        "status": "info: doc shows no value"
+      },
+      {
+        "computed": 853.762049119964,
+        "doc": "\u2248 855",
+        "field": "k_star",
+        "row_id": "SPECK_primary_hybrid",
+        "status": "DISAGREE"
+      },
+      {
+        "computed": 37,
+        "doc": "37 \u00a7",
+        "field": "median_true_position",
+        "row_id": "SPECK_primary_hybrid",
+        "status": "agree"
+      },
+      {
+        "computed": 1024,
+        "doc": "1,024",
+        "field": "queue_length",
+        "row_id": "SPECK_primary_hybrid",
+        "status": "agree"
+      },
+      {
+        "computed": "111/128",
+        "doc": "111/128",
+        "field": "recovered_label",
+        "row_id": "SPECK_primary_hybrid",
+        "status": "agree"
+      },
+      {
+        "computed": 92.60278375050984,
+        "doc": "92.6",
+        "field": "prep_s",
+        "row_id": "SPECK_primary_screened",
+        "status": "agree"
+      },
+      {
+        "computed": 0.13139145252042111,
+        "doc": "\u2248 0.13 \u2021",
+        "field": "reject_s",
+        "row_id": "SPECK_primary_screened",
+        "status": "agree"
+      },
+      {
+        "computed": 0.0,
+        "doc": "\u2014",
+        "field": "solve_true_km_median_s",
+        "row_id": "SPECK_primary_screened",
+        "status": "info: doc shows no value"
+      },
+      {
+        "computed": 1578.4680987315828,
+        "doc": "\u2248 1,580",
+        "field": "k_star",
+        "row_id": "SPECK_primary_screened",
+        "status": "agree"
+      },
+      {
+        "computed": 140.5,
+        "doc": "140.5 \u00a7",
+        "field": "median_true_position",
+        "row_id": "SPECK_primary_screened",
+        "status": "agree"
+      },
+      {
+        "computed": 1024,
+        "doc": "1,024",
+        "field": "queue_length",
+        "row_id": "SPECK_primary_screened",
+        "status": "agree"
+      },
+      {
+        "computed": "110/128",
+        "doc": "110/128",
+        "field": "recovered_label",
+        "row_id": "SPECK_primary_screened",
+        "status": "agree"
+      },
+      {
+        "computed": 44.43395622900425,
+        "doc": "44.4",
+        "field": "prep_s",
+        "row_id": "N32_SPECK_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 123.50771853563404,
+        "doc": "123.5",
+        "field": "reject_s",
+        "row_id": "N32_SPECK_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 66.49858237498847,
+        "doc": "66.5",
+        "field": "solve_true_km_median_s",
+        "row_id": "N32_SPECK_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 1.5308149453141924,
+        "doc": "\u2248 1.5",
+        "field": "k_star",
+        "row_id": "N32_SPECK_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 8,
+        "doc": "8",
+        "field": "median_true_position",
+        "row_id": "N32_SPECK_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 32,
+        "doc": "32",
+        "field": "queue_length",
+        "row_id": "N32_SPECK_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": "4/32",
+        "doc": "4/32",
+        "field": "recovered_label",
+        "row_id": "N32_SPECK_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": "",
+        "doc": "",
+        "field": "row",
+        "row_id": "N32_SPECK_1w_off",
+        "status": "not in doc table"
+      },
+      {
+        "computed": 61.41817389600328,
+        "doc": "61.4",
+        "field": "prep_s",
+        "row_id": "N32_SPECK_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 1.8213226064420642,
+        "doc": "1.82",
+        "field": "reject_s",
+        "row_id": "N32_SPECK_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 2.0622077500011073,
+        "doc": "2.1",
+        "field": "solve_true_km_median_s",
+        "row_id": "N32_SPECK_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 129.86146304746876,
+        "doc": "\u2248 130",
+        "field": "k_star",
+        "row_id": "N32_SPECK_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 55,
+        "doc": "55",
+        "field": "median_true_position",
+        "row_id": "N32_SPECK_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 1024,
+        "doc": "1,024",
+        "field": "queue_length",
+        "row_id": "N32_SPECK_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": "18/32",
+        "doc": "18/32",
+        "field": "recovered_label",
+        "row_id": "N32_SPECK_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 61.30082387499715,
+        "doc": "61.3",
+        "field": "prep_s",
+        "row_id": "N32_SPECK_2w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 1.219574264185765,
+        "doc": "1.22",
+        "field": "reject_s",
+        "row_id": "N32_SPECK_2w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 0.8822414160022163,
+        "doc": "0.9",
+        "field": "solve_true_km_median_s",
+        "row_id": "N32_SPECK_2w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 194.99996162003012,
+        "doc": "\u2248 195",
+        "field": "k_star",
+        "row_id": "N32_SPECK_2w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 55,
+        "doc": "55",
+        "field": "median_true_position",
+        "row_id": "N32_SPECK_2w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 1024,
+        "doc": "1,024",
+        "field": "queue_length",
+        "row_id": "N32_SPECK_2w_off",
+        "status": "agree"
+      },
+      {
+        "computed": "19/32",
+        "doc": "19/32",
+        "field": "recovered_label",
+        "row_id": "N32_SPECK_2w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 53.443701500000316,
+        "doc": "53.4",
+        "field": "prep_s",
+        "row_id": "N32_SIMON_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 43.12794243314678,
+        "doc": "43.1",
+        "field": "reject_s",
+        "row_id": "N32_SIMON_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 23.34126833299524,
+        "doc": "23.3",
+        "field": "solve_true_km_median_s",
+        "row_id": "N32_SIMON_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 5.175647563363663,
+        "doc": "\u2248 5",
+        "field": "k_star",
+        "row_id": "N32_SIMON_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 1,
+        "doc": "1",
+        "field": "median_true_position",
+        "row_id": "N32_SIMON_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 8,
+        "doc": "8",
+        "field": "queue_length",
+        "row_id": "N32_SIMON_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": "23/32",
+        "doc": "23/32",
+        "field": "recovered_label",
+        "row_id": "N32_SIMON_1w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 53.399152562498784,
+        "doc": "53.4",
+        "field": "prep_s",
+        "row_id": "N32_SIMON_1w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 168.51841573340062,
+        "doc": "168.5 \u2020",
+        "field": "reject_s",
+        "row_id": "N32_SIMON_1w_off",
+        "status": "agree"
+      },
+      {
+        "computed": "inf",
+        "doc": "> 300",
+        "field": "solve_true_km_median_s",
+        "row_id": "N32_SIMON_1w_off",
+        "status": "agree"
+      },
+      {
+        "computed": "",
+        "doc": "< 1.5",
+        "field": "k_star",
+        "row_id": "N32_SIMON_1w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 1,
+        "doc": "1",
+        "field": "median_true_position",
+        "row_id": "N32_SIMON_1w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 8,
+        "doc": "8",
+        "field": "queue_length",
+        "row_id": "N32_SIMON_1w_off",
+        "status": "agree"
+      },
+      {
+        "computed": "3/32",
+        "doc": "3/32",
+        "field": "recovered_label",
+        "row_id": "N32_SIMON_1w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 54.14434379149316,
+        "doc": "54.1",
+        "field": "prep_s",
+        "row_id": "N32_SIMON_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 7.516211536381056,
+        "doc": "7.5",
+        "field": "reject_s",
+        "row_id": "N32_SIMON_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 5.3229163749929285,
+        "doc": "5.3",
+        "field": "solve_true_km_median_s",
+        "row_id": "N32_SIMON_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 32.001858738175805,
+        "doc": "\u2248 32",
+        "field": "k_star",
+        "row_id": "N32_SIMON_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 2,
+        "doc": "2",
+        "field": "median_true_position",
+        "row_id": "N32_SIMON_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 1024,
+        "doc": "1,024",
+        "field": "queue_length",
+        "row_id": "N32_SIMON_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": "27/32",
+        "doc": "27/32",
+        "field": "recovered_label",
+        "row_id": "N32_SIMON_2w_on",
+        "status": "agree"
+      },
+      {
+        "computed": 54.089870416999474,
+        "doc": "54.1",
+        "field": "prep_s",
+        "row_id": "N32_SIMON_2w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 28.52937607882214,
+        "doc": "28.5",
+        "field": "reject_s",
+        "row_id": "N32_SIMON_2w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 12.866470875000232,
+        "doc": "12.9",
+        "field": "solve_true_km_median_s",
+        "row_id": "N32_SIMON_2w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 8.168550832101538,
+        "doc": "\u2248 8",
+        "field": "k_star",
+        "row_id": "N32_SIMON_2w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 2,
+        "doc": "2",
+        "field": "median_true_position",
+        "row_id": "N32_SIMON_2w_off",
+        "status": "agree"
+      },
+      {
+        "computed": 1024,
+        "doc": "1,024",
+        "field": "queue_length",
+        "row_id": "N32_SIMON_2w_off",
+        "status": "agree"
+      },
+      {
+        "computed": "22/32",
+        "doc": "22/32",
+        "field": "recovered_label",
+        "row_id": "N32_SIMON_2w_off",
+        "status": "agree"
+      }
+    ],
+    "disagree": 2
+  },
+  "inputs": [
+    {
+      "path": "docs/queue_cost_model_evidence_20261009/cells.csv",
+      "sha256": "d4bbfe2d54889dc3f79684aec4cba118c61487ae6328ca73cb3b42cfa3ab3646",
+      "sidecar": "cells.csv.sha256",
+      "sidecar_verified": true
+    },
+    {
+      "path": "docs/queue_cost_model_evidence_20261009/attempts.csv",
+      "sha256": "04c95882820d5cd0398d16e9b7d2d0c7c077e90cf020f6fd0d41ae85cb8bd690",
+      "sidecar": "attempts.csv.sha256",
+      "sidecar_verified": true
+    },
+    {
+      "path": "scripts/fit_queue_cost_model.py",
+      "sha256": "2aef8a30dbc917ea03b05ec32c4c93c6d89a012f2309890031c8e46990b9591e",
+      "sidecar": null,
+      "sidecar_verified": false
+    },
+    {
+      "path": "results/simon_confirmation_replacement/simon_confirmation_comparators.json",
+      "sha256": "8cc9da7fbdf5207d94e0b108452819244a9dd4aee3dd28de14419af05e397b61",
+      "sidecar": "simon_confirmation_comparators.json.sha256",
+      "sidecar_verified": true
+    },
+    {
+      "path": "results/phase11_prospective/seven_round_prospective_results.json",
+      "sha256": "b8d06d276d18a5d50df96cbe5d599c830fa6c46c2a35083dc35265a6772ff606",
+      "sidecar": "seven_round_prospective_results.sha256",
+      "sidecar_verified": true
+    },
+    {
+      "path": "docs/BREAK_EVEN_ANALYSIS_20261009.md",
+      "sha256": "d2091edd77c2b8fe5c0352eb8e5cc1c05a4eba38cd0025b52bf1c231d04a90ab",
+      "sidecar": null,
+      "sidecar_verified": false
+    }
+  ],
+  "interpreter": "/Users/ashfaq/Dev/comp-sci-project/.venv/bin/python3",
+  "matplotlib_version": "3.11.1",
+  "not_plotted": [
+    "N=32 SIMON, 1 word, matrices off"
+  ],
+  "outputs": {
+    "fig8_affordable_depth.caption.txt": "5713b13a9c5143c0fae9e101b3769b40384621ee4b823bf95ed8801020a6e532",
+    "fig8_affordable_depth.csv": "00f401e8c64cd3099d9ab27badb4d67917015438bbc4db5e5e7ad4b75566e03f",
+    "fig8_affordable_depth.pdf": "ddfc8c8794e2c9f98084f4882712a4b941ceb92fbe2a4085107c36bb3e564c28",
+    "fig8_affordable_depth.png": "3fbbd9821449d53cd0c91c3b49c1fb3693e9f058c1fec07dcae7d047cab43971"
+  },
+  "plotted_count": 12,
+  "python_version": "3.14.7",
+  "role": "exploratory_descriptive_retrospective",
+  "row_count": 13,
+  "source_doc": "docs/BREAK_EVEN_ANALYSIS_20261009.md",
+  "study": "EXPLORATORY/RETROSPECTIVE affordable-depth figure"
+}

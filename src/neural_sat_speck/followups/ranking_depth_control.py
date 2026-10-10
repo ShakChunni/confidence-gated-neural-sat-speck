@@ -56,6 +56,7 @@ ASSET_KEYS = (
 PROSPECTIVE_ASSET_KEYS = ASSET_KEYS + ("speck_classical_r6",)
 PROSPECTIVE_CAMPAIGN = "prospective_queue_cost_d060"
 PROSPECTIVE_AUTHOR_DECISION = "D-060"
+PROSPECTIVE_CONTINUATION_DECISION = "D-062"
 PROSPECTIVE_FULL_DESIGN = "configs/protocol/prospective_queue_cost_d060_n32.json"
 PROSPECTIVE_PILOT_DESIGN = "configs/protocol/prospective_queue_cost_d060_pilot_n32.json"
 PROSPECTIVE_DESIGNS = (PROSPECTIVE_FULL_DESIGN, PROSPECTIVE_PILOT_DESIGN)
@@ -428,6 +429,106 @@ def prospective_identity(manifest: dict) -> dict:
     }
 
 
+def validate_continuation(
+    original_manifest: dict,
+    original_ledger: dict,
+    original_manifest_sha256: str,
+    profile: dict,
+) -> int:
+    """Check an interrupted full run; return the schedule index to resume at.
+
+    Only the D-062 case is accepted: a full prospective run stopped by an
+    infrastructure exception inside one cell, every earlier cell recorded with a
+    scientific outcome. The continuation reruns that cell and every never-started
+    cell in the frozen order; recorded cells are never rerun.
+    """
+    expected = prospective_cells("full", num_keys=len(profile["selected_instances"]))
+    ids = [c["cell_id"] for c in expected]
+    if (
+        original_manifest.get("campaign") != PROSPECTIVE_CAMPAIGN
+        or original_manifest.get("campaign_role") != "full"
+        or original_manifest.get("mode") != "full"
+        or original_manifest.get("continuation") is not None
+        or digest(original_manifest.get("profile")) != digest(profile)
+        or original_manifest.get("cells") != expected
+    ):
+        raise ValueError("Continuation target is not the frozen full prospective run")
+    if (
+        original_ledger.get("schema") != "backend_ranking_depth_results_v1"
+        or original_ledger.get("status") != "INTERRUPTED"
+        or original_ledger.get("mode") != "full"
+        or original_ledger.get("manifest_sha256") != original_manifest_sha256
+        or original_ledger.get("source_commit")
+        != original_manifest.get("source_commit")
+    ):
+        raise ValueError(
+            "Continuation target is not an interrupted run of its manifest"
+        )
+    order = original_ledger.get("execution_order", [])
+    records = original_ledger.get("records", {})
+    start = len(order) - 1
+    if (
+        start < 0
+        or order != ids[: start + 1]
+        or set(original_ledger.get("starts", {})) != set(order)
+        or set(records) != set(ids[:start])
+        or any(r.get("outcome") not in SCIENTIFIC_OUTCOMES for r in records.values())
+    ):
+        raise ValueError(
+            "Continuation needs a recorded scientific prefix plus one interrupted cell"
+        )
+    return start
+
+
+def continuation_record(original_root: Path, profile: dict) -> dict:
+    """Pin the interrupted run's manifest and ledger for a D-062 continuation."""
+    manifest_path = (original_root / "inputs" / "manifest.json").absolute()
+    ledger_path = (original_root / "execution" / "ledger.json").absolute()
+    original = read_checked_json(manifest_path)
+    ledger = read_checked_json(ledger_path)
+    start = validate_continuation(
+        original, ledger, streaming_hash(manifest_path), profile
+    )
+    interrupted = ledger["execution_order"][start]
+    return {
+        "author_decision": PROSPECTIVE_CONTINUATION_DECISION,
+        "original_manifest": file_identity(manifest_path),
+        "original_ledger": file_identity(ledger_path),
+        "start_index": start,
+        "interrupted_cell": interrupted,
+        "interrupted_invocation": ledger["starts"][interrupted]["invocation_id"],
+    }
+
+
+def check_continuation_pin(manifest: dict) -> int:
+    """Re-verify a continuation manifest against the pinned interrupted run."""
+    pin = manifest["continuation"]
+    if (
+        not isinstance(pin, dict)
+        or pin.get("author_decision") != PROSPECTIVE_CONTINUATION_DECISION
+        or manifest.get("mode") != "full"
+    ):
+        raise ValueError("Malformed continuation pin")
+    root = Path(manifest["source_root"])
+    manifest_path = checked_path(root, pin["original_manifest"])
+    ledger_path = checked_path(root, pin["original_ledger"])
+    ledger = read_checked_json(ledger_path)
+    start = validate_continuation(
+        read_checked_json(manifest_path),
+        ledger,
+        pin["original_manifest"]["sha256"],
+        manifest["profile"],
+    )
+    if (
+        start != pin["start_index"]
+        or ledger["execution_order"][start] != pin["interrupted_cell"]
+        or ledger["starts"][pin["interrupted_cell"]]["invocation_id"]
+        != pin["interrupted_invocation"]
+    ):
+        raise ValueError("Continuation pin differs from the interrupted run")
+    return start
+
+
 def source_names(root: Path) -> list[str]:
     return sorted(
         str(p.relative_to(root)) for p in (root / "src").rglob("*.py")
@@ -451,6 +552,8 @@ def prepare(
     pilot: Path | None = None,
     config_path: Path | None = None,
     author_approval: str | None = None,
+    continuation_of: Path | None = None,
+    continuation_approval: str | None = None,
 ) -> Path:
     if output.exists():
         raise ValueError("Refusing to overwrite preparation")
@@ -469,10 +572,16 @@ def prepare(
             config_path,
             profile,
             author_approval,
+            continuation_of,
+            continuation_approval,
         )
-    if author_approval is not None:
+    if (
+        author_approval is not None
+        or continuation_of is not None
+        or continuation_approval is not None
+    ):
         raise ValueError(
-            "Author approval flag applies only to the prospective campaign"
+            "Author approval/continuation flag applies only to the prospective campaign"
         )
     if profile.get("confirmation_seed") is not None:
         raise ValueError("Phase 12 confirmation seed is strictly prohibited")
@@ -573,8 +682,14 @@ def _prepare_prospective(
     config_path: Path | None,
     profile: dict,
     author_approval: str | None,
+    continuation_of: Path | None = None,
+    continuation_approval: str | None = None,
 ) -> Path:
-    """Prepare the D-060/D-061 campaign. Approval is an explicit flag, never a default."""
+    """Prepare the D-060/D-061 campaign. Approval is an explicit flag, never a default.
+
+    With ``continuation_of`` (D-062) the grid is the frozen suffix from the cell
+    the interrupted full run was executing; everything else is unchanged.
+    """
     names = prospective_source_names(root)
     validate_source_root(root, names)
     if config_path is None:
@@ -613,6 +728,18 @@ def _prepare_prospective(
     if mode == "pilot" and selected != [0]:
         raise ValueError("Pilot covers exactly one opened key per cipher (index 0)")
     cells = prospective_cells(mode, num_keys=len(selected or []))
+    continuation = None
+    if continuation_of is not None or continuation_approval is not None:
+        if (
+            continuation_of is None
+            or mode != "full"
+            or continuation_approval != PROSPECTIVE_CONTINUATION_DECISION
+        ):
+            raise ValueError(
+                "Continuation needs full mode, a target run and explicit D-062 approval"
+            )
+        continuation = continuation_record(Path(continuation_of), profile)
+        cells = cells[continuation["start_index"] :]
     for cell in cells:
         validate_prospective_cell(cell)
     ceiling = float(profile["campaign_ceiling_seconds"])
@@ -696,6 +823,8 @@ def _prepare_prospective(
         "campaign_ceiling_seconds": ceiling,
         "pilot_audit": file_identity(pilot) if pilot else None,
     }
+    if continuation is not None:
+        manifest["continuation"] = continuation
     path = output / "manifest.json"
     atomic_json(path, manifest)
     return path
@@ -735,6 +864,8 @@ def load_manifest(path: Path, *, hashes: bool = True) -> tuple[dict, dict[str, P
     num_keys = len(profile.get("selected_instances", list(range(8 if author_decision == "D-055" else 32))))
     if prospective:
         expected_cells = prospective_cells(mode, num_keys=num_keys)
+        if "continuation" in manifest:
+            expected_cells = expected_cells[check_continuation_pin(manifest) :]
         for cell in manifest.get("cells", []):
             validate_prospective_cell(cell)
         expected_ceiling = float(expected_profile["campaign_ceiling_seconds"])
