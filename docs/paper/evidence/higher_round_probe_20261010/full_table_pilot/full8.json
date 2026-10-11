@@ -1,0 +1,174 @@
+{
+ "table": "runtime/higher_round_tables/speck_ddt_r7_full.npy",
+ "load_s": 1.7,
+ "keys": 32,
+ "top1": 2,
+ "top8": 15,
+ "top16": 16,
+ "top32": 22,
+ "top64": 25,
+ "median_position": 14.5,
+ "median_rank_s": 0.04,
+ "per_key": [
+  {
+   "key": "test-0000",
+   "position": 4,
+   "rank_s": 0.81
+  },
+  {
+   "key": "test-0001",
+   "position": 3,
+   "rank_s": 0.61
+  },
+  {
+   "key": "test-0002",
+   "position": 7067,
+   "rank_s": 0.4
+  },
+  {
+   "key": "test-0003",
+   "position": 5,
+   "rank_s": 0.2
+  },
+  {
+   "key": "test-0004",
+   "position": 1,
+   "rank_s": 0.16
+  },
+  {
+   "key": "test-0005",
+   "position": 6,
+   "rank_s": 0.11
+  },
+  {
+   "key": "test-0006",
+   "position": 246,
+   "rank_s": 0.11
+  },
+  {
+   "key": "test-0007",
+   "position": 20,
+   "rank_s": 0.08
+  },
+  {
+   "key": "test-0008",
+   "position": 10488,
+   "rank_s": 0.07
+  },
+  {
+   "key": "test-0009",
+   "position": 2,
+   "rank_s": 0.07
+  },
+  {
+   "key": "test-0010",
+   "position": 7,
+   "rank_s": 0.06
+  },
+  {
+   "key": "test-0011",
+   "position": 2,
+   "rank_s": 0.05
+  },
+  {
+   "key": "test-0012",
+   "position": 27,
+   "rank_s": 0.05
+  },
+  {
+   "key": "test-0013",
+   "position": 4,
+   "rank_s": 0.04
+  },
+  {
+   "key": "test-0014",
+   "position": 36,
+   "rank_s": 0.04
+  },
+  {
+   "key": "test-0015",
+   "position": 37,
+   "rank_s": 0.04
+  },
+  {
+   "key": "test-0016",
+   "position": 26,
+   "rank_s": 0.04
+  },
+  {
+   "key": "test-0017",
+   "position": 5,
+   "rank_s": 0.04
+  },
+  {
+   "key": "test-0018",
+   "position": 9,
+   "rank_s": 0.04
+  },
+  {
+   "key": "test-0019",
+   "position": 4,
+   "rank_s": 0.04
+  },
+  {
+   "key": "test-0020",
+   "position": 27,
+   "rank_s": 0.04
+  },
+  {
+   "key": "test-0021",
+   "position": 2,
+   "rank_s": 0.04
+  },
+  {
+   "key": "test-0022",
+   "position": 8,
+   "rank_s": 0.03
+  },
+  {
+   "key": "test-0023",
+   "position": 27,
+   "rank_s": 0.03
+  },
+  {
+   "key": "test-0024",
+   "position": 4,
+   "rank_s": 0.03
+  },
+  {
+   "key": "test-0025",
+   "position": 54,
+   "rank_s": 0.03
+  },
+  {
+   "key": "test-0026",
+   "position": 27,
+   "rank_s": 0.03
+  },
+  {
+   "key": "test-0027",
+   "position": 834,
+   "rank_s": 0.03
+  },
+  {
+   "key": "test-0028",
+   "position": 1,
+   "rank_s": 0.03
+  },
+  {
+   "key": "test-0029",
+   "position": 2031,
+   "rank_s": 0.03
+  },
+  {
+   "key": "test-0030",
+   "position": 377,
+   "rank_s": 0.03
+  },
+  {
+   "key": "test-0031",
+   "position": 90,
+   "rank_s": 0.03
+  }
+ ]
+}

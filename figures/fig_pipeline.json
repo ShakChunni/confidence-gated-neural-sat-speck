@@ -1,0 +1,4 @@
+{
+  "script_sha256": "bdd5edd1697e6472294cf41e8344ce5a786665ff458e3c13263cd76b041582f2",
+  "command": "python3 -I scripts/generate_pipeline_figure.py"
+}

@@ -1,0 +1,92 @@
+{
+ "attack_rounds": 7,
+ "table_rounds": 6,
+ "bits": 16,
+ "log2_samples": 26,
+ "keys": 8,
+ "selected_bits": [
+  17,
+  16,
+  1,
+  26,
+  10,
+  23,
+  24,
+  0,
+  19,
+  3,
+  30,
+  21,
+  22,
+  7,
+  12,
+  28
+ ],
+ "bias": {
+  "17": -0.1676,
+  "16": -0.081,
+  "1": 0.044,
+  "26": -0.0127,
+  "10": -0.0106,
+  "23": 0.0063,
+  "24": 0.0062,
+  "0": 0.0048,
+  "19": 0.003,
+  "3": 0.0027,
+  "30": -0.0014,
+  "21": 0.0014,
+  "22": -0.0007,
+  "7": 0.0006,
+  "12": 0.0005,
+  "28": -0.0004
+ },
+ "build_s": 4.1,
+ "top1": 0,
+ "top8": 4,
+ "top32": 7,
+ "top64": 7,
+ "median_position": 12.0,
+ "median_rank_s": 0.05,
+ "per_key": [
+  {
+   "key_index": "test-0000",
+   "midrank": 5.5,
+   "pipeline_position": 6
+  },
+  {
+   "key_index": "test-0001",
+   "midrank": 7.5,
+   "pipeline_position": 7
+  },
+  {
+   "key_index": "test-0002",
+   "midrank": 101.5,
+   "pipeline_position": 101
+  },
+  {
+   "key_index": "test-0003",
+   "midrank": 21.5,
+   "pipeline_position": 21
+  },
+  {
+   "key_index": "test-0004",
+   "midrank": 7.5,
+   "pipeline_position": 7
+  },
+  {
+   "key_index": "test-0005",
+   "midrank": 5.5,
+   "pipeline_position": 5
+  },
+  {
+   "key_index": "test-0006",
+   "midrank": 19.5,
+   "pipeline_position": 20
+  },
+  {
+   "key_index": "test-0007",
+   "midrank": 17.5,
+   "pipeline_position": 17
+  }
+ ]
+}

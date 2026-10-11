@@ -9,6 +9,7 @@ or table is loaded. Arms:
   R7-C  sparse 6-round table Stage 1 (D-061) -> 5-round table Stage 2           -> SAT, 2 words
   R8-G  Gohr's published net7 Stage 1      -> 6-round table -> 5-round table    -> SAT, 3 words
   R8-C  sparse 7-round table Stage 1       -> 6-round table -> 5-round table    -> SAT, 3 words
+  R8-F  full 2^32-entry sampled 7-round table Stage 1 (D-064) -> 6-round -> 5-round -> SAT, 3 words
 
 Stage widths: R7 32 parents x 32 children (as D-060); R8 32 x 8 x 2. Queues are
 ordered by summed stage ranks (ties by tuple). Each candidate is solved by a
@@ -20,6 +21,8 @@ Neural inference runs on MPS in batches of 512 candidates x 64 pairs = 32,768
 rows (MPS returns wrong outputs for rows >= 65,536 in one batch, torch 2.13).
 R7-B1 calls the production ranker (_rank_speck_stage1: 1,024 candidates x 64
 pairs per MPS call). Torch runs single-threaded for every arm, as in production.
+R8-F loads the 4 GiB int8 table (log2(p/2^-32) in 1/16-bit units, built on a
+GPU by colab_build_speck_full_ddt.py from 2^42 samples) inside the cell clock.
 
 Refuses to overwrite an existing ledger.
 """
@@ -59,6 +62,7 @@ ASSETS = {
     "t7": REPO / "docs/paper/evidence/higher_round_probe_20261010/classical_dist_r7_sparse_twopass_mc20_probe.json",
     "t6": REPO / "models/classical_dist_r6_sparse_twopass_mc20_v1.json",
     "t5": REPO / "models/classical_dist_r5_sparse_v2.json",
+    "tfull": REPO / "runtime/higher_round_tables/speck_ddt_r7_full.npy",
     "cms": Path(CMS),
 }
 ARMS = {
@@ -67,6 +71,7 @@ ARMS = {
     "R7-C": {"rounds": 7, "stage1": "t6", "later": ["t5"], "widths": [32, 32]},
     "R8-G": {"rounds": 8, "stage1": "net7", "later": ["t6", "t5"], "widths": [32, 8, 2]},
     "R8-C": {"rounds": 8, "stage1": "t7", "later": ["t6", "t5"], "widths": [32, 8, 2]},
+    "R8-F": {"rounds": 8, "stage1": "tfull", "later": ["t6", "t5"], "widths": [32, 8, 2]},
 }
 CANDS = np.arange(65536, dtype=np.uint32)
 
@@ -84,7 +89,7 @@ def table_top(c0, c1, table, top):
     return [int(v) for v in rank_classical_subkeys(AttackInstance("p", (0, 0, 0, 0), 0, pairs), table).candidate_order[:top]]
 
 
-def net_top(net, c0, c1, top):
+def net_order(net, c0, c1):
     scores = np.empty(65536)
     for s in range(0, 65536, CH):
         k = np.repeat(CANDS[s:s + CH], len(c0))
@@ -93,8 +98,17 @@ def net_top(net, c0, c1, top):
         with torch.no_grad():
             z = net.logits(torch.from_numpy(to_bits(*a, *b)).to("mps")).cpu().numpy()
         scores[s:s + CH] = z.reshape(CH, len(c0)).sum(1)
-    order = np.lexsort((CANDS, -scores))  # descending score, ascending word on ties
-    return [int(v) for v in order[:top]]
+    return np.lexsort((CANDS, -scores))  # descending score, ascending word on ties
+
+
+def full_order(llr, c0, c1):
+    scores = np.empty(65536, dtype=np.int64)
+    for s in range(0, 65536, 4096):
+        k = np.repeat(CANDS[s:s + 4096], len(c0))
+        a = dec_one(np.tile(c0[:, 0], 4096), np.tile(c0[:, 1], 4096), k)
+        b = dec_one(np.tile(c1[:, 0], 4096), np.tile(c1[:, 1], 4096), k)
+        scores[s:s + 4096] = llr[((a[0] ^ b[0]) << 16) | (a[1] ^ b[1])].astype(np.int32).reshape(4096, len(c0)).sum(1)
+    return np.lexsort((CANDS, -scores))  # descending score, ascending word on ties
 
 
 def dec_pairs(c, k):
@@ -115,7 +129,16 @@ def run_cell(arm_name: str, x: AttackInstance, fresh, rounds: int) -> dict:
         parents = [int(v) for v in order[:arm["widths"][0]]]
     elif arm["stage1"].startswith("net"):
         net = load_gohr(str(ASSETS[arm["stage1"]])).to("mps")
-        parents = net_top(net, c0, c1, arm["widths"][0])
+        order = net_order(net, c0, c1)
+        parents = [int(v) for v in order[:arm["widths"][0]]]
+        rec["stage1_true_position"] = int(np.flatnonzero(order == ks[-1])[0]) + 1
+    elif arm["stage1"] == "tfull":
+        llr = np.load(ASSETS["tfull"])
+        rec["stage1_load_s"] = time.perf_counter() - t0
+        order = full_order(llr, c0, c1)
+        del llr
+        parents = [int(v) for v in order[:arm["widths"][0]]]
+        rec["stage1_true_position"] = int(np.flatnonzero(order == ks[-1])[0]) + 1
     else:
         parents = table_top(c0, c1, ClassicalDistributionTable.load(str(ASSETS[arm["stage1"]])), arm["widths"][0])
     rec["stage1_s"] = time.perf_counter() - t0

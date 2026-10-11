@@ -1,0 +1,17 @@
+{
+ "rounds": 7,
+ "log2_samples": 42,
+ "seed": 20261011,
+ "input_difference": [
+  64,
+  0
+ ],
+ "independent_round_keys": true,
+ "difference_layout": "x<<16 | y",
+ "llr_unit_bits": 0.0625,
+ "smoothing": 0.5,
+ "max_count": 769916,
+ "sample_seconds": 810.7,
+ "gpu": "NVIDIA A100-SXM4-80GB",
+ "table_sha256": "f8e42ac17c688edac679bd18a9ec05a7cefde9dde0c5dd5d9edfe3ad04ed8ed1"
+}
