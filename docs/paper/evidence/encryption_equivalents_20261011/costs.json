@@ -1,0 +1,253 @@
+{
+ "rates_per_s": {
+  "speck32_64": 68247000.0,
+  "simon32_64": 29693000.0
+ },
+ "budget_log2_enc": {
+  "speck32_64": 34.25,
+  "simon32_64": 33.05
+ },
+ "note": "unit conversion only; k* unchanged; not hardware independent",
+ "rows": [
+  {
+   "row_id": "SIMON_primary_classical",
+   "cipher": "simon32_64",
+   "prep_s": 19.594356,
+   "reject_s": 0.48085,
+   "solve_s": 14.810803,
+   "k_star": 552.344294,
+   "recovered": "53/64",
+   "prep_log2_enc": 29.12,
+   "reject_log2_enc": 23.77,
+   "solve_log2_enc": 28.71
+  },
+  {
+   "row_id": "SIMON_primary_hybrid",
+   "cipher": "simon32_64",
+   "prep_s": 56.335128,
+   "reject_s": 0.346475,
+   "solve_s": 6.609129,
+   "k_star": 684.193228,
+   "recovered": "49/64",
+   "prep_log2_enc": 30.64,
+   "reject_log2_enc": 23.29,
+   "solve_log2_enc": 27.55
+  },
+  {
+   "row_id": "SIMON_primary_neural",
+   "cipher": "simon32_64",
+   "prep_s": 106.681335,
+   "reject_s": 1.159675,
+   "solve_s": 6.463213,
+   "k_star": 161.127466,
+   "recovered": "26/64",
+   "prep_log2_enc": 31.56,
+   "reject_log2_enc": 25.04,
+   "solve_log2_enc": 27.52
+  },
+  {
+   "row_id": "SPECK_primary_hybrid",
+   "cipher": "speck32_64",
+   "prep_s": 60.250916,
+   "reject_s": 0.280815,
+   "solve_s": 0.0,
+   "k_star": 853.762049,
+   "recovered": "111/128",
+   "prep_log2_enc": 31.94,
+   "reject_log2_enc": 24.19,
+   "solve_log2_enc": null
+  },
+  {
+   "row_id": "SPECK_primary_screened",
+   "cipher": "speck32_64",
+   "prep_s": 92.602784,
+   "reject_s": 0.131391,
+   "solve_s": 0.0,
+   "k_star": 1578.468099,
+   "recovered": "110/128",
+   "prep_log2_enc": 32.56,
+   "reject_log2_enc": 23.1,
+   "solve_log2_enc": null
+  },
+  {
+   "row_id": "N32_SPECK_1w_on",
+   "cipher": "speck32_64",
+   "prep_s": 44.433956,
+   "reject_s": 123.507719,
+   "solve_s": 66.498582,
+   "k_star": 1.530815,
+   "recovered": "4/32",
+   "prep_log2_enc": 31.5,
+   "reject_log2_enc": 32.97,
+   "solve_log2_enc": 32.08
+  },
+  {
+   "row_id": "N32_SPECK_1w_off",
+   "cipher": "speck32_64",
+   "prep_s": 44.418163,
+   "reject_s": 192.219279,
+   "solve_s": 178.960007,
+   "k_star": 0.398617,
+   "recovered": "2/32",
+   "prep_log2_enc": 31.5,
+   "reject_log2_enc": 33.61,
+   "solve_log2_enc": 33.51
+  },
+  {
+   "row_id": "N32_SPECK_2w_on",
+   "cipher": "speck32_64",
+   "prep_s": 61.418174,
+   "reject_s": 1.821323,
+   "solve_s": 2.062208,
+   "k_star": 129.861463,
+   "recovered": "18/32",
+   "prep_log2_enc": 31.96,
+   "reject_log2_enc": 26.89,
+   "solve_log2_enc": 27.07
+  },
+  {
+   "row_id": "N32_SPECK_2w_off",
+   "cipher": "speck32_64",
+   "prep_s": 61.300824,
+   "reject_s": 1.219574,
+   "solve_s": 0.882241,
+   "k_star": 194.999962,
+   "recovered": "19/32",
+   "prep_log2_enc": 31.96,
+   "reject_log2_enc": 26.31,
+   "solve_log2_enc": 25.84
+  },
+  {
+   "row_id": "N32_SIMON_1w_on",
+   "cipher": "simon32_64",
+   "prep_s": 53.443702,
+   "reject_s": 43.127942,
+   "solve_s": 23.341268,
+   "k_star": 5.175648,
+   "recovered": "23/32",
+   "prep_log2_enc": 30.56,
+   "reject_log2_enc": 30.25,
+   "solve_log2_enc": 29.37
+  },
+  {
+   "row_id": "N32_SIMON_1w_off",
+   "cipher": "simon32_64",
+   "prep_s": 53.399153,
+   "reject_s": 168.518416,
+   "solve_s": null,
+   "k_star": null,
+   "recovered": "3/32",
+   "prep_log2_enc": 30.56,
+   "reject_log2_enc": 32.22,
+   "solve_log2_enc": null
+  },
+  {
+   "row_id": "N32_SIMON_2w_on",
+   "cipher": "simon32_64",
+   "prep_s": 54.144344,
+   "reject_s": 7.516212,
+   "solve_s": 5.322916,
+   "k_star": 32.001859,
+   "recovered": "27/32",
+   "prep_log2_enc": 30.58,
+   "reject_log2_enc": 27.73,
+   "solve_log2_enc": 27.24
+  },
+  {
+   "row_id": "N32_SIMON_2w_off",
+   "cipher": "simon32_64",
+   "prep_s": 54.08987,
+   "reject_s": 28.529376,
+   "solve_s": 12.866471,
+   "k_star": 8.168551,
+   "recovered": "22/32",
+   "prep_log2_enc": 30.58,
+   "reject_log2_enc": 29.66,
+   "solve_log2_enc": 28.51
+  },
+  {
+   "row_id": "D063_R7-G",
+   "cipher": "speck32_64",
+   "prep_s": 18.8447198960057,
+   "reject_s": 1.4945925066637118,
+   "solve_s": 1.677492146001896,
+   "k_star": 186.99263291628145,
+   "recovered": "32/32",
+   "prep_log2_enc": 30.26,
+   "reject_log2_enc": 26.6,
+   "solve_log2_enc": 26.77
+  },
+  {
+   "row_id": "D063_R7-C",
+   "cipher": "speck32_64",
+   "prep_s": 18.827233083487954,
+   "reject_s": 1.4262072882960402,
+   "solve_s": 1.65611633300432,
+   "k_star": 195.9859922728764,
+   "recovered": "30/32",
+   "prep_log2_enc": 30.26,
+   "reject_log2_enc": 26.54,
+   "solve_log2_enc": 26.75
+  },
+  {
+   "row_id": "D063_R7-B1",
+   "cipher": "speck32_64",
+   "prep_s": 60.07945420849137,
+   "reject_s": 1.4134023005304321,
+   "solve_s": 1.6966479170077946,
+   "k_star": 168.54642007098644,
+   "recovered": "19/32",
+   "prep_log2_enc": 31.93,
+   "reject_log2_enc": 26.52,
+   "solve_log2_enc": 26.79
+  },
+  {
+   "row_id": "D063_R8-G",
+   "cipher": "speck32_64",
+   "prep_s": 150.25025687500602,
+   "reject_s": 0.2667568328971262,
+   "solve_s": 0.13677312497748062,
+   "k_star": 560.8589979688138,
+   "recovered": "26/32",
+   "prep_log2_enc": 33.26,
+   "reject_log2_enc": 24.12,
+   "solve_log2_enc": 23.15
+  },
+  {
+   "row_id": "D063_R8-C",
+   "cipher": "speck32_64",
+   "prep_s": 147.9361883540114,
+   "reject_s": 0.2518404294392589,
+   "solve_s": null,
+   "k_star": 603.810166558919,
+   "recovered": "0/32",
+   "prep_log2_enc": 33.23,
+   "reject_log2_enc": 24.03,
+   "solve_log2_enc": null
+  },
+  {
+   "row_id": "D064_R8-G",
+   "cipher": "speck32_64",
+   "prep_s": 149.2035721250286,
+   "reject_s": 0.25045754917483515,
+   "solve_s": 0.09204383348696865,
+   "k_star": 601.716277021793,
+   "recovered": "24/32",
+   "prep_log2_enc": 33.25,
+   "reject_log2_enc": 24.03,
+   "solve_log2_enc": 22.58
+  },
+  {
+   "row_id": "D064_R8-F",
+   "cipher": "speck32_64",
+   "prep_s": 148.15400993748335,
+   "reject_s": 0.24508769076452572,
+   "solve_s": 0.09961972900782712,
+   "k_star": 619.1513325706064,
+   "recovered": "18/32",
+   "prep_log2_enc": 33.24,
+   "reject_log2_enc": 24.0,
+   "solve_log2_enc": 22.7
+  }
+ ]
+}

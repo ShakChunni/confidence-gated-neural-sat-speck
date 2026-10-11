@@ -10,6 +10,7 @@ or table is loaded. Arms:
   R8-G  Gohr's published net7 Stage 1      -> 6-round table -> 5-round table    -> SAT, 3 words
   R8-C  sparse 7-round table Stage 1       -> 6-round table -> 5-round table    -> SAT, 3 words
   R8-F  full 2^32-entry sampled 7-round table Stage 1 (D-064) -> 6-round -> 5-round -> SAT, 3 words
+  *-BF  the same arm with native brute-force completion instead of SAT (D-065)
 
 Stage widths: R7 32 parents x 32 children (as D-060); R8 32 x 8 x 2. Queues are
 ordered by summed stage ranks (ties by tuple). Each candidate is solved by a
@@ -21,6 +22,10 @@ Neural inference runs on MPS in batches of 512 candidates x 64 pairs = 32,768
 rows (MPS returns wrong outputs for rows >= 65,536 in one batch, torch 2.13).
 R7-B1 calls the production ranker (_rank_speck_stage1: 1,024 candidates x 64
 pairs per MPS call). Torch runs single-threaded for every arm, as in production.
+BF arms (D-065) replace each SAT call with tools/bruteforce_completion.c: the
+16(4-m) unknown schedule bits are enumerated in 2^22-guess chunks with the cell
+deadline checked between chunks; a match must reproduce all 128 known blocks
+(inside the C call) and the 2 fresh blocks, exactly as a SAT model must.
 R8-F loads the 4 GiB int8 table (log2(p/2^-32) in 1/16-bit units, built on a
 GPU by colab_build_speck_full_ddt.py from 2^42 samples) inside the cell clock.
 
@@ -44,6 +49,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
+from bruteforce_completion import BruteforceLibrary, build_library  # noqa: E402
 from gohr_published_net import dec_one, enc, expand_key, load_gohr, to_bits  # noqa: E402
 from neural_sat_speck.attacks.classical_ranking import ClassicalDistributionTable, rank_classical_subkeys  # noqa: E402
 from neural_sat_speck.attacks.recovery import independent_verification_pairs  # noqa: E402
@@ -64,6 +70,10 @@ ASSETS = {
     "t5": REPO / "models/classical_dist_r5_sparse_v2.json",
     "tfull": REPO / "runtime/higher_round_tables/speck_ddt_r7_full.npy",
     "cms": Path(CMS),
+    "bf_source": REPO / "tools/bruteforce_completion.c",
+    "bf_reference": REPO / "tools/reference_encryption.c",
+    "bf_header": REPO / "tools/bruteforce_completion.h",
+    "bf_wrapper": REPO / "scripts/bruteforce_completion.py",
 }
 ARMS = {
     "R7-B1": {"rounds": 7, "stage1": "b1", "later": ["t5"], "widths": [32, 32]},
@@ -73,6 +83,10 @@ ARMS = {
     "R8-C": {"rounds": 8, "stage1": "t7", "later": ["t6", "t5"], "widths": [32, 8, 2]},
     "R8-F": {"rounds": 8, "stage1": "tfull", "later": ["t6", "t5"], "widths": [32, 8, 2]},
 }
+for _a in ("R7-B1", "R7-G", "R7-C", "R8-G", "R8-F"):
+    ARMS[_a + "-BF"] = dict(ARMS[_a], completer="bf")
+BF_CHUNK = 1 << 22
+BF = None  # BruteforceLibrary, built once in main()
 CANDS = np.arange(65536, dtype=np.uint32)
 
 
@@ -159,13 +173,45 @@ def run_cell(arm_name: str, x: AttackInstance, fresh, rounds: int) -> dict:
     rec["queue_len"] = len(queue)
     pos = [i for i, (_, w) in enumerate(queue) if w == truth]
     rec["true_queue_position"] = pos[0] if pos else None
-    public = {"rounds": rounds, "pairs": [{"plaintext0": list(p.plaintext0), "ciphertext0": list(p.ciphertext0),
-                                            "plaintext1": list(p.plaintext1), "ciphertext1": list(p.ciphertext1)} for p in x.pairs]}
-    base = build_formula("speck32_64", public, OBS, 0, include_cnf=False)
-    word_vars = base["varmap"]["round_keys"][-m:]
     known = [(p.plaintext0, p.ciphertext0) for p in x.pairs] + [(p.plaintext1, p.ciphertext1) for p in x.pairs]
-    rec.update(outcome="queue_exhausted", attempts=0, verification_rejections=0)
+    rec.update(outcome="queue_exhausted", attempts=0, verification_rejections=0, completer=arm.get("completer", "sat"))
     wrong = []
+    if arm.get("completer") == "bf":
+        known_pt, known_ct = [pt for pt, _ in known], [ct for _, ct in known]
+        space = 1 << (16 * (4 - m))
+        for i, (_, words) in enumerate(queue):
+            if BUDGET - (time.perf_counter() - t0) <= 0:
+                rec["outcome"] = "deadline"
+                break
+            rec["attempts"] = i + 1
+            s, lo, hit = time.perf_counter(), 0, None
+            while lo < space:
+                if time.perf_counter() - t0 >= BUDGET:
+                    rec["outcome"] = "deadline"
+                    break
+                r = BF.complete("speck", rounds, list(words), known_pt, known_ct, lo, min(space, lo + BF_CHUNK))
+                if r.found:
+                    kk = expand_key(list(r.master_key), rounds)
+                    if all(tuple(int(v) for v in enc(np.uint32(pt[0]), np.uint32(pt[1]), kk)) == tuple(ct) for pt, ct in fresh):
+                        hit = list(r.master_key)
+                        break
+                    rec["verification_rejections"] += 1
+                    lo = r.found_guess + 1
+                else:
+                    lo = min(space, lo + BF_CHUNK)
+            dt = time.perf_counter() - s
+            if hit is not None:
+                rec.update(outcome="recovered", correct_solve_s=dt, recovered_key=hit)
+                break
+            if rec["outcome"] == "deadline":
+                break
+            wrong.append(dt)
+        queue = []  # completion done; skip the SAT loop
+    else:
+        public = {"rounds": rounds, "pairs": [{"plaintext0": list(p.plaintext0), "ciphertext0": list(p.ciphertext0),
+                                                "plaintext1": list(p.plaintext1), "ciphertext1": list(p.ciphertext1)} for p in x.pairs]}
+        base = build_formula("speck32_64", public, OBS, 0, include_cnf=False)  # SAT arms only; BF arms are not charged for it
+        word_vars = base["varmap"]["round_keys"][-m:]
     with tempfile.TemporaryDirectory() as tmp:
         for i, (_, words) in enumerate(queue):
             left = BUDGET - (time.perf_counter() - t0)
@@ -216,6 +262,9 @@ def main() -> None:
     ap.add_argument("--ledger", type=Path, required=True)
     args = ap.parse_args()
     _configure_torch(torch)
+    global BF
+    bf_lib = build_library()
+    BF = BruteforceLibrary(bf_lib)
     if args.role == "demo" and args.seed != 999999:
         raise SystemExit("demo role requires seed 999999")
     if args.ledger.exists():
@@ -223,11 +272,13 @@ def main() -> None:
     arms = args.arms.split(",")
     assert all(a in ARMS for a in arms)
     commit = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
-    dirty = subprocess.run(["git", "-C", str(REPO), "status", "--porcelain", "scripts/run_higher_round_campaign.py", "scripts/gohr_published_net.py"],
+    dirty = subprocess.run(["git", "-C", str(REPO), "status", "--porcelain", "scripts/run_higher_round_campaign.py", "scripts/gohr_published_net.py",
+                            "scripts/bruteforce_completion.py", "tools/bruteforce_completion.c", "tools/bruteforce_completion.h"],
                            capture_output=True, text=True).stdout.strip()
     header = {"type": "header", "seed": args.seed, "role": args.role, "keys": args.keys, "first_key": args.first_key, "arms": arms,
               "git_commit": commit, "runner_dirty": bool(dirty), "script_sha256": sha256(Path(__file__)),
               "assets": {k: {"path": str(v), "sha256": sha256(v)} for k, v in ASSETS.items()},
+              "bf_library": {"path": str(bf_lib), "sha256": sha256(bf_lib), "chunk": BF_CHUNK},
               "python": sys.version, "torch": torch.__version__, "platform": platform.platform(),
               "started_local": time.strftime("%Y-%m-%d %H:%M:%S %Z")}
     args.ledger.parent.mkdir(parents=True, exist_ok=True)
