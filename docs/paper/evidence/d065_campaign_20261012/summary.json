@@ -1,0 +1,312 @@
+{
+ "ledgers": [
+  {
+   "seed": 701003,
+   "first_key": 0,
+   "keys": 32,
+   "git_commit": "b5edaf8f5102f55079bb37bcd9fa2a577a513fd6",
+   "runner_dirty": false,
+   "script_sha256": "a94a0eb0af35209617f6ed8840ab921eaefee672e0345bf725dbe97fe50aa0ed",
+   "started_local": "2026-10-12 00:37:00 AWST"
+  }
+ ],
+ "arms": {
+  "R7-B1": {
+   "recovered": 26,
+   "wilson95": [
+    0.6469,
+    0.9111
+   ],
+   "outcomes": {
+    "deadline": 6,
+    "recovered": 26
+   },
+   "interval90": [
+    14.0,
+    24.0
+   ],
+   "vs_interval": "above",
+   "true_chain_queued": 28,
+   "true_position_median": 47.5,
+   "mean_par2_s": 216.7,
+   "median_prep_s": 59.47,
+   "mean_wrong_s": 1.3666,
+   "median_correct_solve_s": 1.6098,
+   "attempts_total": 2353,
+   "verification_rejections": 0,
+   "max_total_s": 300.0,
+   "log2_encryptions": {
+    "prep": 31.92,
+    "wrong": 26.47,
+    "correct": 26.71
+   }
+  },
+  "R7-B1-BF": {
+   "recovered": 3,
+   "wilson95": [
+    0.0324,
+    0.2422
+   ],
+   "outcomes": {
+    "deadline": 29,
+    "recovered": 3
+   },
+   "interval90": [
+    0.0,
+    4.0
+   ],
+   "vs_interval": "inside",
+   "true_chain_queued": 28,
+   "true_position_median": 47.5,
+   "mean_par2_s": 563.2,
+   "median_prep_s": 59.32,
+   "mean_wrong_s": 61.0565,
+   "median_correct_solve_s": 22.5463,
+   "attempts_total": 125,
+   "verification_rejections": 0,
+   "max_total_s": 300.1,
+   "log2_encryptions": {
+    "prep": 31.91,
+    "wrong": 31.96,
+    "correct": 30.52
+   }
+  },
+  "R7-G": {
+   "recovered": 32,
+   "wilson95": [
+    0.8928,
+    1.0
+   ],
+   "outcomes": {
+    "recovered": 32
+   },
+   "interval90": [
+    32.0,
+    32.0
+   ],
+   "vs_interval": "inside",
+   "true_chain_queued": 32,
+   "true_position_median": 2.0,
+   "mean_par2_s": 24.2,
+   "median_prep_s": 18.66,
+   "mean_wrong_s": 1.4718,
+   "median_correct_solve_s": 1.618,
+   "attempts_total": 124,
+   "verification_rejections": 0,
+   "max_total_s": 46.5,
+   "log2_encryptions": {
+    "prep": 30.25,
+    "wrong": 26.58,
+    "correct": 26.72
+   }
+  },
+  "R7-G-BF": {
+   "recovered": 26,
+   "wilson95": [
+    0.6469,
+    0.9111
+   ],
+   "outcomes": {
+    "deadline": 6,
+    "recovered": 26
+   },
+   "interval90": [
+    22.0,
+    29.0
+   ],
+   "vs_interval": "inside",
+   "true_chain_queued": 32,
+   "true_position_median": 2.0,
+   "mean_par2_s": 208.5,
+   "median_prep_s": 18.63,
+   "mean_wrong_s": 61.0974,
+   "median_correct_solve_s": 33.6488,
+   "attempts_total": 85,
+   "verification_rejections": 0,
+   "max_total_s": 300.0,
+   "log2_encryptions": {
+    "prep": 30.24,
+    "wrong": 31.96,
+    "correct": 31.1
+   }
+  },
+  "R7-C": {
+   "recovered": 29,
+   "wilson95": [
+    0.7578,
+    0.9676
+   ],
+   "outcomes": {
+    "deadline": 3,
+    "recovered": 29
+   },
+   "interval90": [
+    26.0,
+    31.0
+   ],
+   "vs_interval": "inside",
+   "true_chain_queued": 30,
+   "true_position_median": 5.5,
+   "mean_par2_s": 98.3,
+   "median_prep_s": 18.61,
+   "mean_wrong_s": 1.3964,
+   "median_correct_solve_s": 1.6066,
+   "attempts_total": 1242,
+   "verification_rejections": 0,
+   "max_total_s": 300.0,
+   "log2_encryptions": {
+    "prep": 30.24,
+    "wrong": 26.51,
+    "correct": 26.71
+   }
+  },
+  "R7-C-BF": {
+   "recovered": 13,
+   "wilson95": [
+    0.2552,
+    0.5774
+   ],
+   "outcomes": {
+    "deadline": 19,
+    "recovered": 13
+   },
+   "interval90": [
+    12.0,
+    21.0
+   ],
+   "vs_interval": "inside",
+   "true_chain_queued": 30,
+   "true_position_median": 5.5,
+   "mean_par2_s": 408.9,
+   "median_prep_s": 18.62,
+   "mean_wrong_s": 61.0319,
+   "median_correct_solve_s": 33.7885,
+   "attempts_total": 125,
+   "verification_rejections": 0,
+   "max_total_s": 300.1,
+   "log2_encryptions": {
+    "prep": 30.24,
+    "wrong": 31.96,
+    "correct": 31.1
+   }
+  },
+  "R8-G": {
+   "recovered": 18,
+   "wilson95": [
+    0.3933,
+    0.7183
+   ],
+   "outcomes": {
+    "queue_exhausted": 14,
+    "recovered": 18
+   },
+   "interval90": [
+    22.0,
+    29.0
+   ],
+   "vs_interval": "below",
+   "true_chain_queued": 18,
+   "true_position_median": 24.0,
+   "mean_par2_s": 356.0,
+   "median_prep_s": 148.32,
+   "mean_wrong_s": 0.2475,
+   "median_correct_solve_s": 0.1027,
+   "attempts_total": 8464,
+   "verification_rejections": 0,
+   "max_total_s": 283.5,
+   "log2_encryptions": {
+    "prep": 33.24,
+    "wrong": 24.01,
+    "correct": 22.74
+   }
+  },
+  "R8-G-BF": {
+   "recovered": 18,
+   "wilson95": [
+    0.3933,
+    0.7183
+   ],
+   "outcomes": {
+    "queue_exhausted": 14,
+    "recovered": 18
+   },
+   "interval90": [
+    22.0,
+    29.0
+   ],
+   "vs_interval": "below",
+   "true_chain_queued": 18,
+   "true_position_median": 24.0,
+   "mean_par2_s": 345.8,
+   "median_prep_s": 148.3,
+   "mean_wrong_s": 0.0013,
+   "median_correct_solve_s": 0.0008,
+   "attempts_total": 8464,
+   "verification_rejections": 0,
+   "max_total_s": 150.1,
+   "log2_encryptions": {
+    "prep": 33.24,
+    "wrong": 16.4,
+    "correct": 15.68
+   }
+  }
+ },
+ "tests": {
+  "H1_primary": {
+   "keys_sat_ahead": 28,
+   "keys_bf_ahead": 0,
+   "keys_tied": 4,
+   "p": 3.725290298461914e-09,
+   "pass": true,
+   "per_ranker": {
+    "R7-B1": {
+     "sat_only": 23,
+     "bf_only": 0,
+     "p": 1.1920928955078125e-07,
+     "p_holm": 3.5762786865234375e-07
+    },
+    "R7-G": {
+     "sat_only": 6,
+     "bf_only": 0,
+     "p": 0.015625,
+     "p_holm": 0.015625
+    },
+    "R7-C": {
+     "sat_only": 16,
+     "bf_only": 0,
+     "p": 1.52587890625e-05,
+     "p_holm": 3.0517578125e-05
+    }
+   }
+  },
+  "H2_coprimary": {
+   "sat_recovered": 18,
+   "bf_recovered": 18,
+   "a_noninferior": true,
+   "bf_cheaper": 17,
+   "bf_dearer": 1,
+   "ties": 14,
+   "p_b": 7.2479248046875e-05,
+   "b_pass": true,
+   "discordant_recovery": {
+    "sat_only": 0,
+    "bf_only": 0
+   },
+   "pass": true
+  },
+  "H3_calibration": {
+   "inside": 5,
+   "of": 8,
+   "pass": false
+  },
+  "H4_loss_order": {
+   "loss": {
+    "R7-B1": 23,
+    "R7-G": 6,
+    "R7-C": 16
+   },
+   "B1_ge_table_ge_net6": true
+  },
+  "verdict": "rule wins at both depths"
+ }
+}
