@@ -175,3 +175,143 @@ quoted with p = 0.34 on line 84. Nine methods x 64 keys = 576 records (line 69).
    Files 05 and 06 both make claims about runs that a reader cannot open.
 3. Keep the "what went wrong" sections short, but keep them. They are the part
    of the timeline that makes the results believable.
+
+## Part two: files 07 to 12
+
+Part two covers the controls, the cost rule, the published-network campaigns, the
+brute-force completer and the replication. Same method as part one: read for
+meaning, then check every number that can be checked against a saved file, and
+recompute the statistics that can be recomputed from the printed counts.
+
+| File | Wrong | Unclear | Missing |
+|---|---:|---:|---:|
+| 07 depth map and backends | 0 | 1 | 1 |
+| 08 controls | 0 | 2 | 0 |
+| 09 queue-cost rule | 0 | 2 | 0 |
+| 10 published networks at eight rounds | 0 | 0 | 1 |
+| 11 brute-force completer | 1 | 1 | 0 |
+| 12 replication and what is left | 0 | 1 | 1 |
+
+### 07. Residual-depth map, solver backends and the formula package
+
+**Unclear, line 24 to 27.** "During review we found that the first analysis had
+written zero for timing and formula size where values were missing ... a
+corrected analysis was saved as a new version." This is exactly the kind of
+correction a marker wants to see, and it is the only place in the timeline where
+a correction has no file path. Name the corrected file.
+
+**Missing, line 56 to 58.** "The package was rebuilt from scratch in a clean
+Python environment, and all 64 formula representations and their reference
+witnesses passed." 64 is an odd number to leave unexplained: it is not 2
+ciphers x 2 forms x 16 rounds. Say how the 64 are counted, or where the check
+log is.
+
+**Checked, line 20.** 151 + 41 = 192 cells, which matches 8 demo keys x 12
+settings x 2 observation counts. The arithmetic is right.
+
+### 08. Controls
+
+**Unclear, line 36 to 38.** "The projected median Stage 2 time was 115 s and
+500 s for the network, against 59 s for the table in both cases." Which network
+run is 115 s and which is 500 s? Two numbers are given for one method and no
+condition is attached to either.
+
+**Unclear, line 65 to 68.** "One cell failed on a monitoring error ... With
+explicit approval we retried that cell once and continued the 114 cells that had
+not started." Of 256 cells, one failed and 114 had not started, so 141 had
+already finished. State that, because the sentence currently leaves the reader
+unable to tell how much of the grid was affected.
+
+**Checked, line 72 to 76.** 68.2 million blocks per second x 300 s = 2.05e10 =
+2^34.25, reported as 2^34.3; 29.7 million x 300 s = 8.91e9 = 2^33.05, reported
+as 2^33.1. Both round correctly to one decimal place.
+
+### 09. The queue-cost rule and its fresh-key test
+
+**Unclear, line 44 to 46.** "All 8 arm counts fell inside their intervals ... One
+arm (SPECK, matrix on, with the cap) was at the upper edge: 5 against an
+expected 1." If the expected count was 1, an interval that contains 5 must be
+very wide. Print the interval next to the count so the reader can see that the
+test was still passed rather than stretched.
+
+**Unclear, line 53 to 56.** "The run stopped at cell 300 of 320 ... We kept the
+299 finished cells." The difference between 300 and 299 is one cell that was in
+flight when the coordinator failed. One clause fixes it.
+
+**Checked, line 27 to 30.** 242/256 = 94.5%, 158/256 = 61.7% and 196/256 =
+76.6% all match the text exactly.
+
+### 10. Published networks at seven and eight rounds
+
+**Missing, line 59.** "Every true candidate that reached the queue was
+recovered, in all eight-round arms (68 of 68)." The count is right: 26 + 0 + 24
++ 18 = 68 across the four eight-round arms. But the arm counts come from two
+different campaigns and key sets, and the sentence does not say so. Name the
+two campaigns, or a reader will think 68 keys were run together.
+
+The p-values in this file are exact two-sided McNemar values: six discordant
+keys against zero gives 2 x 0.5^6 = 0.031, as printed, and the Holm adjustment
+to 0.063 is right for two tests.
+
+### 11. SAT against a brute-force completer
+
+**Wrong convention, line 39 and 42.** The p-values in this file are one-sided,
+while every other stage reports two-sided values without saying so. Twenty-eight
+discordant keys against none gives a two-sided exact p of 2 x 0.5^28 = 7.5e-9;
+the file prints 3.7e-9, which is 0.5^28, the one-sided value. The same holds for
+17 against 1: two-sided 1.4e-4, printed 7.2e-5. The numbers are therefore not
+wrong in themselves, but they are on a different scale from stage 05 (110
+against 0, printed 1.5e-33, which is two-sided) and stage 12 (9 against 1,
+printed 0.021, two-sided). Make the convention explicit or align it.
+
+**Unclear, line 44 to 46.** "The size of the SAT advantage ... followed the
+predicted order B1, then the table, then Gohr's network (23, 16 and 6 keys)."
+These three numbers are counts out of 32 keys each, but line 39 says SAT
+finished ahead on 28 keys. A reader will try to reconcile 23 + 16 + 6 with 28
+and fail. Say that the 28 is the pooled comparison and the 23, 16 and 6 are
+per-ranker counts.
+
+**Checked.** The 5 of 8 arms inside their intervals is confirmed by the saved
+summary: B1 at 26 is above its 14 to 24 range, and both eight-round arms at 18
+are below 22 to 29.
+
+### 12. Eight-round replication, SIMON eleven-round preparation and open work
+
+**Unclear, line 35.** "No cell finished before 150 s, because preparation took
+about 153 s." If preparation took 153 s, no cell could finish before 153 s, so
+the 150 s statement cannot fail. The interesting claim is the tighter one: no
+cell finished sooner than about 153 s, because nothing can happen before
+preparation ends. Rewrite it that way.
+
+**Missing, line 55 to 65.** The SIMON eleven-round section reports a table built
+and checked, and a protocol that is not frozen, but gives no path to either. The
+eight-round table is a substantial artefact; say where it is stored.
+
+**Checked.** 49 + 24 = 73 and 41 + 18 = 59, so the pooled sentence is
+arithmetically right, and 9 against 1 gives the printed p = 0.021. The four
+matched comparisons on lines 46 to 49 agree with stages 10 and 11.
+
+## What part two adds up to
+
+The second half is more careful than the first: every campaign has a folder, a
+hash and a protocol, and the corrections are written down rather than hidden.
+Two things need attention before submission:
+
+1. **The p-value convention in stage 11.** It is the only place where a printed
+   p-value cannot be reproduced from its own counts with the convention used
+   everywhere else. A marker who recomputes it will find 7.5e-9, not 3.7e-9.
+2. **Corrections without paths.** Stage 07 says a corrected analysis was saved
+   as a new version, and stage 12 says a table was built and checked, but
+   neither names a file. Everything else in the timeline names its evidence;
+   these two should too.
+
+## Numbers checked against saved evidence, part two
+
+| Claim | Where in the timeline | Checked against | Result |
+|---|---|---|---|
+| 26 and 0 at eight rounds, 32 keys | 10, lines 28 to 34 | `d063_campaign_20261011/summary.json` | match |
+| 24 and 18, complete table | 10, lines 52 to 56 | `d064_campaign_20261011/summary.json` | match |
+| 8 arm counts and intervals | 11, lines 48 to 52 | `d065_campaign_20261012/summary.json` | match |
+| 49 and 41 on 64 keys | 12, lines 19 to 22 | `d066_campaign_20261027/summary.json` | match |
+| 4/32, 2/32, 18/32, 19/32, 23/32, 27/32, 3/32, 22/32 | 08, lines 53 to 58 | `figures/report/manifest.json`, `checks.fig_second_stage` | match |
+| 8 of 8 prediction intervals, one at the edge | 09, line 44 | `figures/report/manifest.json`, `checks.fig_prospective_predictions` | match on the count of 8 |
