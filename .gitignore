@@ -1,5 +1,7 @@
 report.txt
 .DS_Store
+main.tex
+main.pdf
 
 
 # Local Python environments and tooling caches.

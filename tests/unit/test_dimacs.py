@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
+
+import pytest
 
 from neural_sat_speck.sat.dimacs import (
     decode_master_key_from_dimacs_solution,
     export_speck_to_dimacs,
 )
 from neural_sat_speck.speck.cipher import encrypt_block
+
+pytestmark = pytest.mark.skipif(
+    shutil.which("cryptominisat5") is None, reason="needs the cryptominisat5 command"
+)
 
 
 def test_dimacs_export_and_solve_recovers_master_key():

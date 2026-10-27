@@ -53,6 +53,7 @@ CELLS = ROOT / "output/writing_handoff_20261006/six_page_writer_bundle_v3/tables
 CELLS_RECEIPT = ROOT / "figures/fig2_cumulative_recovery_time_col.json"
 LEDGER = ROOT / "docs/paper/evidence/d063_campaign_20261011/ledger_k00-31.jsonl"
 LEDGER_RECEIPT = ROOT / "figures/fig_d063_cumulative_recovery_col.json"
+LEDGER_D066 = ROOT / "docs/paper/evidence/d066_campaign_20261027/ledger_k00-63.jsonl"
 DEPTH_CSV = ROOT / "figures/fig7_backend_ranking_depth_n32.csv"
 AFFORD_CSV = ROOT / "figures/fig8_affordable_depth.csv"
 PRED_CSV = ROOT / "figures/fig9_prospective_predictions.csv"
@@ -65,6 +66,7 @@ EXPECTED = {
              "simon_confirmation_replacement|neural_classical_hybrid_8parent": 49,
              "simon_confirmation_replacement|fully_neural_1parent": 26},
     "d063": {"R7-G": 32, "R7-C": 30, "R7-B1": 19, "R8-G": 26, "R8-C": 0},
+    "d066": {"R8-G": 49, "R8-F": 41},
     "depth": {("speck32_64", "cms_native_gauss", 1): 4, ("speck32_64", "cms_native_gauss", 2): 18,
               ("speck32_64", "cms_native_no_gauss", 1): 2, ("speck32_64", "cms_native_no_gauss", 2): 19,
               ("simon32_64", "cms_native_gauss", 1): 23, ("simon32_64", "cms_native_gauss", 2): 27,
@@ -294,6 +296,47 @@ def fig_recovery_d063(p: dict):
     return fig, {"recoveries": counts}
 
 
+def _ledger_times(rows, arm):
+    ts = []
+    for r in rows:
+        if r["arm"] == arm and r["outcome"] == "recovered":
+            if r["total_s"] > 300.0:
+                raise ValueError("Late recovery must not be counted as verified")
+            ts.append(r["total_s"])
+    return ts
+
+
+def fig_recovery_d063_d066(p: dict):
+    """Seven rounds from the first published-network cohort; eight rounds from the D-066 replication."""
+    r63 = [r for r in map(json.loads, LEDGER.open()) if r.get("type") != "header"]
+    r66 = [r for r in map(json.loads, LEDGER_D066.open()) if r.get("type") != "header"]
+    n63, n66 = len({r["key_index"] for r in r63}), len({r["key_index"] for r in r66})
+    panels = [
+        ("(a) SPECK32/64, 7 rounds, $N = 32$", r63, n63, [("R7-G", "Gohr net6 + table", g.C_ORANGE),
+                                                          ("R7-C", "Classical table", g.C_NAVY),
+                                                          ("R7-B1", "B1 + table", g.C_PURPLE)]),
+        ("(b) SPECK32/64, 8 rounds, $N = 64$", r66, n66, [("R8-G", "Gohr net7 + tables", g.C_ORANGE),
+                                                          ("R8-F", "Full 7R table + tables", g.C_NAVY)]),
+    ]
+    h = 2.75 if p["width"] > 5 else 2.65
+    fig, axes = plt.subplots(1, 2, figsize=(p["width"], h), sharey=True, layout="constrained")
+    counts = {"d063": {}, "d066": {}}
+    for ax, (title, rows, n, arms), key in zip(axes, panels, ("d063", "d066"), strict=True):
+        series = []
+        for arm, label, colour in arms:
+            ts = _ledger_times(rows, arm)
+            counts[key][arm] = len(ts)
+            series.append((label, colour, ts))
+        _curve_panel(ax, p, title, n, series)
+    axes[0].set_ylabel("Verified keys (% of $N$)")
+    want63 = {k: EXPECTED["d063"][k] for k in ("R7-G", "R7-C", "R7-B1")}
+    if counts["d063"] != want63 or n63 != 32:
+        raise ValueError(f"D-063 counts {counts['d063']} (n={n63}) differ from published {want63}")
+    if counts["d066"] != EXPECTED["d066"] or n66 != 64:
+        raise ValueError(f"D-066 counts {counts['d066']} (n={n66}) differ from published {EXPECTED['d066']}")
+    return fig, {"recoveries": counts}
+
+
 # --------------------------------------------------------------------------- second stage
 
 def fig_second_stage(p: dict):
@@ -440,6 +483,7 @@ FIGURES = [
     ("fig_pipeline", fig_pipeline),
     ("fig_recovery_main", fig_recovery_main),
     ("fig_recovery_d063", fig_recovery_d063),
+    ("fig_recovery_d063_d066", fig_recovery_d063_d066),
     ("fig_second_stage", fig_second_stage),
     ("fig_affordable_depth", fig_affordable_depth),
     ("fig_prospective_predictions", fig_predictions),
@@ -462,6 +506,7 @@ def main(argv: list[str] | None = None) -> None:
     inputs = {
         str(CELLS.relative_to(ROOT)): check_pinned(CELLS, CELLS_RECEIPT, "attack_cells_sha256"),
         str(LEDGER.relative_to(ROOT)): check_pinned(LEDGER, LEDGER_RECEIPT, "ledger_sha256"),
+        str(LEDGER_D066.relative_to(ROOT)): check_sidecar(LEDGER_D066),
         str(DEPTH_CSV.relative_to(ROOT)): check_sidecar(DEPTH_CSV),
         str(AFFORD_CSV.relative_to(ROOT)): check_sidecar(AFFORD_CSV),
         str(PRED_CSV.relative_to(ROOT)): check_sidecar(PRED_CSV),

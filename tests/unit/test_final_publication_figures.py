@@ -16,6 +16,11 @@ assert SPEC is not None and SPEC.loader is not None
 FIGURES = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(FIGURES)
 
+# The raw campaign results live under results/, which is git-ignored, so a
+# fresh clone does not have them. Missing files skip; altered files still fail
+# the hash check.
+MISSING_SOURCES = sorted(k for k, p in FIGURES.SOURCE_PATHS.items() if not p.is_file())
+
 
 def attack_fixture(cipher="simon32_64"):
     rows = []
@@ -140,6 +145,8 @@ def test_failure_matrix_rejects_wrong_total_and_duplicate():
 
 @pytest.fixture(scope="module")
 def actual_tables(tmp_path_factory):
+    if MISSING_SOURCES:
+        pytest.skip(f"needs local campaign results (git-ignored): {MISSING_SOURCES}")
     FIGURES.verify_source_hashes()
     outputs = []
     for index in range(2):
@@ -251,6 +258,8 @@ def test_backend_interruption_excluded_only_from_affected_pairs(actual_tables):
     "kind,source", [("depth", "depth_raw"), ("backend", "backend_raw")]
 )
 def test_diagnostic_grids_reject_duplicates_and_bad_flags(kind, source):
+    if source in MISSING_SOURCES:
+        pytest.skip(f"needs local campaign results (git-ignored): {source}")
     data = json.loads(FIGURES.SOURCE_PATHS[source].read_text())
     rows = list((data["cells"] if kind == "depth" else data["records"]).values())
     rows[1] = copy.deepcopy(rows[0])

@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
+
+import pytest
 
 from neural_sat_speck.sat.dimacs import decode_master_key_from_dimacs_solution
 from neural_sat_speck.sat.pure_cnf import export_speck_to_pure_cnf
 from neural_sat_speck.speck.cipher import encrypt_block
+
+pytestmark = pytest.mark.skipif(
+    shutil.which("cryptominisat5") is None or shutil.which("cadical") is None,
+    reason="needs the cryptominisat5 and cadical commands",
+)
 
 
 def test_speck_pure_cnf_export_solved_by_cadical_and_cms():

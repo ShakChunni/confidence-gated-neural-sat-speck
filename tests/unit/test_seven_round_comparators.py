@@ -59,6 +59,13 @@ VERIFICATION_PAIRS = 2
 VERIFICATION_SEED = 999999
 
 
+# The opened Phase 11A dataset is git-ignored, so a fresh clone does not have it.
+ORACLE_DATASET = Path("datasets/phase11a_oracle_r7/oracle_evaluation.json")
+needs_oracle_dataset = pytest.mark.skipif(
+    not ORACLE_DATASET.is_file(), reason="needs the local Phase 11A dataset (git-ignored)"
+)
+
+
 class _FixedOrderStubRanker(PairGroupRanker):
     """Deterministic test double that orders candidates by a precomputed distance."""
 
@@ -374,6 +381,7 @@ def test_solver_isolation_across_comparators() -> None:
         factory.build_isolated_model("comp1")
 
 
+@needs_oracle_dataset
 def test_resume_preserves_unselected_methods_behavioral_main(tmp_path: Path) -> None:
     """Running main() with methods A and B, then resuming with method A, preserves method B records."""
     from scripts.evaluate_seven_round_comparators import main
@@ -619,6 +627,7 @@ def test_distinct_outcome_categories() -> None:
     assert STATUS_VERIFICATION_FAILURE == "verification_failure"
 
 
+@needs_oracle_dataset
 def test_resume_fail_closed_validation(tmp_path: Path) -> None:
     """Resume mode must fail closed on missing files, corrupt JSON, or metadata/record anomalies."""
     from scripts.evaluate_seven_round_comparators import (
@@ -831,6 +840,7 @@ def test_resume_fail_closed_validation(tmp_path: Path) -> None:
         main(["--resume", "--output", str(dup_file), "--instances", "1"])
 
 
+@needs_oracle_dataset
 def test_sat_only_observation_counts_and_formula_sizes() -> None:
     """sat_only_4obs uses 4 observations while sat_only_all_observations uses 128 observations."""
     from neural_sat_speck.data.attack import load_attack_shard
@@ -862,6 +872,7 @@ def test_sat_only_observation_counts_and_formula_sizes() -> None:
     assert m_all.num_xor_clauses == 43296
 
 
+@needs_oracle_dataset
 def test_model_construction_consumes_method_budget_and_clamps_solver_timeout(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -937,6 +948,7 @@ def test_model_construction_consumes_method_budget_and_clamps_solver_timeout(
     assert rec["cutoff_overshoot_seconds"] >= 0.0
 
 
+@needs_oracle_dataset
 def test_method_budget_isolation_and_order_invariance(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -1025,6 +1037,7 @@ def test_solver_timeout_leaves_instance_unverified_with_cause() -> None:
     assert res.status in (STATUS_SOLVER_TIMEOUT, STATUS_GLOBAL_TIMEOUT)
 
 
+@needs_oracle_dataset
 def test_runner_prospective_gate_fails_closed_on_proposed_manifest(tmp_path: Path) -> None:
     """The comparator runner must fail closed when --prospective is invoked on a proposed manifest."""
     from scripts.evaluate_seven_round_comparators import main
@@ -1065,6 +1078,7 @@ def test_runner_flags_conflict_rejection() -> None:
         ])
 
 
+@needs_oracle_dataset
 def test_runner_rebuilding_seconds_and_summary(tmp_path: Path) -> None:
     """Records must include rebuilding_seconds and method summary must include total_rebuilding_seconds."""
     import scripts.evaluate_seven_round_comparators as runner_module
@@ -1095,6 +1109,7 @@ def test_runner_rebuilding_seconds_and_summary(tmp_path: Path) -> None:
     assert sm["total_rebuilding_seconds"] >= 0.0
 
 
+@needs_oracle_dataset
 def test_runner_non_interruptible_overshoot_reclassification(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -1158,6 +1173,7 @@ def test_runner_non_interruptible_overshoot_reclassification(
     assert rec["failure_domain"] == "envelope"
 
 
+@needs_oracle_dataset
 def test_runner_resume_validation_fail_closed(tmp_path: Path) -> None:
     """Resume must fail closed when prospective flags, manifest path, or methods mismatch."""
     import scripts.evaluate_seven_round_comparators as runner_module
@@ -1215,6 +1231,7 @@ def test_runner_resume_validation_fail_closed(tmp_path: Path) -> None:
         )
 
 
+@needs_oracle_dataset
 def test_runner_late_verified_recovery_reclassification(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -1597,6 +1614,7 @@ def test_solver_exception_handling() -> None:
     assert verify_record_integrity(rec) is False
 
 
+@needs_oracle_dataset
 def test_device_enforcement_prospective(monkeypatch: pytest.MonkeyPatch) -> None:
     """An authorized prospective evaluation must still reject a non-MPS device."""
     import scripts.evaluate_seven_round_comparators as runner
@@ -1646,6 +1664,7 @@ def test_counterbalanced_method_order_cyclic() -> None:
     assert order_1 == order_0[1:] + order_0[:1]
 
 
+@needs_oracle_dataset
 def test_resume_cohort_and_code_drift_validation(tmp_path: Path) -> None:
     """Resuming must fail closed if record is outside requested cohort or if code drift is detected."""
     from scripts.evaluate_seven_round_comparators import (

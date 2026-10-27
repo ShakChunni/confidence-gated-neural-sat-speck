@@ -847,6 +847,10 @@ def test_b1_checkpoint_format_and_hash_are_enforced(tmp_path, monkeypatch, demo_
         generate_faithful_b1_hybrid_queue(attack_pairs, table_7r=object())
 
 
+@pytest.mark.skipif(
+    not Path(method_worker_module.DEFAULT_DDT_PATH).is_file(),
+    reason="needs the local 32 GiB SIMON 7R table (git-ignored)",
+)
 def test_b1_dispatch_reaches_ranking_under_parent_watchdog(tmp_path, demo_instance):
     checkpoint = tmp_path / "b1.pt"
     save_simon_checkpoint(

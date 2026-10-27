@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -59,6 +60,10 @@ def test_sleep_assertions_unsupported_off_darwin(monkeypatch):
     assert worker_telemetry._check_sleep_assertions() == {"supported": False}
 
 
+# observe_worker_telemetry reads QoS, priority and I/O policy only on macOS.
+darwin_only = pytest.mark.skipif(sys.platform != "darwin", reason="macOS QoS and priority checks")
+
+
 class MockDarwinLibc:
     def __init__(
         self,
@@ -97,6 +102,7 @@ def test_live_worker_telemetry_observation():
     assert telemetry.python_executable != ""
 
 
+@darwin_only
 def test_adversarial_qos9_zero_priority_rejected(tmp_path: Path):
     """Adversarial test: Background QoS (9) with zero priority MUST be rejected."""
     safe_runtime = tmp_path / "runtime"
@@ -119,6 +125,7 @@ def test_adversarial_qos9_zero_priority_rejected(tmp_path: Path):
         certify_worker_or_raise(repo_root=tmp_path, libc_override=libc, tmpdir_override=str(safe_tmp))
 
 
+@darwin_only
 def test_unspecified_or_failed_qos_rejected(tmp_path: Path):
     """Adversarial test: Unspecified (0) or failed (-1) QoS query MUST fail closed."""
     safe_runtime = tmp_path / "runtime"
@@ -132,6 +139,7 @@ def test_unspecified_or_failed_qos_rejected(tmp_path: Path):
             certify_worker_or_raise(repo_root=tmp_path, libc_override=libc, tmpdir_override=str(safe_tmp))
 
 
+@darwin_only
 def test_failed_priority_or_io_queries_rejected(tmp_path: Path):
     """Adversarial test: Failed libc queries for priority or IO MUST fail closed."""
     safe_runtime = tmp_path / "runtime"
@@ -155,6 +163,7 @@ def test_failed_priority_or_io_queries_rejected(tmp_path: Path):
         certify_worker_or_raise(repo_root=tmp_path, libc_override=libc_io_fail, tmpdir_override=str(safe_tmp))
 
 
+@darwin_only
 def test_darwin_bg_state_rejected(tmp_path: Path):
     """Adversarial test: PRIO_DARWIN_BG active MUST be rejected."""
     safe_runtime = tmp_path / "runtime"
@@ -173,6 +182,7 @@ def test_darwin_bg_state_rejected(tmp_path: Path):
         certify_worker_or_raise(repo_root=tmp_path, libc_override=libc, tmpdir_override=str(safe_tmp))
 
 
+@darwin_only
 def test_io_throttle_rejected(tmp_path: Path):
     """Adversarial test: I/O throttling policy MUST be rejected."""
     safe_runtime = tmp_path / "runtime"
@@ -191,6 +201,7 @@ def test_io_throttle_rejected(tmp_path: Path):
         certify_worker_or_raise(repo_root=tmp_path, libc_override=libc, tmpdir_override=str(safe_tmp))
 
 
+@darwin_only
 def test_degraded_process_priority_rejected(tmp_path: Path):
     """Adversarial test: Non-zero positive nice priority MUST be rejected."""
     safe_runtime = tmp_path / "runtime"

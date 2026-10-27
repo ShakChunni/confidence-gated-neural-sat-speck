@@ -2,10 +2,11 @@
   "profile": "lncs",
   "printed_width_in": 4.75,
   "script": "scripts/generate_report_figures.py",
-  "script_sha256": "884c1f57d6fbc3de366ab15e049375842db35c6414336aaac4601977b85d5792",
+  "script_sha256": "77e4bdf625be5c6d9af1957eaac1494f1b4573aafba5eaf0dd90886d8c14dd4e",
   "inputs_sha256": {
     "output/writing_handoff_20261006/six_page_writer_bundle_v3/tables/attack_cells.csv": "db2a5b934343655e57b6ef125fa3efc39c4d23a008042449c332b973ec2fdabf",
     "docs/paper/evidence/d063_campaign_20261011/ledger_k00-31.jsonl": "44c1d7a45726afc596393f585c74bd2313b8d8b91d8fdba29daed0760ab5be8c",
+    "docs/paper/evidence/d066_campaign_20261027/ledger_k00-63.jsonl": "02e6820520c9c0976d6eb0e953d6dd4a4ebbb84f8409b23514b8234fc0d22bca",
     "figures/fig7_backend_ranking_depth_n32.csv": "2318f8433e85a26f1cce46581bc8f667bd0d4c42f3749713ad68b3428a976970",
     "figures/fig8_affordable_depth.csv": "00f401e8c64cd3099d9ab27badb4d67917015438bbc4db5e5e7ad4b75566e03f",
     "figures/fig9_prospective_predictions.csv": "48d7d3ec3a08e86535ceefa1d8c6c4218a3d1c8df3bfe7e0a7c0af33522f8cd1"
@@ -28,6 +29,19 @@
         "R7-B1": 19,
         "R8-G": 26,
         "R8-C": 0
+      }
+    },
+    "fig_recovery_d063_d066": {
+      "recoveries": {
+        "d063": {
+          "R7-G": 32,
+          "R7-C": 30,
+          "R7-B1": 19
+        },
+        "d066": {
+          "R8-G": 49,
+          "R8-F": 41
+        }
       }
     },
     "fig_second_stage": {
@@ -69,6 +83,14 @@
     "fig_recovery_d063": {
       "pdf_sha256": "27a5485e8bde6d3e949158138582ed891c57bf380673ad4978432f08421b8812",
       "png_sha256": "fa5bef0876dde78b0f4f3fc58a37ed3f9d965481979643a73b9e30700810734b",
+      "size_in": [
+        4.75,
+        2.65
+      ]
+    },
+    "fig_recovery_d063_d066": {
+      "pdf_sha256": "50e513dbdca61921cc9486383580ce924e87acb368ec1f638b01d04ffae4eb23",
+      "png_sha256": "d76154d1bf3e35a00b0ad122b4c3e32e7168743d151704288e82fef76cba82e3",
       "size_in": [
         4.75,
         2.65

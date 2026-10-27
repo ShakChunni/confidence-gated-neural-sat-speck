@@ -272,6 +272,10 @@ def test_public_payload_and_words_reject_extra_truth_and_non_integer_values() ->
         control.validate_order(list(range(511)) + [0])
 
 
+@pytest.mark.skipif(
+    not (ROOT / "runtime/simon_tf_venv/bin/python3.12").exists(),
+    reason="needs the local TensorFlow environment runtime/simon_tf_venv",
+)
 def test_payload_contract_and_rank_sum_queue_order() -> None:
     control = _control()
     job = control.fixed_jobs()[1]

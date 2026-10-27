@@ -1,3 +1,6 @@
+# Keep exact bytes on every platform. Many inputs and outputs are pinned by
+# SHA-256, and Git for Windows would otherwise rewrite LF as CRLF on checkout.
+* -text
 # Preserve exact bytes of the checksummed queue-order evidence archive.
 docs/queue_order_opened_evidence_20261005/* -text
 # Python's frozen CSV writer emits valid CRLF records; retain other whitespace checks.

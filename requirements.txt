@@ -1,7 +1,8 @@
-# Complete local development requirements for the Phase 0--3 artefact.
-# The supported interpreter is 64-bit Python 3.11; see docs/SETUP.md.
+# Requirements for the tests, the short demo and the figure scripts.
+# Use 64-bit CPython 3.11, 3.12 or 3.13 (3.13 on macOS); see docs/REPRODUCE.md.
 pytest==8.4.2
 ruff==0.16.2
 pycryptosat==5.14.7
 numpy>=1.24,<3
 torch>=2.0,<3
+matplotlib>=3.8,<4

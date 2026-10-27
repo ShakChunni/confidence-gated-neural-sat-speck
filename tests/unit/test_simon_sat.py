@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 
 import pytest
@@ -178,6 +179,10 @@ def test_dimacs_export_and_native_cli_solver() -> None:
         assert rec_key == key
 
 
+@pytest.mark.skipif(
+    shutil.which("cryptominisat5") is None or shutil.which("cadical") is None,
+    reason="needs the cryptominisat5 and cadical commands",
+)
 def test_simon_pure_cnf_export_solved_by_cadical_and_cms() -> None:
     """Verify that SIMON pure CNF export (XORs converted) is solved correctly by cadical and CMS --xor 0."""
     key = (0x2468, 0x1357, 0x9BDF, 0xACE0)

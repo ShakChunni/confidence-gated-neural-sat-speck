@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import subprocess
 from pathlib import Path
+
+import pytest
 
 from neural_sat_speck.sat.dimacs import decode_master_key_from_dimacs_solution
 
@@ -36,6 +39,7 @@ def test_benchmark_formula_manifest_integrity():
             assert actual_sha == file_info["sha256"], f"SHA mismatch for {file_info['path']}"
 
 
+@pytest.mark.skipif(shutil.which("cadical") is None, reason="needs the cadical command")
 def test_speck_subcritical_formula_solvable_by_cadical():
     """Verify that the exported SPECK R=7 m=2 pure CNF formula is solvable by CaDiCaL."""
     cnf_path = ARTIFACTS_DIR / "speck32_64_r7_m2_inst00_pure.cnf"

@@ -67,10 +67,22 @@ publication-planning paragraphs below do not supersede this current status.
 - G1/G2 reliability analysis, shortlist/cascade tooling, and preserved negative results.
 - Hierarchical seven-round and solver-configuration diagnostics on opened development data.
 
+## Reproducing the results
+
+[`docs/REPRODUCE.md`](docs/REPRODUCE.md) gives step-by-step commands for
+Windows, macOS, Linux and Google Colab. It covers the tests, the frozen
+analyses and figures rebuilt from the saved ledgers, and a short live demo.
+In Colab, open [`scripts/colab_reproduce.ipynb`](scripts/colab_reproduce.ipynb)
+and run the cells in order.
+
 ## Installation and validation
 
+Python 3.11, 3.12 or 3.13 (64-bit); on macOS use 3.13 (see
+`docs/REPRODUCE.md`). On Windows, use `py -3.12 -m venv .venv` and
+`.\.venv\Scripts\Activate.ps1` in place of the first two lines.
+
 ```bash
-python3.11 -m venv .venv
+python3.13 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
