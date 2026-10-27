@@ -367,7 +367,7 @@ dataset version and a plan change-log entry.
 | Licence | MIT |
 | Train / validation / test | disjoint seeds and keys |
 
-Authoritative files: this document, the local `PLAN.md` section 1J,
+Authoritative files: this document,
 `configs/data/dataset_v1_classifier.json`, and
 `configs/data/dataset_v1_attack.json`. The Phase 3 variant is defined by
 `configs/data/phase3_classifier_r5.json` and does not modify the canonical

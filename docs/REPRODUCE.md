@@ -156,9 +156,13 @@ The full campaigns are not needed to check the paper. Each one needs:
 - a C compiler for the brute-force completer (`tools/bruteforce_completion.c`);
 - one machine running serially for 7 to 10 hours per campaign.
 
-Each campaign's runner, protocol and analysis are named in its protocol file
-under `docs/paper/`. Runs use only the demo seed unless a protocol is frozen
-and a fresh seed is approved. Timings depend on the machine, so a rerun on
+The eight-round SPECK campaigns use `scripts/run_higher_round_campaign.py`,
+with one analysis script per campaign (`scripts/analyze_d063.py` to
+`scripts/analyze_d066.py`). The ranking-depth and queue-cost studies use
+`scripts/run_backend_ranking_depth.py` and
+`scripts/launch_prospective_queue_cost.py`. `docs/timeline/` says what each
+campaign tested and where its saved evidence is. Runs use only the demo seed
+unless a protocol is frozen and a fresh seed is approved. Timings depend on the machine, so a rerun on
 other hardware is a replication, not a byte-for-byte reproduction.
 
 ## Known platform limits

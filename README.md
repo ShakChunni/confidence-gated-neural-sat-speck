@@ -1,85 +1,66 @@
-# From Neural Ranking to Verified Key Recovery
+# Containment Is Not Recovery: When Key Ranking Repays Its Cost
 
-Research artefact for:
+This repository holds the code, data generators, tests and saved results for a
+COMP6002 research project at Curtin University. We study reduced-round key
+recovery on SPECK32/64 and SIMON32/64. A ranker orders candidates for the last
+round keys, and an exact SAT solver (CryptoMiniSat) finishes the 64-bit master
+key from the best candidates.
 
-**Learning When to Trust Neural Guidance: Confidence-Gated Incremental XOR-SAT Key Recovery for Reduced-Round SPECK32/64**
+Rankers are usually judged by accuracy, or by whether the right candidate
+reaches the shortlist. Neither counts the time it takes. We put ranking, search
+and verification on one 300 s clock per key, with 64 chosen-plaintext pairs. A
+key counts only if it matches the assigned key and reproduces two fresh blocks
+that the attack never saw.
 
-The repository compares neural, classical, hybrid, random-order, and SAT-only
-guidance for exact reduced-round SPECK32/64 key recovery. The central question is
-whether an apparent neural ranking or reliability improvement survives complete
-online-cost accounting and fresh-pair-verified master-key recovery. It is a
-reduced-round scientific study, not a claim to break deployed full-round SPECK.
+This is a reduced-round study. It does not attack full-round SPECK or SIMON.
 
-## Current scientific state
+## Main findings
 
-| Evidence | Result | Interpretation |
-|---|---|---|
-| Corrected Phase 7, seed `98001`, `N=64` | B1 `58/64`; B0 `50/64`; paired exact McNemar `p=0.0768`; isolated SAT-only `0/64` at 10 s | `RETROSPECTIVE`: B1 is promising, not confirmed superior. |
-| Phase 10 prospective validation, seed `101001`, `N=64` | G1 failure-risk AUC `0.7759`; Sequential-32 `64/64`; adaptive policy `63/64` | `PROSPECTIVE_VALIDATION`: useful discrimination, no operational advantage over the static policy. |
-| Phase 10-G2 prospective validation, seed `201001`, `N=256` | G2 AUC `0.8513` versus G1 `0.7194`; paired delta `0.1319`, `p=0.02688`; frozen trusted-region target missed | `PROSPECTIVE_VALIDATION`: improved discrimination, negative threshold transport. Six-round model search is closed. |
-| Phase 11 prospective evaluation, seed `669981`, `N=128` (D-031) | Screened `110/128` (85.94%, Wilson [0.7886, 0.9092], PAR-2 178.31 s); Classical hybrid `111/128` (86.72%, Wilson [0.7976, 0.9154], PAR-2 143.24 s); Full neural `0/128` (ranking exhausted 300 s budget, 0 SAT attempts); Random SAT `0/128`; SAT-only 4-obs and all-obs `0/128`. Primary contrast paired risk difference +85.94% [78.29%, 90.92%], exact McNemar $p = 1.54 \times 10^{-33}$. Candidate reduction 29.9% overall (304.4 vs 213.3) and 52.3% on recoveries (186.6 vs 89.1; median 144 vs 38). | `PROSPECTIVE_VALIDATION`: the predeclared RQ1 contrast favoured neural guidance over SAT-only at 7 rounds under the common resource envelope. The classical Stage-2 hybrid had similar recovery with lower runtime and fewer candidate attempts. |
-| Phase 11A frozen seven-round oracle gate, seed `300001`, `N=64` | `0/64`, all 64 timed out at 10 s | Frozen `NEGATIVE`/RED result for the specified backend and envelope. |
-| Six-round sparse statistical comparator on opened seed `98001` | Top-4 containment `64/64`, mean sorted rank `1.75`, mean ranking time approximately `0.545 s` | `RETROSPECTIVE`: the observed result is stronger than B0/B1 on this family and rules out a six-round neural-superiority narrative. |
-| Matched screening and controlled solver audits | Screening retained the recorded top-32 ordering in `4/4` true-prefix cases with mean paired speedup `30.60x`; revised native matrix settings solved `2/3` opened diagnostics within 60 s versus `0/3` for each default treatment | `ENGINEERING/DIAGNOSTIC`: useful controls, not prospective recovery claims or universal causal conclusions. |
-| SIMON R10 replacement confirmation, 64 keys (D-041) | Classical `53/64`; Bao hybrid `49/64`; Bao fully neural `26/64`; B1-style hybrid, random controls and SAT-only `0/64`; true-tuple diagnostic `54/64` | Fixed-method comparison closed with [documented provenance limits](docs/SIMON_CONFIRMATION_REPLACEMENT_CLOSURE_20261003.md). All 182 recoveries independently checked. Classical versus hybrid recovery difference is inconclusive (`p=0.34375`); B1 stopped during ranking in all 64 cells. |
-| Cross-cipher depth map, eight opened demo keys per cipher (D-043) | `151/192` verified recoveries, `41/192` parent timeouts | [Reviewed closure](docs/CROSS_CIPHER_DEPTH_CLOSURE_20261004.md) preserves raw results and corrects unavailable timeout metrics. Equal nominal depth does not summarize observed recovery; source/runtime/chronology limits prevent universal or causal claims. |
-| Controlled backend diagnostic, four opened keys per cipher (D-044/D-045) | `80` recoveries, `79` deadlines and `1` infrastructure interruption across `160` assigned cells. With one true trailing key, explicit matrix profile `4/4` on both ciphers versus matched zero-matrix `2/4` SPECK and `0/4` SIMON; all profiles `4/4` with two true keys | [Reviewed closure](docs/BACKEND_COMPARISON_CLOSURE_20261004.md). The interrupted unguided control is `0/3` completed trials with one unavailable; conditioned comparisons are unaffected. All recoveries, 66 saved native models and 64 formula witnesses independently checked. No universal backend/structure claim. |
+- **Containment is not recovery.** On seven-round SPECK, a screened neural
+  pipeline and a neural-classical hybrid recover 110 and 111 of 128 fresh keys.
+  By 100 s the hybrid has recovered 104 and the neural pipeline 29.
+- **A simple cost rule explains most outcomes.** Preparation time, the correct
+  candidate's queue position and the cost of rejecting a wrong candidate
+  explain 94.5% of 256 development cells. Containment alone explains 61.7%.
+  The rule's count predictions then passed a fresh-key test on both ciphers.
+- **The rule can choose the method.** Before new keys were drawn it chose SAT
+  at seven rounds and brute-force completion at eight. Both choices held up.
+- **Neural ranking pays only sometimes.** Our own pair-aware network lost to a
+  classical table at seven rounds. At eight rounds, Gohr's published network
+  beat a complete 4 GiB classical table, 24 to 18 on 32 fresh keys. On a
+  second fresh set of 64 keys it won 49 to 41 (exact McNemar p = 0.021).
+- **On SIMON at ten rounds**, a classical table recovered 53 of 64 fresh keys
+  and a published-network hybrid 49. We could not tell them apart (p = 0.34).
+- **The original confidence-gate idea failed.** Better prediction of ranking
+  failure did not give a threshold that held on new keys, and it never beat a
+  plain fixed search.
 
-| Backend × ranking depth, eight opened keys per cipher (D-055) | Stage 2 adds SPECK `2/8` recoveries under matrix capacity 5 and `5/8` under capacity 0; SIMON `1/8` and `5/8`. All four Stage 2 contrasts improve PAR-2. | [Audited closure](docs/BACKEND_RANKING_DEPTH_CLOSURE_20261007.md): complete 64-cell grid, 33 verified recoveries and 31 deadlines. Same true-candidate containment at both depths; smaller added benefit under the matrix-enabled profile, with no crossover or universal claim. |
+The story of how we got here, stage by stage, is in
+[`docs/timeline/`](docs/timeline/README.md).
 
-Every reported recovered master key must pass independent fresh-pair verification. Neural models order final-round subkey candidates; they neither prove a candidate nor directly recover the full 64-bit key.
+## Repository layout
 
-## Governance and stop boundary
+| Path | What it holds |
+|---|---|
+| `src/neural_sat_speck/` | Ciphers, data generation, neural rankers, SAT models, attacks, statistics and the CLI |
+| `tests/` | Unit and integration tests, including known-answer tests for both ciphers |
+| `scripts/` | Experiment runners, analyses and figure generators |
+| `tools/` | Native C/C++ code: reference encryption, brute-force completer, SIMON table builders |
+| `configs/` | Dataset, training and experiment configurations |
+| `models/` | Small trained models and classical tables used by the attacks |
+| `datasets/` | Generated attack instances with manifests and hashes |
+| `results/`, `docs/paper/evidence/` | Saved ledgers, analyses and checksums from the campaigns |
+| `artifacts/benchmark_formulas/` | SPECK and SIMON SAT formulas in native-XOR and CNF form, with variable maps |
+| `figures/` | Paper and report figures (PDF and PNG) |
+| `docs/` | Setup, reproduction, dataset notes and the project timeline |
 
-- Seeds `98001`, `101001`, `201001`, `300001`, `406737`, and `669981` are opened/retired for their recorded roles; `97001` and `99001` remain quarantined or retired.
-- Do not generate or open a Phase 12 blind seed without an entirely frozen protocol and explicit author approval.
-- Phase 11 seven-round SPECK comparative evaluation is completed and locked. No further modifications to seven-round SPECK protocols, models, or datasets are permitted.
-- The hierarchical evaluation used the ordinary Python `pycryptosat` wrapper path under strict per-method solver isolation. Engineering diagnostics on native Gaussian-elimination settings remain separate.
+Large tables (4 GiB and 32 GiB) and the published networks are not stored here.
+`docs/REPRODUCE.md` explains how to build or download them and check their
+hashes.
 
-Start with:
+## Quick start
 
-- [`PLAN.md`](PLAN.md) for the governing phase boundary;
-- [`docs/PUBLICATION_ROADMAP_2026.md`](docs/PUBLICATION_ROADMAP_2026.md) for the publication-readiness audit and next steps;
-- [`docs/PUBLICATION_EXPERIMENT_DESIGN.md`](docs/PUBLICATION_EXPERIMENT_DESIGN.md) for the proposed—not authorized—experiment design;
-- [`docs/EXPANSION_LITERATURE_2026.md`](docs/EXPANSION_LITERATURE_2026.md) for the primary-source claim boundary;
-- [`docs/DECISIONS.md`](docs/DECISIONS.md) and [`docs/EXPERIMENT_LOG.md`](docs/EXPERIMENT_LOG.md) for the audit trail.
-
-## Writing and artifact handoff
-
-On 2026-10-07 the author authorized root to revise `main.tex` after D-055 audit
-and closure. `report.tex` remains protected. The existing external-writing
-packet is historical and must be supplemented with the D-053, D-054 and D-055
-closures. Use the
-[writing prompt and evidence packet](docs/writing_handoff_20261004/00_WRITING_PROMPT.md),
-the [current release review](docs/PUBLICATION_PREPARATION_RELEASE_20261004.md),
-[final PDF/PNG figures, CSVs and plotting code](docs/FINAL_FIGURES_AND_CSV_TASK_20261004.md).
-The [portable evidence guide](docs/PORTABLE_EVIDENCE_REPRODUCTION_20261004.md)
-documents checked local formula regeneration and its limits. Historical
-publication-planning paragraphs below do not supersede this current status.
-
-## Implemented system
-
-- Tested scalar and vectorized SPECK32/64 implementations with known-answer checks.
-- Deterministic synthetic training and attack-instance generation with seed governance.
-- B0 single-pair and B1 permutation-invariant multi-pair complete-domain rankers.
-- Exact incremental SAT recovery with per-method solver isolation.
-- Fresh-pair master-key verification and explicit outcome records.
-- G1/G2 reliability analysis, shortlist/cascade tooling, and preserved negative results.
-- Hierarchical seven-round and solver-configuration diagnostics on opened development data.
-
-## Reproducing the results
-
-[`docs/REPRODUCE.md`](docs/REPRODUCE.md) gives step-by-step commands for
-Windows, macOS, Linux and Google Colab. It covers the tests, the frozen
-analyses and figures rebuilt from the saved ledgers, and a short live demo.
-In Colab, open [`scripts/colab_reproduce.ipynb`](scripts/colab_reproduce.ipynb)
-and run the cells in order.
-
-## Installation and validation
-
-Python 3.11, 3.12 or 3.13 (64-bit); on macOS use 3.13 (see
-`docs/REPRODUCE.md`). On Windows, use `py -3.12 -m venv .venv` and
-`.\.venv\Scripts\Activate.ps1` in place of the first two lines.
+Use 64-bit Python 3.11, 3.12 or 3.13. On macOS use 3.13.
 
 ```bash
 python3.13 -m venv .venv
@@ -89,10 +70,12 @@ python -m pip install -r requirements.txt
 python -m pip install -e .
 
 python -m pytest -q
-ruff check .
 ```
 
-The demo seed is `999999`. Do not substitute a protected, quarantined, or unregistered seed.
+On Windows (PowerShell), create the environment with `py -3.12 -m venv .venv`
+and activate it with `.\.venv\Scripts\Activate.ps1`.
+
+A short check of the cipher and a small demo dataset:
 
 ```bash
 neural-sat-speck kat
@@ -101,34 +84,37 @@ neural-sat-speck generate-data \
   --output data/demo_instances.json
 ```
 
-Historical result scripts are retained for auditability. Before executing an experiment script, check its protocol, seed role, backend, solver lifetime, timeout, candidate budget, hardware record, and evidence classification. A successful script run is not by itself a scientific confirmation.
+Seed `999999` is the demo seed. It has no evaluation role.
 
-## Publication direction
+## Reproducing the results
 
-The recommended paper is a prospective empirical comparison rather than a new-attack
-claim. Its contribution is to separate classifier quality, full-domain key rank,
-top-k failure discrimination, threshold transport, and verified recovery under one
-resource envelope. The completed evidence already shows that improved reliability
-discrimination did not yield a better fixed policy, a credible classical ranker can
-reverse the apparent neural advantage, and solver configuration can move the
-observed seven-round boundary.
+[`docs/REPRODUCE.md`](docs/REPRODUCE.md) gives step-by-step commands for
+Windows, macOS, Linux and Google Colab. It has four levels: the tests, the
+analyses and figures rebuilt from the saved ledgers, a short live demo, and the
+full campaigns. The first three run on a laptop in under half an hour. In
+Colab, open [`scripts/colab_reproduce.ipynb`](scripts/colab_reproduce.ipynb)
+and run the cells in order.
 
-The seven-round SPECK comparative evaluation is complete and frozen (D-031, $N=128$, Seed `669981`), prospectively confirming that neural subkey guidance provides an operational advantage over SAT-only and random baselines ($85.94\%$ vs $0.00\%$, McNemar $p = 1.54 \times 10^{-33}$), while a classical difference distribution table at Stage 2 matches recovery ($86.72\%$) with 32% lower runtime and 52% candidate reduction on recoveries. Full unpruned neural ranking failed due to runtime exhaustion during scoring (0 SAT attempts). The SPECK publication account is closed.
+## How the experiments were run
 
-The SIMON32/64 reference, two-key SAT pilot, and [predeclared demo operating-window study](docs/SIMON_OPERATING_WINDOW_PROTOCOL.md) are complete. At nine rounds with four known observations, unguided SAT timed out on 8/8 demo keys at a ten-second solve limit, while two correct trailing-key assumptions recovered 8/8. A separate [300-second online SAT-only control](docs/SIMON_300S_SAT_CONTROL_PROTOCOL.md) then recovered all eight of those same demo keys without any subkey assumption (median 49.57 s). The [paper evidence note](docs/SIMON_FEASIBILITY_EVIDENCE.md) gives the grid, complete timing, hashes, and limits. This is a useful negative feasibility check for that exact setting, not an end to the approved cross-cipher study. The next task is to fix an information- and resource-matched SIMON comparison, then complete the empirical depth map, controlled backend study, artifact, and cross-cipher paper synthesis. Neural training and protected evaluation keep their separate gates.
+- Every compared method gets its own solver instance. Solver reuse is allowed
+  only within one method's sequence of candidates.
+- Timeouts, proven UNSAT results and verified recoveries are recorded
+  separately. A timeout is never counted as a wrong candidate.
+- Fresh-key campaigns had their protocol, predictions and analysis fixed and
+  committed before the keys were generated. Each ran once, and every failure is
+  kept.
+- All campaign timings come from one laptop (Apple M5, 16 GB). Times on other
+  machines will differ.
 
-The working paper title is **From Neural Ranking to Verified Key Recovery: A
-Controlled Study of Classical, Neural, and XOR-SAT Guidance on Reduced-Round
-SPECK32/64**. The current primary target is ACNS 2027 Cycle 2, subject to the
-evidence gate and supervisor approval. The project is not positioned as a new
-neural architecture, a general SAT-solver contribution, a round-record attack, or a
-full-round cryptanalytic break.
+## History
 
-The approved course-time expansion keeps that SPECK study first and then tests
-external validity on SIMON32/64. It adds a predeclared empirical map of residual
-depth and solver configuration, a controlled native-XOR/wrapper/XOR-to-CNF backend
-comparison, and a reproducible SPECK/SIMON formula artifact. This planning approval
-does not open protected data: SIMON must first pass specification, known-answer,
-reference-implementation, classical/neural-baseline, and exact-solver feasibility
-gates, and every outcome-bearing study needs its own frozen protocol and approval.
-See `PLAN.md`, Decision D-029, and `docs/PUBLICATION_ROADMAP_2026.md`.
+This public repository starts from the first commit of the project on
+6 August 2026. Its commits group the original work sessions, keep their
+original dates, and leave out internal planning notes. The full working
+history is archived separately and is available on request.
+
+## Licence
+
+MIT. See [`LICENSE`](LICENSE). The literature review submitted for the course
+is included as `Literature Review (Cryptanalysis).pdf`.
