@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """CLI runner for manifest-driven SIMON32/64 B0->B1 training.
 
-Governing Rules and Invariants (AGENTS.md, D-029, D-034, D-037):
+Governing Rules and Invariants (D-029, D-034, D-037):
 - Rejects unverified development or unseen attack seeds.
 - Preflight checks execute audit_training_key_roles and verify pair features
   against both the scalar cipher reference and the clean-room independent reference oracle.
@@ -117,7 +117,7 @@ def main(args: list[str] | None = None) -> int:
 
     if not parsed.smoke_test and not parsed.execute_full_training:
         print(
-            "ERROR: Full B0/B1 dataset generation/training is guarded under D-037 / AGENTS.md.\n"
+            "ERROR: Full B0/B1 dataset generation/training is guarded under D-037.\n"
             "Full training requires ~21,600s compute budget across 1,000,000 pairs.\n"
             "Specify one of:\n"
             "  --smoke-test             (Fast verification on tiny synthetic dataset)\n"

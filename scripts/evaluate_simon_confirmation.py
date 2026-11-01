@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Dedicated manifest-enforced runner for SIMON32/64 R=10 unseen confirmation.
 
-Governed by AGENTS.md, D-029, D-034, D-035, D-036, D-037, and D-038.
+Governed by D-029, D-034, D-035, D-036, D-037, and D-038.
 Enforces strict manifest approval, seed governance, disjoint-family certificates,
 exact provenance hashing, and execution-identity-bound resume before evaluating
 any outcome-bearing key.

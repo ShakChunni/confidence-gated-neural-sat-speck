@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """R=10 unguided SAT-only 300-second control benchmark on opened demo cohort.
 
-Governed by AGENTS.md, D-029, D-034, D-035:
+Governed by D-029, D-034, D-035:
 - Demonstrates and measures unguided exact SAT solving on 8 opened demo keys
   (seed 999999, R=10, 64 attack pairs = 128 observations, 2 fresh verification pairs).
 - Evaluates:

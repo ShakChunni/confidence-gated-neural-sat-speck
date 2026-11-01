@@ -284,7 +284,7 @@ def run_map(
     profile: str = "full",
 ) -> dict[str, Any]:
     if workers not in (1, 2):
-        raise ValueError("Workers must be 1 or 2 per AGENTS.md hardware governance")
+        raise ValueError("Workers must be 1 or 2 per the project hardware policy")
     if profile not in ("full", "r10_serial"):
         raise ValueError("unknown operating-point profile")
 

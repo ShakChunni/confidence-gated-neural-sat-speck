@@ -1,3 +1,5 @@
+# Mid-semester deck from 3 Sep 2026, kept as a record. Its claims predate the later
+# campaigns and do not reflect the final report.
 """Generate an elite, publication-grade academic PowerPoint presentation in a crisp Light Theme (.pptx).
 
 Addresses all 4 COMP6002 Master's evaluation criteria (40 Marks):

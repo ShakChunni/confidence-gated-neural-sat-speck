@@ -2,7 +2,7 @@
 """Evaluate SIMON32/64 R=10 matched development comparators under strict solver isolation.
 
 Executes the controlled 64-pair comparative study of SIMON32/64 R=10 recovery strategies
-governed by AGENTS.md, D-029, D-034, D-035, and D-037:
+governed by D-029, D-034, D-035, and D-037:
 1. neural_classical_hybrid_8parent (Bao VV9 Stage 1 -> 7R DDT Stage 2, 1,024 tuples)
 2. fully_classical_8parent (8R Queried Row Stage 1 -> 7R DDT Stage 2, 1,024 tuples)
 3. fully_neural_1parent (Bao VV9 Stage 1 -> Bao VV8 Stage 2, 128 tuples)
@@ -16,7 +16,7 @@ governed by AGENTS.md, D-029, D-034, D-035, and D-037:
 
 SCIENTIFIC STATUS:
 - DEVELOPMENT/DIAGNOSTIC evidence only; prospective confirmation requires later frozen cohort (D-038).
-- Governed by AGENTS.md, D-029, D-034, D-035, D-037.
+- Governed by D-029, D-034, D-035, D-037.
 - Strict per-method-instance subprocess solver isolation enforced via run_method_worker.
 - Monotonic per-instance global wall-clock deadline enforced (300.0s default).
 - Counterbalanced Latin-square cyclic shift across instances with diagnostic oracle kept separate.
