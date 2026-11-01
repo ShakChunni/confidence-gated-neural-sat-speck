@@ -112,13 +112,6 @@ and run the cells in order.
 - All campaign timings come from one laptop (Apple M5, 16 GB). Times on other
   machines will differ.
 
-## History
-
-This public repository starts from the first commit of the project on
-6 August 2026. Its commits group the original work sessions, keep their
-original dates, and leave out internal planning notes. The full working
-history is archived separately and is available on request.
-
 ## Licence
 
 MIT. See [`LICENSE`](LICENSE). The literature review submitted for the course
