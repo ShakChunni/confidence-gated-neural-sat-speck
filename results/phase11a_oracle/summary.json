@@ -1,0 +1,56 @@
+{
+  "protocol": "phase11a_oracle_sat_feasibility_gate",
+  "cipher": "SPECK32/64",
+  "rounds": 7,
+  "seed": 300001,
+  "instance_count": 64,
+  "timeout_seconds": 10.0,
+  "known_pairs_count": 4,
+  "verification_pairs_count": 2,
+  "recovery": {
+    "verified_recovery_count": 0,
+    "total_instances": 64,
+    "verified_recovery_rate": 0.0,
+    "wilson_95_ci": [
+      0.0,
+      0.0566
+    ]
+  },
+  "status_breakdown": {
+    "SAT + verified": 0,
+    "SAT + verification failed": 0,
+    "timeout": 64,
+    "UNSAT": 0,
+    "backend/error": 0
+  },
+  "solve_time_successful": {
+    "count": 0,
+    "median_seconds": null,
+    "mean_seconds": null,
+    "std_seconds": null,
+    "min_seconds": null,
+    "max_seconds": null,
+    "p90_seconds": null,
+    "p95_seconds": null
+  },
+  "par2": {
+    "par2_cutoff_20s": 40.0,
+    "par2_cutoff_100s": 200.0,
+    "par2_cutoff_200s": 400.0
+  },
+  "solver_model_stats": {
+    "variables": 2368,
+    "clauses": 3350,
+    "xor_clauses": 1632,
+    "crypto_minisat_counters_note": "pycryptosat Python bindings do not expose decision/conflict/restart counters directly."
+  },
+  "go_no_go_evaluation": {
+    "condition_1_description": "Verified Oracle-SAT recovery >= 58/64 (>= 90.625%)",
+    "condition_1_actual": "0 / 64 (0.00%)",
+    "condition_1_passed": false,
+    "condition_2_description": "Median solve time among verified successful instances <= 5.0 seconds",
+    "condition_2_actual": "N/A (0 successes)",
+    "condition_2_passed": false,
+    "final_decision": "PHASE11B BLOCKED"
+  }
+}

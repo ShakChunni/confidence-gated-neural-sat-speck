@@ -1,0 +1,249 @@
+{
+  "manifest": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "manifest_id": "phase10_prospective_validation_frozen_manifest_v1",
+    "timestamp": "2026-09-08T10:55:00+08:00",
+    "code_commit": "5ffb366dab2de3eb61ff9b07c3af2bab757175c0",
+    "protocol_document": "docs/PHASE10_G1_R1_PROSPECTIVE_PROTOCOL.md",
+    "freeze_record": "brain/c38e323e-d1a4-41db-ac0e-ec5d8a7e0d34/phase10g3_freeze_record.md",
+    "governance": {
+      "phase": "10",
+      "status": "IMMUTABLE_PRE_VALIDATION_FREEZE",
+      "prospective_validation_seed": 101001,
+      "instance_count": 64,
+      "cipher": "SPECK32_64",
+      "rounds": 6,
+      "quarantined_seeds_rejected": [
+        98001,
+        97001,
+        99001
+      ],
+      "no_selection_invariant": "Zero model weights, feature definitions, shortlists, or thresholds may be re-fit, tuned, or selected from N=64 validation."
+    },
+    "artifact_hashes": {
+      "b1_base_ranker": {
+        "path": "models/speck32_64_phase6a_b1_mean_g64.pt",
+        "sha256": "a93d29a76a521b6f3fd0f1dff943df9f74de3857169b9d735c9aa478817954d5"
+      },
+      "g0_scalar_baseline": {
+        "path": "models/phase10_promotional_g0_estimator.json",
+        "sha256": "c94da59cbd63fa5d6723898256217d930d37e3157965771f67d5a72c3e85f837"
+      },
+      "g1_stability_estimator": {
+        "path": "models/phase10_promotional_g1_estimator.json",
+        "sha256": "432f997f56d7c6fbcfe5b9c0e9dff4918ab73dd265c4d514bf0c56c30ff8872c"
+      },
+      "r1_ablation_model": {
+        "path": "models/phase10_promotional_r1_rescue_net.pt",
+        "sha256": "90790a420cb887988dc4533f12615c70e29d08d2b7b5ac26671b8b4265ee5b90"
+      }
+    },
+    "parameters": {
+      "frozen_threshold_theta": 0.089,
+      "candidate_budgets": {
+        "k_base": 16,
+        "k_max": 32
+      },
+      "sat_settings": {
+        "solver": "CryptoMiniSat 5.14.7 (pycryptosat)",
+        "mode": "incremental_assumptions",
+        "per_candidate_timeout_seconds": 10.0,
+        "solver_isolation": true
+      },
+      "pairs": {
+        "known_attack_pairs": 4,
+        "verification_pairs": 2,
+        "verification_seed": 999999
+      }
+    },
+    "timing_definitions": {
+      "formula": "T_online = T_ranking + T_G1 + T_SAT + T_verif",
+      "par2_definition": "score_i = T_online_i if solved and T_online_i <= C else 2 * C",
+      "par2_cutoffs_seconds": [
+        20.0,
+        100.0,
+        200.0
+      ]
+    },
+    "reliability_inference_procedure": {
+      "target_event": "y_fail = I(b1_true_rank > 16)",
+      "metrics": [
+        "ROC-AUC with 95% bootstrap CI (10,000 resamples)",
+        "PR-AUC with 95% bootstrap CI (positive class = failure)",
+        "Brier Score vs constant prevalence baseline",
+        "Paired key-level bootstrap 95% CI for Delta_AUC = AUC(G1) - AUC(G0)",
+        "Predeclared one-sided hypothesis test: H0: AUC <= 0.5 vs H1: AUC > 0.5 (alpha=0.05)"
+      ]
+    },
+    "primary_methods": [
+      "B1 (kmax=16)",
+      "B1 Sequential-32 (kmax=32)",
+      "G1-Adaptive B1 (theta=0.0890, kmax in {16, 32})",
+      "G0 Scalar Baseline",
+      "G1 Stability Estimator"
+    ],
+    "ablation_comparator": "R1 Tail Scheduling (kmax=32)"
+  },
+  "validation_metadata": {
+    "dataset_id": "speck32_64_attack_phase10_validation_r6",
+    "seed": 101001,
+    "instance_count": 64,
+    "rounds": 6,
+    "pairs_per_instance": 64,
+    "timestamp": "2026-09-09T20:54:02.430645+00:00",
+    "git_commit": "5ffb366dab2de3eb61ff9b07c3af2bab757175c0",
+    "total_execution_seconds": 928.6649274590309
+  },
+  "containment_summary": {
+    "failures_total": 6,
+    "failure_rate": 0.09375,
+    "containment_top16": 58,
+    "containment_top32": 64
+  },
+  "reliability_inference": {
+    "g0_scalar": {
+      "roc_auc": 0.47988505747126436,
+      "roc_auc_95_ci": [
+        0.1839080459770115,
+        0.7902298850574713
+      ],
+      "pr_auc": 0.14243405695611577,
+      "pr_auc_95_ci": [
+        0.0678280034376782,
+        0.34714880828878514
+      ],
+      "brier_score": 0.0849695094810642,
+      "permutation_test_p_value": 0.56792
+    },
+    "g1_stability": {
+      "roc_auc": 0.7758620689655172,
+      "roc_auc_95_ci": [
+        0.5603448275862069,
+        0.9396551724137931
+      ],
+      "pr_auc": 0.2923040230584988,
+      "pr_auc_95_ci": [
+        0.14232340075554897,
+        0.6416666666666666
+      ],
+      "brier_score": 0.0844300569652241,
+      "permutation_test_p_value": 0.01232
+    },
+    "comparative": {
+      "delta_roc_auc": 0.2959770114942529,
+      "delta_roc_auc_95_ci": [
+        -0.028735632183908066,
+        0.617816091954023
+      ],
+      "delta_pr_auc": 0.149869966102383,
+      "delta_pr_auc_95_ci": [
+        -0.125011642665793,
+        0.52491900751005
+      ],
+      "brier_prevalence_baseline": 0.0849609375
+    },
+    "frozen_threshold_metrics": {
+      "theta": 0.089,
+      "trusted_coverage": 0.65625,
+      "escalation_frequency": 0.34375,
+      "false_trust_count": 1,
+      "false_trust_rate": 0.023809523809523808,
+      "false_trust_rate_95_ci": [
+        0.004215416153443029,
+        0.12321170641577217
+      ],
+      "failure_escalation_recall": 0.8333333333333334
+    }
+  },
+  "recovery_summary": {
+    "1_b1_k16": {
+      "label": "1. B1 (kmax=16)",
+      "recovered": 58,
+      "success_rate": 90.625,
+      "wilson_95_ci": [
+        0.8101714462734224,
+        0.9563216816141284
+      ],
+      "mean_candidates_tested": 8.609375,
+      "mean_solver_seconds": 2.1118969342378477,
+      "mean_verification_seconds": 9.1220676949888e-05,
+      "mean_online_seconds": 7.978850730464728,
+      "par2": {
+        "par2_20s": 10.875223923902013,
+        "par2_100s": 25.875223923902013,
+        "par2_200s": 44.62522392390201
+      }
+    },
+    "2_b1_seq32": {
+      "label": "2. B1 Sequential-32 (kmax=32)",
+      "recovered": 64,
+      "success_rate": 100.0,
+      "wilson_95_ci": [
+        0.9433761574000624,
+        0.9999999999999999
+      ],
+      "mean_candidates_tested": 9.125,
+      "mean_solver_seconds": 2.177986987137956,
+      "mean_verification_seconds": 9.796223002922488e-05,
+      "mean_online_seconds": 8.044947524917916,
+      "par2": {
+        "par2_20s": 8.044947524917916,
+        "par2_100s": 8.044947524917916,
+        "par2_200s": 8.044947524917916
+      }
+    },
+    "3_g1_adaptive_b1": {
+      "label": "3. G1-Adaptive B1 (theta=0.0890, kmax in {16,32})",
+      "recovered": 63,
+      "success_rate": 98.4375,
+      "wilson_95_ci": [
+        0.9166592022789577,
+        0.9972364502023525
+      ],
+      "mean_candidates_tested": 9.109375,
+      "mean_solver_seconds": 2.1653989584328883,
+      "mean_verification_seconds": 9.459442298975773e-05,
+      "mean_online_seconds": 8.038912511170565,
+      "par2": {
+        "par2_20s": 8.53882548776437,
+        "par2_100s": 11.03882548776437,
+        "par2_200s": 14.16382548776437
+      }
+    },
+    "4_r1_tail_ablation": {
+      "label": "4. R1 Tail Scheduling (kmax=32) [Ablation]",
+      "recovered": 64,
+      "success_rate": 100.0,
+      "wilson_95_ci": [
+        0.9433761574000624,
+        0.9999999999999999
+      ],
+      "mean_candidates_tested": 9.796875,
+      "mean_solver_seconds": 2.1632782540937114,
+      "mean_verification_seconds": 0.0001000078891593148,
+      "mean_online_seconds": 8.037146592032514,
+      "par2": {
+        "par2_20s": 8.037146592032514,
+        "par2_100s": 8.037146592032514,
+        "par2_200s": 8.037146592032514
+      }
+    }
+  },
+  "paired_significance_tests": {
+    "b1_16_vs_b1_seq32": {
+      "b": 0,
+      "c": 6,
+      "mcnemar_p": 0.03125
+    },
+    "b1_seq32_vs_g1_adaptive": {
+      "b": 1,
+      "c": 0,
+      "mcnemar_p": 1.0
+    },
+    "b1_seq32_vs_r1_tail": {
+      "b": 0,
+      "c": 0,
+      "mcnemar_p": 1.0
+    }
+  }
+}

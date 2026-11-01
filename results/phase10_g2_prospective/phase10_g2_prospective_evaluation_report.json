@@ -1,0 +1,243 @@
+{
+  "timestamp": "2026-09-10T06:31:24Z",
+  "dataset_manifest_path": "/Users/ashfaq/Dev/comp-sci-project/datasets/phase10_g2_prospective_r6/manifest.json",
+  "sample_size": 256,
+  "n_fail": 21,
+  "n_success": 235,
+  "observed_failure_rate": 0.08203125,
+  "failure_rate_wilson_ci": [
+    0.054277637372405554,
+    0.1221431931031763
+  ],
+  "b1_rank_summary": {
+    "min": 1,
+    "q1": 3.0,
+    "median": 6.0,
+    "mean": 8.31640625,
+    "q3": 12.25,
+    "max": 40,
+    "count_rank_1": 24,
+    "count_rank_le_16": 235,
+    "count_rank_17_32": 19,
+    "count_rank_gt_32": 2
+  },
+  "statistical_results": {
+    "g1_v1": {
+      "roc_auc": 0.7193515704154002,
+      "roc_auc_ci": [
+        0.59290273556231,
+        0.8358662613981763
+      ],
+      "pr_auc": 0.2855833581654632,
+      "pr_auc_ci": [
+        0.1512315553571845,
+        0.48349581858988505
+      ],
+      "p_perm_auc_gt_half": 0.00031,
+      "brier": 0.07491658574021329,
+      "ece_equal_width": 0.006017210378086862,
+      "ece_equal_freq": 0.06811341267411015,
+      "aurc": 0.03792022412014155
+    },
+    "g2_v1": {
+      "roc_auc": 0.8512664640324215,
+      "roc_auc_ci": [
+        0.785612968591692,
+        0.9100303951367781
+      ],
+      "pr_auc": 0.3735363903988525,
+      "pr_auc_ci": [
+        0.22165812399389515,
+        0.5788800658593664
+      ],
+      "p_perm_auc_gt_half": 0.0,
+      "brier": 0.06589535122378663,
+      "ece_equal_width": 0.03864127421330641,
+      "ece_equal_freq": 0.04355069467432975,
+      "aurc": 0.017346113341109942
+    },
+    "paired_comparison": {
+      "delta_roc_auc": 0.13191489361702124,
+      "delta_roc_auc_ci": [
+        0.048834853090172214,
+        0.22148429584599796
+      ],
+      "delta_pr_auc": 0.0879530322333893,
+      "delta_pr_auc_ci": [
+        -0.03544689113307022,
+        0.2214763589073265
+      ],
+      "p_perm_score_swap": 0.02688
+    }
+  },
+  "threshold_evaluations": {
+    "Frozen G1-v1_0.0758": {
+      "threshold": 0.0758,
+      "model": "Frozen G1-v1",
+      "coverage_count": 2,
+      "coverage_pct": 0.78125,
+      "false_trust_count": 0,
+      "false_trust_risk": 0.0,
+      "risk_wilson_ci": [
+        0.0,
+        65.76188570228346
+      ],
+      "escalated_count": 254,
+      "escalation_pct": 99.21875,
+      "failure_escalation_recall": 100.0
+    },
+    "Promoted G2-v1_0.0758": {
+      "threshold": 0.0758,
+      "model": "Promoted G2-v1",
+      "coverage_count": 211,
+      "coverage_pct": 82.421875,
+      "false_trust_count": 11,
+      "false_trust_risk": 5.213270142180095,
+      "risk_wilson_ci": [
+        2.9356244716026345,
+        9.092521875073716
+      ],
+      "escalated_count": 45,
+      "escalation_pct": 17.578125,
+      "failure_escalation_recall": 47.61904761904761
+    },
+    "Frozen G1-v1_0.3119": {
+      "threshold": 0.3119,
+      "model": "Frozen G1-v1",
+      "coverage_count": 256,
+      "coverage_pct": 100.0,
+      "false_trust_count": 21,
+      "false_trust_risk": 8.203125,
+      "risk_wilson_ci": [
+        5.427763737240555,
+        12.214319310317629
+      ],
+      "escalated_count": 0,
+      "escalation_pct": 0.0,
+      "failure_escalation_recall": 0.0
+    },
+    "Promoted G2-v1_0.3119": {
+      "threshold": 0.3119,
+      "model": "Promoted G2-v1",
+      "coverage_count": 251,
+      "coverage_pct": 98.046875,
+      "false_trust_count": 18,
+      "false_trust_risk": 7.171314741035857,
+      "risk_wilson_ci": [
+        4.5840282126203356,
+        11.0497881325815
+      ],
+      "escalated_count": 5,
+      "escalation_pct": 1.953125,
+      "failure_escalation_recall": 14.285714285714285
+    },
+    "Frozen G1-v1_0.0890": {
+      "threshold": 0.089,
+      "model": "Frozen G1-v1",
+      "coverage_count": 145,
+      "coverage_pct": 56.640625,
+      "false_trust_count": 7,
+      "false_trust_risk": 4.827586206896552,
+      "risk_wilson_ci": [
+        2.35788992310123,
+        9.628988743100933
+      ],
+      "escalated_count": 111,
+      "escalation_pct": 43.359375,
+      "failure_escalation_recall": 66.66666666666666
+    },
+    "Promoted G2-v1_0.0890": {
+      "threshold": 0.089,
+      "model": "Promoted G2-v1",
+      "coverage_count": 216,
+      "coverage_pct": 84.375,
+      "false_trust_count": 11,
+      "false_trust_risk": 5.092592592592593,
+      "risk_wilson_ci": [
+        2.86710455088901,
+        8.887477672219287
+      ],
+      "escalated_count": 40,
+      "escalation_pct": 15.625,
+      "failure_escalation_recall": 47.61904761904761
+    }
+  },
+  "selective_routing": {
+    "Frozen_G1": {
+      "1.0": {
+        "risk": 0.08203125,
+        "false_trust": 21,
+        "precision": 0.91796875,
+        "k": 256
+      },
+      "0.9": {
+        "risk": 0.05652173913043478,
+        "false_trust": 13,
+        "precision": 0.9434782608695652,
+        "k": 230
+      },
+      "0.8": {
+        "risk": 0.05365853658536585,
+        "false_trust": 11,
+        "precision": 0.9463414634146341,
+        "k": 205
+      },
+      "0.7": {
+        "risk": 0.0446927374301676,
+        "false_trust": 8,
+        "precision": 0.9553072625698324,
+        "k": 179
+      },
+      "0.6": {
+        "risk": 0.045454545454545456,
+        "false_trust": 7,
+        "precision": 0.9545454545454546,
+        "k": 154
+      },
+      "0.5": {
+        "risk": 0.046875,
+        "false_trust": 6,
+        "precision": 0.953125,
+        "k": 128
+      }
+    },
+    "Promoted_G2": {
+      "1.0": {
+        "risk": 0.08203125,
+        "false_trust": 21,
+        "precision": 0.91796875,
+        "k": 256
+      },
+      "0.9": {
+        "risk": 0.05217391304347826,
+        "false_trust": 12,
+        "precision": 0.9478260869565217,
+        "k": 230
+      },
+      "0.8": {
+        "risk": 0.04878048780487805,
+        "false_trust": 10,
+        "precision": 0.9512195121951219,
+        "k": 205
+      },
+      "0.7": {
+        "risk": 0.0335195530726257,
+        "false_trust": 6,
+        "precision": 0.9664804469273743,
+        "k": 179
+      },
+      "0.6": {
+        "risk": 0.006493506493506494,
+        "false_trust": 1,
+        "precision": 0.9935064935064936,
+        "k": 154
+      },
+      "0.5": {
+        "risk": 0.0,
+        "false_trust": 0,
+        "precision": 1.0,
+        "k": 128
+      }
+    }
+  }
+}
