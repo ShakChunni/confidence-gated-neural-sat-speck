@@ -10,9 +10,47 @@ need large tables and many hours.
 | Level | What it shows | Time | Needs |
 |---|---|---|---|
 | 1. Tests and known-answer test | The ciphers, SAT model, ranking, verification and statistics code behave as specified | about 5 to 15 min | Python only |
-| 2. Analyses and figures from the saved results | The published numbers and figures follow from the saved ledgers | about 1 min | Python only |
-| 3. Short live demo | The attack pipeline runs end to end on the demo seed | about 1 min | Python only |
+| 2. Analyses and figures from the saved results | The published numbers and figures follow from the saved ledgers | about 1 min | The Python install below |
+| 3. Short live demo | The attack pipeline runs end to end on the demo seed | about 1 min | The Python install below |
 | 4. Full campaigns | New attack runs under the 300 s clock | 7 to 10 h per campaign | 4 to 32 GiB tables, published networks, a C compiler |
+
+## Quickest route: Docker, on any system
+
+This is the simplest way to check the numbers on Windows, macOS or Linux. It
+needs only Docker and Git. The image runs on Linux, so the Windows limits below
+do not apply. It takes about 1 minute to build and 6 minutes to run on a recent
+laptop.
+
+```bash
+git clone https://github.com/ShakChunni/confidence-gated-neural-sat-speck.git
+cd confidence-gated-neural-sat-speck
+docker build -t project-check .
+docker run --rm project-check
+```
+
+It runs the known-answer test, checks every recorded `.sha256` file, rebuilds
+four saved campaign analyses and compares each with its saved summary, checks
+the figure counts and input hashes, and runs the test suite.
+
+The script `scripts/docker_check.sh` leaves out a few tests and says why. They
+need macOS tools, the exact Python used for the frozen runs, or precise process
+timing. None of them reads a saved result. Tests that need local data or solver
+commands skip themselves. The image was checked on 1 Nov 2026 on 64-bit Arm;
+the Intel build was built and its known-answer test passed.
+
+### What each study can be rebuilt from
+
+| Study | What the repository holds | Exact rebuild |
+|---|---|---|
+| Published networks, full table, completer choice, replication | Per-key ledgers and analysis scripts in `docs/paper/evidence/` | Yes, in the Docker run |
+| Seven-round SPECK comparison | Per-key results and `scripts/analyze_seven_round_results.py` in `results/phase11_prospective/` | Yes, by running the script |
+| Queue-cost rule on development cells | Cell tables and scripts in `docs/queue_cost_model_evidence_20261009/` | Yes, by running the scripts |
+| SIMON comparison, second-stage study, fresh-key cost test, depth map, backend study | Per-key tables or saved summaries; the full raw files are too large or stay local | No, only the saved summaries can be read |
+| Six-round reliability and the seven-round gate | Saved records in `results/`, without their inputs | No, only the saved records can be read |
+
+Rerunning a campaign gives new timings, so it is a replication. The interval
+in the report for the seven-round comparison uses Newcombe Method 10 and differs
+slightly from the older interval in the saved analysis file.
 
 ## Setup
 
@@ -81,7 +119,8 @@ neural-sat-speck kat
 
 Some tests need things a fresh clone or a given system does not have. They
 skip themselves and print the reason. A skip is not a failure. Every other
-test should pass.
+test should pass on macOS and in Docker. Windows has known failures, listed
+under Known platform limits.
 
 - **Solver commands.** A few tests call the `cryptominisat5` or `cadical`
   command-line solvers. The Python solver from `pycryptosat` does not need them.
@@ -94,13 +133,13 @@ test should pass.
   only from 3.13, so on macOS with 3.11 or 3.12 those tests skip.
 - **Windows.** The experiment runners use POSIX process groups, file locks
   and resource limits. On Windows their test modules are not collected (about
-  700 of the 2,099 tests), and the pytest header says so. The cipher, SAT
-  model, ranking, verification, statistics and figure tests all still run; the
-  ones that do not pass there are listed under Known platform limits.
+  700 of the 2,171 tests), and the pytest header says so. The cipher, SAT
+  model, ranking, verification, statistics and figure tests still run, but the
+  suite does not pass on Windows. See Known platform limits.
   The list is in `tests/conftest.py`.
 
-Checked on 27 Oct 2026 on a fresh clone with Python 3.12 on macOS: 2,108
-passed, 64 skipped, none failed.
+Checked on 1 Nov 2026 on an Apple M5 with Python 3.14 (a local solver build):
+2,143 passed, 28 skipped, none failed.
 
 The known-answer test checks SPECK32/64 against the published test vector
 (key `1918 1110 0908 0100`, plaintext `6574 694c`, ciphertext `a868 42f2`).
@@ -130,7 +169,8 @@ python scripts/generate_report_figures.py --profile lncs --force
 Before saving, the script checks every input file against its recorded
 SHA-256 and every drawn count against the published count. It stops without
 writing anything if either differs. The image bytes can differ slightly with
-another matplotlib version. The input hashes and checks in
+another matplotlib version, so do not expect identical file hashes. The report
+profile draws seven figures. The input hashes and checks in
 `figures/<profile>/manifest.json` should not change.
 
 This was checked on 27 Oct 2026 on a fresh clone with Python 3.12: all three
@@ -160,9 +200,10 @@ The full campaigns are not needed to check the paper. Each one needs:
 - the multi-gigabyte difference tables (4 GiB for SPECK at seven rounds,
   32 GiB for SIMON at seven rounds), built by `scripts/colab_build_speck_full_ddt.ipynb`
   and the tools in `tools/`;
-- Gohr's published SPECK network and Bao's published SIMON networks, which
-  are downloaded and checked against pinned hashes, not stored in this
-  repository;
+- Gohr's published SPECK networks (github.com/agohr/deep_speck, converted with
+  `scripts/convert_gohr_h5_to_npz.py`) and Bao's published SIMON networks. They
+  are not stored here and there is no download script. Their expected hashes
+  are in the saved ledger headers and in the Stage 2 control code;
 - a C compiler for the brute-force completer (`tools/bruteforce_completion.c`);
 - one machine running serially for 7 to 10 hours per campaign.
 
@@ -177,6 +218,13 @@ other hardware is a replication, not a byte-for-byte reproduction.
 
 ## Known platform limits
 
+- On Windows, two separate runs of Level 1 finished with 77 and 72
+  failed tests and 22 errors each (see `docs/team/review` and
+  `docs/team/testing`). In each run, 62 of them come from one helper that
+  syncs a directory to disk, which Windows refuses. That helper is part of
+  the frozen backend, so it stays unchanged. Level 2 passes on Windows.
+  Paths in a `manifest.json` written on Windows use backslashes, so its keys
+  differ from the saved copy while the hash values match.
 - Some experiment runners use POSIX process groups to stop a solver at the
   deadline. They run on macOS and Linux. On Windows, use WSL or Colab for
   Level 4.

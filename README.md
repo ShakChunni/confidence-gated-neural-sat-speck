@@ -55,8 +55,9 @@ The story of how we got here, stage by stage, is in
 | `docs/` | Setup, reproduction, dataset notes and the project timeline |
 
 Large tables (4 GiB and 32 GiB) and the published networks are not stored here.
-`docs/REPRODUCE.md` explains how to build or download them and check their
-hashes.
+`docs/REPRODUCE.md` explains how to build or obtain them and check their
+hashes. It also gives one Docker command that checks the saved results on any
+system.
 
 ## Quick start
 
