@@ -64,7 +64,7 @@ recovery" in the project.
 
 One cell failed on a monitoring error in the 32-key run. With explicit
 approval we retried that cell once and continued the 114 cells that had not
-started, with the same settings. All records are kept, and dropping that key
+started (141 had already finished), with the same settings. All records are kept, and dropping that key
 does not change the finding.
 
 ## Encryption cost calibration (9 October)

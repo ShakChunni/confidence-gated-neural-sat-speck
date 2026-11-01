@@ -1,5 +1,8 @@
 # Development setup
 
+These are the early development notes. To reproduce the results, use
+[`REPRODUCE.md`](REPRODUCE.md) instead.
+
 These instructions cover the source-verified scalar SPECK32/64 implementation,
 the deterministic Dataset v1 foundation, the bounded CryptoMiniSat feasibility
 pilot, the Phase 3 neural distinguisher baseline, the Phase 4 final-round

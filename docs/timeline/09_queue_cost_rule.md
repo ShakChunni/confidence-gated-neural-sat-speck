@@ -51,7 +51,7 @@ hurt opposite matrix settings on the two ciphers.
   if contained".
 
 The run stopped at cell 300 of 320 on a file-check race in our coordinator. We
-kept the 299 finished cells, fixed the race, piloted again, and ran the 21
+kept the 299 finished cells (cell 300 was still running when it stopped), fixed the race, piloted again, and ran the 21
 missing cells with the same keys and settings. The decision to continue did not
 use any outcome.
 

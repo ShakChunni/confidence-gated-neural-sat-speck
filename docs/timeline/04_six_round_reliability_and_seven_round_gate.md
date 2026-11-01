@@ -21,17 +21,19 @@ exact solver could handle seven rounds before we trained anything new for it.
 
 ## What we found
 
-**G1 (64 keys).** ROC-AUC 0.776 for predicting a top-16 failure, against 0.480
+**G1 (64 keys).** ROC-AUC 0.776 for predicting a top-16 failure on these 64 fresh keys, against 0.480
 for the old scalar. The paired interval crossed zero. A plain fixed search of
 32 candidates recovered 64/64. The G1 routing policy recovered 63/64.
 
 **G2 (256 keys).** ROC-AUC 0.851 against 0.719 for G1, paired p = 0.027. So G2
 predicts failure better. But its threshold did not transfer. It was chosen to
 give at most 2% error among trusted keys on development data. On new keys the
-error was 5.2% (11 of 211 trusted keys failed).
+error was 5.2% (11 of 211 trusted keys failed; the model did not trust the
+other 45 of the 256 keys).
 
 **Seven-round gate: RED.** 0/64 recovered and all 64 timed out, even with the
-true last round key supplied.
+true last round key supplied. This describes the setting tested, the Python
+wrapper with a 10 s limit. File 05 shows what changed.
 
 ## What we decided and why
 

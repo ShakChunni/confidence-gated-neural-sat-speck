@@ -17,14 +17,14 @@ scores. A two-parameter logistic fit turned it into a probability. The rule
 was to accept the largest set of keys with at most 10% error and at least 16
 accepted keys.
 
-**Six-round comparison.** 64 held-out keys, five methods: SAT-only, random
+**Six-round comparison.** 64 held-out keys from the opened historical set, five methods: SAT-only, random
 candidate order, B0, B1 and a B1/B0 fallback with 32 candidates.
 
 ## What went wrong
 
 **The gate failed.** No threshold met the rule. The first point with 16
 accepted keys already had 37.5% error. The feature barely separated good
-rankings from bad ones (ROC-AUC about 0.52). We stopped there rather than try
+rankings from bad ones (ROC-AUC about 0.52 for top-8 failure on the opened keys). We stopped there rather than try
 more features on the same records.
 
 **The first comparison had a bug.** All five methods shared one solver object.

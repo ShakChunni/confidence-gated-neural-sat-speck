@@ -39,7 +39,8 @@ B1 won on top-16 both times. On confirmation, however, its median rank was
 worse, and our rule needed both. So on 28 August we did **not** promote B1. B2
 and B3 were weaker and were kept as negative results.
 
-We then ran a second, larger pre-registered test on 64 fresh validation keys.
+We then ran a second, larger pre-registered test on 64 new validation keys.
+These count as development keys, because they decided the promotion.
 B1 put the true key in its top 16 for 62 of 64 keys, against 53 for B0. It
 also cut the mean number of capped attempts from 9.41 to 7.33. A small reranker
 on top of B1 (H1) made attempts worse and failed its own gate. B1 was promoted

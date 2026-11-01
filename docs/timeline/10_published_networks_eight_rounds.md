@@ -56,8 +56,9 @@ On 32 new fresh keys:
 | Complete seven-round table | 18 |
 
 The network recovered 6 keys the table missed, and the table none the network
-missed (McNemar p = 0.031, Holm-adjusted 0.063). Every true candidate that
-reached the queue was recovered, in all eight-round arms (68 of 68), and none
+missed (McNemar p = 0.031, Holm-adjusted 0.063). Across the four eight-round arms
+of the two campaigns, on separate keys, every true candidate that reached the
+queue was recovered (26, 0, 24 and 18, so 68 of 68), and none
 outside the queue were.
 
 ## What we decided and why

@@ -32,7 +32,8 @@ The run took 02:30 to 09:41 with no reruns, no missing cells and no cell over
 
 Across all three eight-round campaigns, every key with its true chain in the
 queue was recovered and no other key was. Containment decides at eight
-rounds. No cell finished before 150 s, because preparation took about 153 s.
+rounds. Nothing can finish before preparation ends. Preparation took 150 to 170 s,
+and the first recovery came at about 152 s.
 
 Pooling these 64 keys with the earlier 32 gives 73 against 59 recoveries
 (p = 0.0005). We report that as a secondary description only.
@@ -60,7 +61,8 @@ brute-force completer.
 
 - A complete eight-round SIMON table was built on 27 October (09:42 to 10:02)
   and passed all checks: 16 rows identical to an audited tool, total mass 1,
-  and 128 entries matching an independent Python calculation exactly.
+  and 128 entries matching an independent Python calculation exactly. The table
+  is too large for this repository and is kept locally.
 - The protocol draft is **not frozen**. It still needs a two-key demo pilot,
   a thread setting, predictions, a seed and the analysis script hash.
 

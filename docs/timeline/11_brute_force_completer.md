@@ -36,12 +36,13 @@ and the analysis script before the fresh seed was generated. A pilot on demo
 keys came first.
 
 - **Seven rounds (rule chose SAT).** SAT finished ahead of brute force on 28
-  keys and behind on none (p = 3.7e-9). This held for all three Stage 1
+  keys and behind on none (one-sided p = 3.7e-9; other files use two-sided values, and this would be 7.5e-9). This held for all three Stage 1
   rankers after Holm correction.
 - **Eight rounds (rule chose brute force).** Both recovered the same 18 keys.
-  Brute force was cheaper on 17 and dearer on 1, by 0.13 s (p = 7.2e-5).
+  Brute force was cheaper on 17 and dearer on 1, by 0.13 s (one-sided p = 7.2e-5; two-sided 1.4e-4).
 - **Ranker order.** The size of the SAT advantage at seven rounds followed the
-  predicted order B1, then the table, then Gohr's network (23, 16 and 6 keys).
+  predicted order B1, then the table, then Gohr's network (23, 16 and 6 keys of 32
+per ranker; the 28 above is the pooled comparison).
   This fits the rule. B1 puts the true candidate deepest in the queue, so slow
   brute-force rejections (61 s each at seven rounds) cost it most.
 

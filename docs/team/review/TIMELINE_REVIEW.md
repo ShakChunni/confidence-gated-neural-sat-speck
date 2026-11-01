@@ -1,7 +1,7 @@
 # Timeline review
 
-This is a reader's review of `docs/timeline/`, written by someone outside the
-team, against the saved evidence in the repository. Part one covers files 01 to
+This is a reader's review of `docs/timeline/`, written by a team member who did
+not do the technical work, against the saved evidence in the repository. Part one covers files 01 to
 06; part two, in the next commit, covers 07 to 12.
 
 Reviewed on 27 October 2026 on Windows 11 (build 26200), from `master` at

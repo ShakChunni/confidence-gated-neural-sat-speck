@@ -21,7 +21,8 @@ On opened keys we varied how many trailing round keys were fixed.
   The binding's time limit also counts CPU seconds, not wall time.
 - Exporting the same formula and running the native solver with a larger
   matrix limit solved 3 of 3 seven-round keys that had timed out, in about 48
-  to 59 s.
+  to 59 s. These were diagnostic runs, and their files are not in this
+  repository.
 
 So the RED gate was a limit of one configuration and budget, not proof that
 seven rounds cannot be solved.
@@ -75,6 +76,9 @@ candidate budget and one 300 s clock per key that includes ranking.
 | Random order | 0 | 600 s | 96 s |
 | SAT-only, 4 observations | 0 | 600 s | 302 s |
 | SAT-only, all 128 observations | 0 | 600 s | 302 s |
+
+Medians above 300 s come from the cooperative stop: a failed cell can run a
+little past the budget before it stops. No counted recovery was late.
 
 The primary test, screened neural against SAT-only, was 110 to 0 (exact
 McNemar p = 1.5e-33). Screened neural and the hybrid differed by one key. The

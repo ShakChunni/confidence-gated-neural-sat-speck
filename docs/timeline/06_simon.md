@@ -56,7 +56,7 @@ of our B1 ranker.
 ## Confirmation on fresh keys
 
 **Attempt 1 (30 September to 2 October).** 64 fresh keys, nine methods. It
-finished with 75 recoveries, but we did not accept it. Three problems hit
+finished with 75 recoveries in 576 cells, but we did not accept it. Three problems hit
 the machine during the run:
 
 - the restart helper ran the workers at macOS background priority, which
@@ -78,6 +78,8 @@ directories and normal priority.
 | Bao hybrid | 49 |
 | Bao fully neural | 26 |
 | SIMON B1 hybrid, random, SAT-only | 0 |
+
+The last row merges five arms, each of which recovered no key.
 
 All 182 recoveries were checked independently. Both main methods beat SAT-only
 after Holm correction. Classical against the Bao hybrid was 4 keys apart,
