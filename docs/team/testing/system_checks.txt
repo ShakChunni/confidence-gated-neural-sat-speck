@@ -1,0 +1,97 @@
+COMMAND: <work>/hamza-venv/Scripts/python.exe -m neural_sat_speck.cli kat
+SPECK32/64 Known-Answer Test (KAT):
+  Key:        ['0x1918', '0x1110', '0x0908', '0x0100']
+  Plaintext:  (0x6574, 0x694c)
+  Ciphertext: (0xa868, 0x42f2)
+  Expected:   (0xa868, 0x42f2)
+  Verified:   True
+
+Exit code: 0
+Elapsed seconds: 3.453
+
+
+COMMAND: <work>/hamza-venv/Scripts/python.exe -m neural_sat_speck.cli verify-key --key 0x1918 0x1110 0x0908 0x0100 --rounds 22
+Cryptographic Verification for Key ['0x1918', '0x1110', '0x0908', '0x0100'] (22 rounds):
+  Known pairs verified:       True
+  Independent pairs verified: True
+  Result:                     PASS (Sound Key)
+
+Exit code: 0
+Elapsed seconds: 3.484
+
+
+COMMAND: <work>/hamza-venv/Scripts/python.exe scripts/phase2_sat_pilot.py --rounds 2 4 7 --pair-count 4 --timeout 10
+[
+  {
+    "independent_pairs_verified": true,
+    "known_pairs_verified": true,
+    "pair_count": 4,
+    "recovered_master_key": [
+      "0000",
+      "0000",
+      "0908",
+      "0100"
+    ],
+    "rounds": 2,
+    "runtime_seconds": 0.00010240000847261399,
+    "satisfiable": true,
+    "status": "sat",
+    "timed_out": false,
+    "timeout_seconds": 10.0,
+    "variable_count": 768,
+    "verified": true
+  },
+  {
+    "independent_pairs_verified": true,
+    "known_pairs_verified": true,
+    "pair_count": 4,
+    "recovered_master_key": [
+      "1918",
+      "1110",
+      "0908",
+      "0100"
+    ],
+    "rounds": 4,
+    "runtime_seconds": 0.02090110001154244,
+    "satisfiable": true,
+    "status": "sat",
+    "timed_out": false,
+    "timeout_seconds": 10.0,
+    "variable_count": 1408,
+    "verified": true
+  },
+  {
+    "independent_pairs_verified": false,
+    "known_pairs_verified": false,
+    "pair_count": 4,
+    "recovered_master_key": null,
+    "rounds": 7,
+    "runtime_seconds": 10.003848099993775,
+    "satisfiable": false,
+    "status": "solver_timeout",
+    "timed_out": true,
+    "timeout_seconds": 10.0,
+    "variable_count": 2368,
+    "verified": false
+  }
+]
+
+Exit code: 0
+Elapsed seconds: 10.265
+
+
+COMMAND: <work>/hamza-venv/Scripts/python.exe -m neural_sat_speck.cli generate-data --instances 2 --pairs 64 --rounds 6 --seed 999999 --output <work>\final_demo_instances.json
+Generated 2 attack instances saved to <work>\final_demo_instances.json
+
+Exit code: 0
+Elapsed seconds: 3.594
+
+
+COMMAND: <work>/hamza-venv/Scripts/python.exe -m neural_sat_speck.cli verify-key --key 0x1918 0x1110 0x0908 0x0100 --rounds 7
+Cryptographic Verification for Key ['0x1918', '0x1110', '0x0908', '0x0100'] (7 rounds):
+  Known pairs verified:       True
+  Independent pairs verified: True
+  Result:                     PASS (Sound Key)
+
+Exit code: 0
+Elapsed seconds: 3.594
