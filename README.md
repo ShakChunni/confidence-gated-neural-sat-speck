@@ -114,5 +114,5 @@ and run the cells in order.
 
 ## Licence
 
-MIT. See [`LICENSE`](LICENSE). The literature review submitted for the course
+All rights reserved. See [`LICENSE`](LICENSE). The literature review submitted for the course
 is included as `Literature Review (Cryptanalysis).pdf`.
